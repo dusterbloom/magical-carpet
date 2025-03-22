@@ -81,7 +81,7 @@ The game is built using a component-based architecture with the following system
 
 ## 🙌 Credits
 
-Created with ❤️ by Your Name
+Created with ❤️ by Dusterbloom
 
 Special thanks to:
 - [Three.js](https://threejs.org/) community
