@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@esbuild/linux-x64@0.18.20":
+"@esbuild/win32-x64@0.18.20":
   version "0.18.20"
-  resolved "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.18.20.tgz"
-  integrity sha512-UYqiqemphJcNsFEskc73jQ7B9jgwjWrSayxawS6UVFZGWrAAtkzjxSqnoclCXxWtfwLdzU+vTpcNYhpn43uP1w==
+  resolved "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.18.20.tgz"
+  integrity sha512-kTdfRcSiDfQca/y9QIkng02avJ+NCaQvrMejlsB3RRv5sE9rRoeBPISaZpKxHELzRxZyLvNts1P27W3wV+8geQ==
 
 "@socket.io/component-emitter@~3.1.0":
   version "3.1.2"
@@ -93,6 +93,11 @@ rollup@^3.27.1:
   integrity sha512-GVsDdsbJzzy4S/v3dqWPJ7EfvZJfCHiDqe80IyrF59LYuP+e6U1LJoUqeuqRbwAWoMNoXivMNeNAOf5E22VA1w==
   optionalDependencies:
     fsevents "~2.3.2"
+
+simplex-noise@^4.0.1:
+  version "4.0.3"
+  resolved "https://registry.npmjs.org/simplex-noise/-/simplex-noise-4.0.3.tgz"
+  integrity sha512-qSE2I4AngLQG7BXqoZj51jokT4WUXe8mOBrvfOXpci8+6Yu44+/dD5zqDpOx3Ux792eamTd2lLcI8jqFntk/lg==
 
 socket.io-client@^4.7.2:
   version "4.8.1"
