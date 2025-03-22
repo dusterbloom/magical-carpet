@@ -1,75 +1,93 @@
-# Magical Vibe Carpet
+# Magical Carpet
 
-A modern, web-based reimagining of the classic Magic Carpet game by Bullfrog, featuring multiplayer gameplay, accessible directly from web browsers without login requirements, and optimized for both mobile and desktop platforms.
+An immersive 3D flying carpet adventure game where players soar through procedurally generated worlds, collect mana, and explore with friends.
 
-## Project Overview
+![Magical Carpet Game](docs/images/screenshot.png)
 
-Magical Vibe Carpet is a 3D flying carpet game where players collect mana, cast spells, and compete in short, action-packed sessions. The game features:
+## 🌟 Overview
 
-- Web-based gameplay (no downloads or installation required)
-- No signup or login required
-- Mobile and desktop compatibility
-- Default multiplayer mode
-- Three.js-based rendering
-- Short play sessions (3-5 minutes)
-- Funky, colorful aesthetic
+Magical Carpet is a web-based 3D game built with Three.js that allows players to fly on magic carpets through beautiful, never-ending procedurally generated landscapes. Collect floating mana orbs, discover hidden locations, and enjoy the serene experience of flight.
 
-## Development Setup
+## 🚀 Key Features
 
-### Prerequisites
-- Node.js (v16+)
-- npm or yarn
+- **Infinite Procedural World**: Endless unique terrains to explore, from mountains to oceans
+- **Dynamic Weather & Day/Night Cycle**: Experience changing skies, cloud patterns, and time of day
+- **Flying Physics**: Intuitive and satisfying carpet controls for a magical flying experience
+- **Mana Collection**: Gather magical energy throughout the world
+- **Multiplayer Support**: Fly and explore with friends
+- **Atmospheric Environment**: Clouds, birds, trees, and natural elements bring the world to life
 
-### Installation
-1. Clone the repository
-2. Install dependencies:
+## 🎮 How to Play
+
+1. Use WASD or arrow keys to control your carpet's direction
+2. Press Space to ascend and Shift to descend
+3. Fly near glowing blue orbs to collect mana
+4. Press E to interact with special locations
+5. Press Tab to see player stats and collected mana
+
+## 🛠️ Setup & Installation
+
+1. Clone this repository
+```bash
+git clone https://github.com/yourusername/magical-carpet.git
+cd magical-carpet
+```
+
+2. Install dependencies
 ```bash
 npm install
 ```
 
-### Development
-Run the development server:
+3. Start the development server
 ```bash
 npm run dev
 ```
 
-The game will be available at `http://localhost:5173`
+4. Open your browser and navigate to `http://localhost:5173`
 
-### Building for Production
-Build the project:
-```bash
-npm run build
-```
+## 🔧 Controls
 
-Preview the production build:
-```bash
-npm run preview
-```
+- **W/↑**: Move forward
+- **S/↓**: Move backward
+- **A/←**: Turn left
+- **D/→**: Turn right
+- **Space**: Ascend
+- **Shift**: Descend
+- **E**: Interact
+- **Tab**: Open/close stats display
+- **M**: Toggle map
+- **Esc**: Pause game
 
-## Implementation Guide
+## 🧰 Technologies Used
 
-For detailed implementation instructions, see the [LLM Implementation Guide](docs/LLM_IMPLEMENTATION_GUIDE.md).
+- **Three.js**: 3D rendering engine
+- **JavaScript/ES6+**: Core programming language
+- **Simplex Noise**: Procedural terrain generation
+- **Vite**: Development environment and bundler
+- **WebGL**: GPU-accelerated graphics
 
-## Project Structure
-```
-Vibe2/
-├── docs/                 # Documentation
-├── index.html            # Main HTML entry
-├── package.json          # Project dependencies
-├── src/                  # Source code
-│   ├── assets/           # Game assets (textures, models, audio)
-│   ├── components/       # UI components
-│   ├── game/             # Game logic
-│   │   ├── core/         # Core game engine
-│   │   ├── entities/     # Game entities
-│   │   ├── systems/      # Game systems (physics, input, etc.)
-│   │   ├── levels/       # Level definitions
-│   │   └── ui/           # Game UI elements
-│   ├── utils/            # Utility functions
-│   └── main.js           # Main entry point
-└── vite.config.js        # Build configuration
-```
+## 🎮 Game Architecture
 
-## Credits
+The game is built using a component-based architecture with the following systems:
 
-Created as a modern tribute to the classic Magic Carpet game by Bullfrog Productions.
+- **Engine**: Core game loop and systems management
+- **WorldSystem**: Procedural terrain generation and chunk management
+- **PlayerSystem**: Player controls, physics, and interactions
+- **AtmosphereSystem**: Sky, clouds, weather, and day/night cycle
+- **VegetationSystem**: Trees and plant life generation
+- **WaterSystem**: Oceans, rivers, and water effects
+- **UISystem**: HUD and user interface elements
+- **NetworkManager**: Multiplayer synchronization
+
+## 🙌 Credits
+
+Created with ❤️ by Your Name
+
+Special thanks to:
+- [Three.js](https://threejs.org/) community
+- [Simplex Noise](https://github.com/jwagner/simplex-noise) library
+- All contributors and testers
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

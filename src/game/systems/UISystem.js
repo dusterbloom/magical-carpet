@@ -171,30 +171,15 @@ export class UISystem {
   }
   
   createMinimapUI() {
-    // Create minimap in top-left corner
-    const minimapContainer = document.createElement('div');
-    minimapContainer.style.position = 'absolute';
-    minimapContainer.style.top = '20px';
-    minimapContainer.style.left = '20px';
-    minimapContainer.style.width = '150px';
-    minimapContainer.style.height = '150px';
-    minimapContainer.style.background = 'rgba(0, 0, 30, 0.7)';
-    minimapContainer.style.borderRadius = '5px';
-    minimapContainer.style.overflow = 'hidden';
-    minimapContainer.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+    // We're now using MinimapSystem for the actual minimap implementation
+    // This method is kept for backwards compatibility, but doesn't create a visible minimap
     
-    // Create canvas for minimap rendering
-    const minimapCanvas = document.createElement('canvas');
-    minimapCanvas.width = 150;
-    minimapCanvas.height = 150;
-    minimapCanvas.style.width = '100%';
-    minimapCanvas.style.height = '100%';
+    // Create empty references to ensure no errors
+    const dummyCanvas = document.createElement('canvas');
+    this.elements.minimapCanvas = dummyCanvas;
+    this.elements.minimapContext = dummyCanvas.getContext('2d');
     
-    minimapContainer.appendChild(minimapCanvas);
-    this.container.appendChild(minimapContainer);
-    
-    this.elements.minimapCanvas = minimapCanvas;
-    this.elements.minimapContext = minimapCanvas.getContext('2d');
+    console.log("Minimap functionality moved to MinimapSystem");
   }
   
   selectSpell(index) {
@@ -244,84 +229,9 @@ export class UISystem {
   }
   
   updateMinimap() {
-    if (!this.elements.minimapContext || !this.engine.systems.player.localPlayer) return;
-    
-    const ctx = this.elements.minimapContext;
-    const canvas = this.elements.minimapCanvas;
-    const worldSize = this.engine.systems.world.worldSize;
-    
-    // Clear minimap
-    ctx.fillStyle = 'rgba(0, 10, 40, 0.8)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw border
-    ctx.strokeStyle = 'rgba(0, 200, 255, 0.5)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw terrain (simplified)
-    const terrainGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    terrainGradient.addColorStop(0, 'rgba(0, 50, 100, 0.5)');
-    terrainGradient.addColorStop(1, 'rgba(0, 100, 200, 0.7)');
-    ctx.fillStyle = terrainGradient;
-    
-    // Draw random terrain pattern (would be based on actual terrain in full implementation)
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      const radius = 10 + Math.random() * 20;
-      ctx.moveTo(x + radius, y);
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-    }
-    ctx.fill();
-    
-    // Draw mana nodes
-    const manaNodes = this.engine.systems.world.manaNodes;
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.7)';
-    
-    manaNodes.forEach(node => {
-      if (!node.userData.collected) {
-        // Convert world position to minimap position
-        const x = ((node.position.x + worldSize / 2) / worldSize) * canvas.width;
-        const z = ((node.position.z + worldSize / 2) / worldSize) * canvas.height;
-        
-        ctx.beginPath();
-        ctx.arc(x, z, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-    
-    // Draw players
-    this.engine.systems.player.players.forEach(player => {
-      // Convert world position to minimap position
-      const x = ((player.position.x + worldSize / 2) / worldSize) * canvas.width;
-      const z = ((player.position.z + worldSize / 2) / worldSize) * canvas.height;
-      
-      // Draw player dot
-      ctx.beginPath();
-      if (player.isLocal) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-        ctx.arc(x, z, 4, 0, Math.PI * 2);
-      } else {
-        ctx.fillStyle = 'rgba(255, 100, 100, 1)';
-        ctx.arc(x, z, 3, 0, Math.PI * 2);
-      }
-      ctx.fill();
-      
-      // Draw direction indicator for local player
-      if (player.isLocal) {
-        const dirX = Math.sin(player.rotation.y) * 8;
-        const dirZ = Math.cos(player.rotation.y) * 8;
-        
-        ctx.beginPath();
-        ctx.moveTo(x, z);
-        ctx.lineTo(x + dirX, z + dirZ);
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-    });
+    // Minimap functionality is now handled by MinimapSystem
+    // This method is kept for backwards compatibility
+    return;
   }
   
   update(delta) {
@@ -333,7 +243,6 @@ export class UISystem {
       this.updateHealthDisplay(player.health, player.maxHealth);
     }
     
-    // Update minimap
-    this.updateMinimap();
+    // Minimap is now updated by MinimapSystem
   }
 }

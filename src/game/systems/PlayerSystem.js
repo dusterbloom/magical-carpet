@@ -58,7 +58,7 @@ export class PlayerSystem {
       id,
       isLocal: true,
       model: carpetModel,
-      position: new THREE.Vector3(0, 50, 0), // Starting higher
+      position: new THREE.Vector3(0, 150, 0), // Starting higher (adjusted from 50)
       rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
       velocity: new THREE.Vector3(0, 0, 0),
       acceleration: new THREE.Vector3(0, 0, 0),
@@ -68,12 +68,12 @@ export class PlayerSystem {
       mana: 0,
       health: 100,
       maxHealth: 100,
-      maxSpeed: 500, // Increased for better mobility
-      accelerationValue: 300, // Increased for better response
+      maxSpeed: 700, // Increased speed for larger terrain (was 500)
+      accelerationValue: 400, // Increased for better response (was 300)
       rotationSpeed: 3, // Increased for better turning
       spells: [],
-      altitude: 50, // Track target altitude
-      altitudeVelocity: 300,
+      altitude: 150, // Track target altitude (increased from 50)
+      altitudeVelocity: 400, // Increased from 300,
       currentSpell: 0
     };
     
@@ -166,8 +166,8 @@ export class PlayerSystem {
     if (!this.localPlayer) return;
     
     // Define camera offset and target distances
-    const cameraOffset = new THREE.Vector3(0, 5, -15); // Moved camera back a bit
-    const lookAheadDistance = new THREE.Vector3(0, 2, 15); // Look ahead point
+    const cameraOffset = new THREE.Vector3(0, 10, -25); // Adjusted: higher and further back
+    const lookAheadDistance = new THREE.Vector3(0, 5, 25); // Adjusted: look further ahead
     
     // Create quaternion from player's full rotation (pitch and yaw)
     const quaternion = new THREE.Quaternion();
@@ -270,8 +270,8 @@ export class PlayerSystem {
       this.engine.systems.world.createTerrainCollision();
       this.engine.systems.world.createManaNodes();
       
-      // Move player to center of new world
-      this.localPlayer.position.set(0, 50, 0);
+      // Move player to center of new world at appropriate height
+      this.localPlayer.position.set(0, 150, 0);
       this.localPlayer.velocity.set(0, 0, 0);
     };
   }
