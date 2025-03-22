@@ -10,7 +10,7 @@ export class AtmosphereSystem {
     this.clouds = [];
     this.cloudCount = 100;
     this.cloudSpread = 2000; // How far clouds spread from player
-    this.cloudHeight = 200;  // Height of cloud layer
+    this.cloudHeight = 300;  // Height of cloud layer
     
     // Birds
     this.birds = [];

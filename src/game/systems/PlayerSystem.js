@@ -15,7 +15,7 @@ export class PlayerSystem {
     this.isTransitioning = false;
     this.transitionAlpha = 0;
     this.worldTransitionComplete = null;
-    this.worldSize = 2000; //
+    this.worldSize = 10000; //
     
     // Initialize subsystems
     this.physics = new PlayerPhysics(this);

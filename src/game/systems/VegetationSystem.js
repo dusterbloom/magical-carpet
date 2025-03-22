@@ -14,11 +14,11 @@ export class VegetationSystem {
     // Vegetation parameters
     this.treeTypes = [
       { name: "pine", minHeight: 20, maxHeight: 80, avoidWater: true, density: 0.3 },
-      { name: "oak", minHeight: 10, maxHeight: 30, avoidWater: true, density: 0.4 },
+      { name: "oak", minHeight: 10, maxHeight: 30, avoidWater: true, density: 0.7 },
       { name: "palm", minHeight: 5, maxHeight: 15, avoidWater: false, density: 0.2 }
     ];
     
-    this.treeDistance = 40; // Minimum distance between trees
+    this.treeDistance = 1; // Minimum distance between trees
     this.chunksWithTrees = new Set(); // Track which chunks have trees
   }
   
@@ -77,7 +77,7 @@ export class VegetationSystem {
     // Create palm fronds
     const frondMaterial = new THREE.MeshStandardMaterial({ color: 0x32CD32 });
     for (let i = 0; i < 7; i++) {
-      const frondGeometry = new THREE.ConeGeometry(0.5, 4, 4);
+      const frondGeometry = new THREE.ConeGeometry(1, 4, 4);
       const frond = new THREE.Mesh(frondGeometry, frondMaterial);
       frond.position.y = 8;
       frond.rotation.x = Math.PI / 4;

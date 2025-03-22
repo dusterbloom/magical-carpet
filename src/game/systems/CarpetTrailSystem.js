@@ -9,7 +9,7 @@ export class CarpetTrailSystem {
     this.trailParticles = [];
     this.maxParticles = 200;
     this.particleLifespan = 2.0; // seconds
-    this.emissionRate = 10; // particles per second
+    this.emissionRate = 100; // particles per second
     this.timeSinceLastEmission = 0;
     
     // Ribbon trail

@@ -25,19 +25,19 @@ export class WorldSystem {
     // World configuration
     this.chunkSize = 256;
     this.terrainResolution = 64;
-    this.maxHeight = 400;  // Increased from 120
+    this.maxHeight = 300;  // Increased from 120
     this.minHeight = -40;  // Deeper valleys
     this.waterLevel = 0;
     this.viewDistance = 6;
     
     // Terrain parameters
     this.terrainParams = {
-      baseScale: 0.0015,        // Reduced from 0.003 - larger features
-      detailScale: 0.01,        // Reduced from 0.015 - smoother details
+      baseScale: 0.005,        // Reduced from 0.003 - larger features
+      detailScale: 0.019,        // Reduced from 0.015 - smoother details
       mountainScale: 0.004,     // Reduced from 0.008 - larger mountains
-      baseHeight: 80,          // Increased from 40
-      mountainHeight: 240,      // Increased from 80 
-      detailHeight: 40          // Increased from 20
+      baseHeight: 40,          // Increased from 40
+      mountainHeight: 100,      // Increased from 80 
+      detailHeight: 20          // Increased from 20
     };
 
     // Initialize noise generator
@@ -49,7 +49,7 @@ export class WorldSystem {
       ocean: { threshold: -0.3, color: new THREE.Color(0x0066aa) },
       beach: { threshold: -0.2, color: new THREE.Color(0xdddd77) },
       plains: { threshold: 0.2, color: new THREE.Color(0x44aa44) },
-      forest: { threshold: 0.4, color: new THREE.Color(0x227722) },
+      forest: { threshold: -0.4, color: new THREE.Color(0x227722) },
       mountains: { threshold: 0.6, color: new THREE.Color(0x888888) },
       snow: { threshold: 0.8, color: new THREE.Color(0xffffff) }
     };
@@ -64,9 +64,9 @@ export class WorldSystem {
         name: "ancient_ruins",
         minHeight: 10,
         maxHeight: 60,
-        minDistance: 1000,    // Minimum distance between same type
+        minDistance: 50,    // Minimum distance between same type
         maxSlope: 0.2,        // Must be on relatively flat ground
-        frequency: 0.00001,   // Rarity factor
+        frequency: 0.1,   // Rarity factor
         size: { min: 20, max: 40 },
         requiresWater: false
       },
@@ -76,7 +76,7 @@ export class WorldSystem {
         maxHeight: 80,
         minDistance: 800,
         maxSlope: 0.3,
-        frequency: 0.00002,
+        frequency: 0.2,
         size: { min: 10, max: 25 },
         requiresWater: false
       },
@@ -94,9 +94,9 @@ export class WorldSystem {
         name: "stone_arch",
         minHeight: 20,
         maxHeight: 90,
-        minDistance: 1500,
+        minDistance: 100,
         maxSlope: 0.4,
-        frequency: 0.000008,
+        frequency: 0.12,
         size: { min: 25, max: 50 },
         requiresWater: false
       },
@@ -104,7 +104,7 @@ export class WorldSystem {
         name: "ancient_temple",
         minHeight: 30,
         maxHeight: 70,
-        minDistance: 2000,    // Very rare
+        minDistance: 200,    // Very rare
         maxSlope: 0.1,        // Needs very flat terrain
         frequency: 0.000005,
         size: { min: 40, max: 80 },
@@ -116,7 +116,7 @@ export class WorldSystem {
         maxHeight: 30,
         minDistance: 1000,
         maxSlope: 0.15,
-        frequency: 0.00001,
+        frequency: 0.3,
         size: { min: 15, max: 35 },
         requiresWater: true   // Must be near water
       }
@@ -604,7 +604,7 @@ export class WorldSystem {
       color.b += striation * 0.15 - 0.05;
       
       // Add snow patches near the snow line
-      if (height > 200) {  // Increased from 80
+      if (height > 120 ) {  // Increased from 80
         const snowNoise = this.noise(x * 0.08 + this.seed * 17, z * 0.08 + this.seed * 18);
         const snowAmount = Math.max(0, (height - 200) / 30 + snowNoise * 0.3);
         
