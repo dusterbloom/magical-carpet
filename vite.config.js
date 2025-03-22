@@ -8,6 +8,9 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'dist',
     assetsDir: 'assets',
+    optimizeDeps: {
+      include: ['three', 'simplex-noise']
+    },
     minify: true,
     sourcemap: false,
     rollupOptions: {
