@@ -39,7 +39,7 @@ export class MobileUI {
         window.addEventListener('resize', this.onResize.bind(this));
     }
     
-    // Control buttons for user-controlled movement (no auto-movement)
+    // Control buttons for manual carpet movement (no auto-movement)
 
     initialize() {
         this.createUIContainer();
@@ -48,10 +48,7 @@ export class MobileUI {
         this.createSimpleControls();
         this.createBatterySavingToggle();
         
-        // Create right-hand joystick for camera control
-        this.createCameraJoystick();
-        
-        // Setup invisible camera controls (as backup if joystick is not used)
+        // Setup invisible camera controls for right-side of screen
         this.setupCameraControls();
         
         console.log("Mobile UI initialized with simplified user controls");
