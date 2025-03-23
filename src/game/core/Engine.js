@@ -25,6 +25,18 @@ export class Engine {
     this.isRunning = false;
     this.detectDeviceCapabilities();
 
+    // Initialize quality manager for adaptive resolution scaling
+    this.qualityManager = {
+      targetFPS: 60,
+      currentFPS: 60,
+      sampleSize: 20,
+      fpsHistory: [],
+      resolutionScale: 1.0,
+      minResolutionScale: 0.5,
+      updateInterval: 1.0, // seconds
+      timeSinceLastUpdate: 0
+    };
+
     this.isVisible = true;
 
     this.maxDeltaTime = 1/15; // Cap at 15 FPS equivalent
@@ -37,7 +49,7 @@ export class Engine {
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: !this.isMobile, // Disable antialiasing on mobile
       powerPreference: "high-performance",
     });
     this.renderer.setClearColor(0x88ccff);
@@ -46,8 +58,20 @@ export class Engine {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    // Optimized renderer configuration
+    this.renderer.powerPreference = "high-performance";
+    this.renderer.logarithmicDepthBuffer = false;  // Disable for performance
+    
+    // Device-specific optimizations
+    if (this.isMobile) {
+      this.renderer.precision = "mediump";  // Use medium precision on mobile
+      this.renderer.shadowMap.enabled = false;  // Disable on mobile
+      this.renderer.shadowMap.autoUpdate = false;  // Disable dynamic shadows
+    } else {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
 
     // Create main scene and camera
     this.scene = new THREE.Scene();
@@ -134,6 +158,9 @@ export class Engine {
     // Calculate delta time and cap it to prevent huge jumps
     this.delta = Math.min(this.clock.getDelta(), this.maxDeltaTime);
     this.elapsed = this.clock.getElapsedTime();
+    
+    // Update quality settings based on performance
+    this.updateQuality(this.delta);
 
     // Update systems in correct order
     const updateOrder = [
@@ -213,8 +240,68 @@ export class Engine {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
 
-    // Update renderer
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // Update renderer with current resolution scale
+    this.updateRendererResolution();
+  }
+  
+  // Adaptive resolution scaling methods
+  updateQuality(delta) {
+    const { qualityManager } = this;
+    
+    // Calculate current FPS
+    const fps = 1 / delta;
+    qualityManager.fpsHistory.push(fps);
+    
+    // Keep history to sample size
+    if (qualityManager.fpsHistory.length > qualityManager.sampleSize) {
+      qualityManager.fpsHistory.shift();
+    }
+    
+    // Only update periodically
+    qualityManager.timeSinceLastUpdate += delta;
+    if (qualityManager.timeSinceLastUpdate < qualityManager.updateInterval) return;
+    
+    // Reset timer
+    qualityManager.timeSinceLastUpdate = 0;
+    
+    // Calculate average FPS
+    const avgFPS = qualityManager.fpsHistory.reduce((a, b) => a + b, 0) / 
+                  qualityManager.fpsHistory.length;
+    qualityManager.currentFPS = avgFPS;
+    
+    // Adjust resolution if FPS is too low
+    if (avgFPS < qualityManager.targetFPS * 0.8) {
+      // Reduce resolution by 10%
+      qualityManager.resolutionScale = Math.max(
+        qualityManager.minResolutionScale,
+        qualityManager.resolutionScale * 0.9
+      );
+      
+      // Apply new resolution
+      this.updateRendererResolution();
+      console.log(`Performance: Decreasing resolution to ${qualityManager.resolutionScale.toFixed(2)}`);
+    } 
+    // Increase resolution if FPS is high enough
+    else if (avgFPS > qualityManager.targetFPS * 1.1 && qualityManager.resolutionScale < 1.0) {
+      // Increase resolution by 5%
+      qualityManager.resolutionScale = Math.min(
+        1.0,
+        qualityManager.resolutionScale * 1.05
+      );
+      
+      // Apply new resolution
+      this.updateRendererResolution();
+      console.log(`Performance: Increasing resolution to ${qualityManager.resolutionScale.toFixed(2)}`);
+    }
+  }
+  
+  updateRendererResolution() {
+    const width = window.innerWidth * this.qualityManager.resolutionScale;
+    const height = window.innerHeight * this.qualityManager.resolutionScale;
+    
+    this.renderer.setSize(width, height, false);
+    this.renderer.domElement.style.width = '100%';
+    this.renderer.domElement.style.height = '100%';
   }
   
   onVisibilityChange() {
