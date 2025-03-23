@@ -13,13 +13,16 @@ export class VegetationSystem {
     
     // Vegetation parameters
     this.treeTypes = [
-      { name: "pine", minHeight: 20, maxHeight: 80, avoidWater: true, density: 0.3 },
-      { name: "oak", minHeight: 10, maxHeight: 30, avoidWater: true, density: 0.7 },
-      { name: "palm", minHeight: 5, maxHeight: 15, avoidWater: false, density: 0.2 }
+      { name: "pine", minHeight: 20, maxHeight: 80, avoidWater: true, density: this.engine.isMobile ? 0.1 : 0.2 },
+      { name: "oak", minHeight: 10, maxHeight: 30, avoidWater: true, density: this.engine.isMobile ? 0.2 : 0.4 },
+      { name: "palm", minHeight: 5, maxHeight: 15, avoidWater: false, density: this.engine.isMobile ? 0.05 : 0.1 }
     ];
     
-    this.treeDistance = 1; // Minimum distance between trees
+    this.treeDistance = this.engine.isMobile ? 5 : 2; // Increased minimum distance between trees
     this.chunksWithTrees = new Set(); // Track which chunks have trees
+    
+    // View distance for vegetation (shorter than world view distance)
+    this.vegetationDistance = this.engine.isMobile ? 1 : 2;
   }
   
   async initialize() {
@@ -32,62 +35,92 @@ export class VegetationSystem {
   }
   
   createTreeModels() {
-    // Create simplified tree models
+    // Determine geometry detail level based on device capability
+    const segmentCount = this.engine.isMobile ? 4 : 6;
     
-    // Pine tree (conical)
+    // Create even more simplified tree models
+    
+    // Pine tree (conical) - simplified for performance
     const pineTree = new THREE.Group();
-    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.8, 4, 8);
-    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.8, 4, segmentCount);
+    
+    // Use MeshBasicMaterial instead of MeshStandardMaterial for better performance on mobile
+    const trunkMaterial = this.engine.isMobile ? 
+      new THREE.MeshBasicMaterial({ color: 0x8B4513 }) : 
+      new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+      
     const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
     trunk.position.y = 2;
     
-    const leavesGeometry = new THREE.ConeGeometry(3, 8, 8);
-    const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x2E8B57 });
+    const leavesGeometry = new THREE.ConeGeometry(3, 8, segmentCount);
+    const leavesMaterial = this.engine.isMobile ? 
+      new THREE.MeshBasicMaterial({ color: 0x2E8B57 }) : 
+      new THREE.MeshStandardMaterial({ color: 0x2E8B57 });
+      
     const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
     leaves.position.y = 7;
     
     pineTree.add(trunk);
     pineTree.add(leaves);
     pineTree.scale.set(1.5, 1.5, 1.5);
-    pineTree.castShadow = true;
-    pineTree.receiveShadow = true;
     
-    // Oak tree (round)
+    // Only enable shadows on non-mobile devices
+    if (!this.engine.isMobile) {
+      pineTree.castShadow = true;
+      pineTree.receiveShadow = true;
+    }
+    
+    // Oak tree (round) - simplified
     const oakTree = new THREE.Group();
-    const oakTrunkGeometry = new THREE.CylinderGeometry(0.6, 1, 5, 8);
+    const oakTrunkGeometry = new THREE.CylinderGeometry(0.6, 1, 5, segmentCount);
     const oakTrunk = new THREE.Mesh(oakTrunkGeometry, trunkMaterial);
     oakTrunk.position.y = 2.5;
     
-    const oakLeavesGeometry = new THREE.SphereGeometry(4, 8, 8);
-    const oakLeavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+    const oakLeavesGeometry = new THREE.SphereGeometry(4, segmentCount, segmentCount);
+    const oakLeavesMaterial = this.engine.isMobile ? 
+      new THREE.MeshBasicMaterial({ color: 0x228B22 }) : 
+      new THREE.MeshStandardMaterial({ color: 0x228B22 });
+      
     const oakLeaves = new THREE.Mesh(oakLeavesGeometry, oakLeavesMaterial);
     oakLeaves.position.y = 7;
     
     oakTree.add(oakTrunk);
     oakTree.add(oakLeaves);
-    oakTree.castShadow = true;
-    oakTree.receiveShadow = true;
     
-    // Palm tree
+    if (!this.engine.isMobile) {
+      oakTree.castShadow = true;
+      oakTree.receiveShadow = true;
+    }
+    
+    // Palm tree - greatly simplified for mobile
     const palmTree = new THREE.Group();
-    const palmTrunkGeometry = new THREE.CylinderGeometry(0.4, 0.6, 8, 8);
+    const palmTrunkGeometry = new THREE.CylinderGeometry(0.4, 0.6, 8, segmentCount);
     const palmTrunk = new THREE.Mesh(palmTrunkGeometry, trunkMaterial);
     palmTrunk.position.y = 4;
     
-    // Create palm fronds
-    const frondMaterial = new THREE.MeshStandardMaterial({ color: 0x32CD32 });
-    for (let i = 0; i < 7; i++) {
-      const frondGeometry = new THREE.ConeGeometry(1, 4, 4);
+    // Create palm fronds - fewer for mobile
+    const frondMaterial = this.engine.isMobile ? 
+      new THREE.MeshBasicMaterial({ color: 0x32CD32 }) : 
+      new THREE.MeshStandardMaterial({ color: 0x32CD32 });
+      
+    // Fewer fronds on mobile
+    const frondCount = this.engine.isMobile ? 3 : 7;
+    
+    for (let i = 0; i < frondCount; i++) {
+      const frondGeometry = new THREE.ConeGeometry(1, 4, this.engine.isMobile ? 3 : 4);
       const frond = new THREE.Mesh(frondGeometry, frondMaterial);
       frond.position.y = 8;
       frond.rotation.x = Math.PI / 4;
-      frond.rotation.y = (i / 7) * Math.PI * 2;
+      frond.rotation.y = (i / frondCount) * Math.PI * 2;
       palmTree.add(frond);
     }
     
     palmTree.add(palmTrunk);
-    palmTree.castShadow = true;
-    palmTree.receiveShadow = true;
+    
+    if (!this.engine.isMobile) {
+      palmTree.castShadow = true;
+      palmTree.receiveShadow = true;
+    }
     
     // Store models
     this.treeModels = [pineTree, oakTree, palmTree];
@@ -153,10 +186,14 @@ export class VegetationSystem {
     const maxX = minX + chunkSize;
     const maxZ = minZ + chunkSize;
     
-    // Number of attempts to place trees
-    const attempts = 100;
+    // Number of attempts to place trees - significantly reduced for mobile
+    const attempts = this.engine.isMobile ? 30 : 60;
     
-    for (let i = 0; i < attempts; i++) {
+    // Count trees in this chunk to enforce a limit
+    let treesInChunk = 0;
+    const maxTreesPerChunk = this.engine.isMobile ? 5 : 15;
+    
+    for (let i = 0; i < attempts && treesInChunk < maxTreesPerChunk; i++) {
       // Random position within chunk
       const x = minX + Math.random() * chunkSize;
       const z = minZ + Math.random() * chunkSize;
@@ -182,6 +219,7 @@ export class VegetationSystem {
         // Add to scene
         this.scene.add(treeModel);
         this.treeInstances.push(treeModel);
+        treesInChunk++;
       }
     }
     
@@ -193,6 +231,11 @@ export class VegetationSystem {
     const player = this.engine.systems.player?.localPlayer;
     if (!player) return;
     
+    // Skip every other update on mobile devices to improve performance
+    if (this.engine.isMobile && Math.floor(this.engine.elapsed * 10) % 3 !== 0) {
+      return;
+    }
+    
     // Calculate current chunk
     const chunkSize = this.worldSystem.chunkSize;
     const playerChunkX = Math.floor(player.position.x / chunkSize);
@@ -200,7 +243,10 @@ export class VegetationSystem {
     
     // Keep track of chunks that should have trees
     const chunksToKeep = new Set();
-    const viewDistance = this.worldSystem.viewDistance;
+    
+    // Use a shorter view distance for vegetation than for the world
+    // This significantly reduces the number of trees to render
+    const viewDistance = this.vegetationDistance;
     
     // Generate trees for chunks in view distance
     for (let x = -viewDistance; x <= viewDistance; x++) {

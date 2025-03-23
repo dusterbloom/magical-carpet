@@ -11,6 +11,7 @@ export class UISystem {
     this.createHealthDisplay();
     this.createSpellsUI();
     this.createMinimapUI();
+    this.createSettingsUI(); // Add settings UI
     
     console.log("UI system initialized");
   }
@@ -27,6 +28,55 @@ export class UISystem {
     this.container.style.flexDirection = 'column';
     this.container.style.fontFamily = 'Arial, sans-serif';
     this.container.style.color = 'white';
+  }
+  
+  createSettingsUI() {
+    // Create a settings panel in the top-right corner
+    const settingsContainer = document.createElement('div');
+    settingsContainer.style.position = 'absolute';
+    settingsContainer.style.top = '80px'; // Below mana display
+    settingsContainer.style.right = '20px';
+    settingsContainer.style.padding = '10px';
+    settingsContainer.style.background = 'rgba(0, 0, 30, 0.7)';
+    settingsContainer.style.borderRadius = '5px';
+    settingsContainer.style.display = 'flex';
+    settingsContainer.style.flexDirection = 'column';
+    settingsContainer.style.gap = '5px';
+    settingsContainer.style.pointerEvents = 'auto'; // Enable interaction
+    settingsContainer.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+    
+    // Create quality toggle button
+    const qualityToggle = document.createElement('button');
+    qualityToggle.textContent = 'Quality: Low';
+    qualityToggle.style.background = 'rgba(30, 30, 60, 0.8)';
+    qualityToggle.style.color = 'white';
+    qualityToggle.style.border = '1px solid rgba(100, 200, 255, 0.5)';
+    qualityToggle.style.borderRadius = '3px';
+    qualityToggle.style.padding = '5px 10px';
+    qualityToggle.style.cursor = 'pointer';
+    qualityToggle.style.transition = 'all 0.2s';
+    
+    // Add hover effect
+    qualityToggle.addEventListener('mouseover', () => {
+      qualityToggle.style.background = 'rgba(40, 40, 80, 0.8)';
+      qualityToggle.style.borderColor = 'rgba(100, 200, 255, 0.8)';
+    });
+    
+    qualityToggle.addEventListener('mouseout', () => {
+      qualityToggle.style.background = 'rgba(30, 30, 60, 0.8)';
+      qualityToggle.style.borderColor = 'rgba(100, 200, 255, 0.5)';
+    });
+    
+    // Add click handler
+    qualityToggle.addEventListener('click', () => {
+      const isHighQuality = this.engine.toggleHighQualityMode();
+      qualityToggle.textContent = isHighQuality ? 'Quality: High' : 'Quality: Low';
+    });
+    
+    settingsContainer.appendChild(qualityToggle);
+    this.container.appendChild(settingsContainer);
+    
+    this.elements.qualityToggle = qualityToggle;
   }
   
   createManaDisplay() {

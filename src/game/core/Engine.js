@@ -42,7 +42,8 @@ export class Engine {
       lastMaterialQualityUpdate: 0,
       materialQualityUpdateInterval: 5.0,
       batterySavingMode: false,
-      uiAnimationLevel: this.isMobile ? 'low' : 'high'
+      uiAnimationLevel: this.isMobile ? 'low' : 'high',
+      highQualityMode: false // New flag for toggling higher quality
     };
 
     this.isVisible = true;
@@ -499,5 +500,54 @@ export class Engine {
         system.handleVisibilityChange(true);
       }
     }
+  }
+  
+  // Toggle high quality mode
+  toggleHighQualityMode() {
+    this.qualityManager.highQualityMode = !this.qualityManager.highQualityMode;
+    
+    console.log(`High quality mode: ${this.qualityManager.highQualityMode ? 'enabled' : 'disabled'}`);
+    
+    // Update all systems that might be affected by quality changes
+    if (this.systems.carpetTrail) {
+      // Enable/disable trail effects based on quality mode
+      this.systems.carpetTrail.enableRibbonTrail = !this.isMobile || this.qualityManager.highQualityMode;
+      this.systems.carpetTrail.enableSteamParticles = !this.isMobile || this.qualityManager.highQualityMode;
+      
+      // Adjust particle counts
+      if (this.qualityManager.highQualityMode) {
+        this.systems.carpetTrail.maxParticles = this.isMobile ? 50 : 150;
+        this.systems.carpetTrail.maxMotionLines = this.isMobile ? 4 : 10;
+      } else {
+        this.systems.carpetTrail.maxParticles = this.isMobile ? 25 : 75;
+        this.systems.carpetTrail.maxMotionLines = this.isMobile ? 2 : 6;
+      }
+    }
+    
+    // Update atmosphere system
+    if (this.systems.atmosphere) {
+      // Enable/disable birds based on quality mode
+      this.systems.atmosphere.enableBirds = !this.isMobile || this.qualityManager.highQualityMode;
+      
+      // Adjust cloud count
+      this.systems.atmosphere.cloudCount = this.qualityManager.highQualityMode ? 
+        (this.isMobile ? 40 : 80) : 
+        (this.isMobile ? 25 : 50);
+    }
+    
+    // Update vegetation system view distance
+    if (this.systems.vegetation) {
+      this.systems.vegetation.vegetationDistance = this.qualityManager.highQualityMode ? 
+        (this.isMobile ? 2 : 3) : 
+        (this.isMobile ? 1 : 2);
+    }
+    
+    // Update world system
+    if (this.systems.world) {
+      // Could adjust terrain detail here if needed
+    }
+    
+    // Return current state
+    return this.qualityManager.highQualityMode;
   }
 }
