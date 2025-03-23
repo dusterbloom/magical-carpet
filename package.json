@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "nipplejs": "^0.10.2",
     "simplex-noise": "^4.0.1",
     "socket.io-client": "^4.7.2",
     "three": "^0.155.0"

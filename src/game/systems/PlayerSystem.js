@@ -58,22 +58,24 @@ export class PlayerSystem {
       id,
       isLocal: true,
       model: carpetModel,
-      position: new THREE.Vector3(0, 150, 0), // Starting higher (adjusted from 50)
+      position: new THREE.Vector3(0, 50, 0), // Starting higher (adjusted from 50)
       rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
       velocity: new THREE.Vector3(0, 0, 0),
       acceleration: new THREE.Vector3(0, 0, 0),
       bankAngle: 0,
       throttle: 0, // Throttle control (0 to 1)
 
-      mana: 0,
+      mana: 100,
       health: 100,
       maxHealth: 100,
-      maxSpeed: 700, // Increased speed for larger terrain (was 500)
-      accelerationValue: 400, // Increased for better response (was 300)
-      rotationSpeed: 3, // Increased for better turning
+      maxSpeed: 700, // Reduced from 700 for better control
+      accelerationValue: 300, // Increased for better response (was 300)
+      decelerationValue: 40, // Increased for better response (was 300)
+
+      rotationSpeed: 1, // Reduced from 3 for smoother turning
       spells: [],
       altitude: 150, // Track target altitude (increased from 50)
-      altitudeVelocity: 400, // Increased from 300,
+      altitudeVelocity: 150, // Increased from 300,
       currentSpell: 0
     };
     
