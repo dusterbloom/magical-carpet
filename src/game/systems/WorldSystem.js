@@ -6,6 +6,11 @@ export class WorldSystem {
     this.engine = engine;
     this.scene = engine.scene;
     
+    // Initialize frustum culling
+    this.frustum = new THREE.Frustum();
+    this.frustumMatrix = new THREE.Matrix4();
+    this.cameraViewProjectionMatrix = new THREE.Matrix4();
+    this.boundingSpheres = new Map();  // Store bounding spheres for quick checks
 
     if (engine.renderer) {
       // Improve shadow mapping
@@ -29,6 +34,29 @@ export class WorldSystem {
     this.minHeight = -40;  // Deeper valleys
     this.waterLevel = 0;
     this.viewDistance = 6;
+    
+    // Level of Detail (LOD) system configuration
+    this.terrainLOD = {
+      distances: [
+        { distance: 500, resolution: 64 },    // Close chunks: high detail
+        { distance: 1000, resolution: 32 },   // Medium chunks: medium detail
+        { distance: 1500, resolution: 16 },   // Far chunks: low detail
+        { distance: 2000, resolution: 8 }     // Very far chunks: very low detail
+      ],
+      // Default LOD materials (will create in createMaterials)
+      materials: {}
+    };
+    
+    // Use lower detail for mobile devices
+    if (engine.isMobile) {
+      this.terrainLOD.distances = [
+        { distance: 300, resolution: 32 },    // Close chunks: medium detail on mobile
+        { distance: 600, resolution: 16 },    // Medium chunks: low detail on mobile
+        { distance: 1000, resolution: 8 }     // Far chunks: very low detail on mobile
+      ];
+      // Also reduce view distance on mobile
+      this.viewDistance = 4;
+    }
     
     // Terrain parameters
     this.terrainParams = {
@@ -240,13 +268,37 @@ export class WorldSystem {
       normalScale: new THREE.Vector2(0.05, 0.05)
     });
     
-    // Lower detail terrain material (for distant chunks)
-    this.materials.terrainLOD = new THREE.MeshStandardMaterial({
+    // Create LOD materials with decreasing quality
+    // LOD 0 - Highest quality (closest to camera)
+    this.terrainLOD.materials[0] = this.materials.terrain;
+    
+    // LOD 1 - Medium quality
+    this.terrainLOD.materials[1] = new THREE.MeshStandardMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
       roughness: 0.9,
       metalness: 0.01,
       envMapIntensity: 0.3,
+      // Simplified material properties for medium distance
+      flatShading: this.engine.isMobile
+    });
+    
+    // LOD 2 - Low quality
+    this.terrainLOD.materials[2] = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      side: THREE.DoubleSide,
+      roughness: 0.95,
+      metalness: 0.0,
+      envMapIntensity: 0.2,
+      flatShading: true  // Use flat shading for far distances
+    });
+    
+    // LOD 3 - Lowest quality (furthest from camera)
+    this.terrainLOD.materials[3] = new THREE.MeshLambertMaterial({
+      vertexColors: true,
+      side: THREE.DoubleSide,
+      // Lambert material is faster than standard material
+      flatShading: true
     });
     
     // Create water material
@@ -263,6 +315,18 @@ export class WorldSystem {
       clearcoat: 0.5,
       clearcoatRoughness: 0.2
     });
+    
+    // Create simplified water material for mobile
+    if (this.engine.isMobile) {
+      this.materials.water = new THREE.MeshStandardMaterial({
+        color: 0x0099ee,
+        transparent: true,
+        opacity: 0.80,
+        roughness: 0.1,
+        metalness: 0.1,
+        side: THREE.DoubleSide
+      });
+    }
   }
 
   createLights() {
@@ -648,13 +712,65 @@ export class WorldSystem {
     return color;
   }
 
+  /**
+   * Get the appropriate LOD level for a chunk based on distance from player
+   * @param {number} chunkCenterX - X coordinate of chunk center
+   * @param {number} chunkCenterZ - Z coordinate of chunk center
+   * @returns {Object} LOD configuration with resolution and material index
+   */
+  getChunkLOD(chunkCenterX, chunkCenterZ) {
+    const player = this.engine.systems.player?.localPlayer;
+    if (!player) {
+      // Default to highest detail if player not available
+      return {
+        resolution: this.terrainResolution,
+        materialIndex: 0
+      };
+    }
+    
+    // Calculate distance from player to chunk center
+    const dx = player.position.x - chunkCenterX;
+    const dz = player.position.z - chunkCenterZ;
+    const distanceToChunk = Math.sqrt(dx * dx + dz * dz);
+    
+    // Determine LOD level based on distance
+    for (let i = 0; i < this.terrainLOD.distances.length; i++) {
+      if (distanceToChunk < this.terrainLOD.distances[i].distance) {
+        return {
+          resolution: this.terrainLOD.distances[i].resolution,
+          materialIndex: i
+        };
+      }
+    }
+    
+    // Fallback to lowest detail for very far chunks
+    const lastIndex = this.terrainLOD.distances.length - 1;
+    return {
+      resolution: this.terrainLOD.distances[lastIndex].resolution,
+      materialIndex: lastIndex
+    };
+  }
+  
+  /**
+   * Create geometry for a terrain chunk with appropriate level of detail
+   * @param {number} startX - X coordinate of chunk start
+   * @param {number} startZ - Z coordinate of chunk start
+   * @returns {Object} Object containing geometry and material index
+   */
   createChunkGeometry(startX, startZ) {
-    // Create plane geometry
+    // Calculate chunk center for LOD determination
+    const chunkCenterX = startX + this.chunkSize / 2;
+    const chunkCenterZ = startZ + this.chunkSize / 2;
+    
+    // Get appropriate LOD for this chunk
+    const lod = this.getChunkLOD(chunkCenterX, chunkCenterZ);
+    
+    // Create plane geometry with LOD-appropriate resolution
     const geometry = new THREE.PlaneGeometry(
       this.chunkSize,
       this.chunkSize,
-      this.terrainResolution,
-      this.terrainResolution
+      lod.resolution,
+      lod.resolution
     );
 
     // Rotate the plane to be horizontal (X-Z plane)
@@ -686,7 +802,10 @@ export class WorldSystem {
     // Update normals
     geometry.computeVertexNormals();
     
-    return geometry;
+    return {
+      geometry: geometry,
+      materialIndex: lod.materialIndex
+    };
   }
 
   createInitialTerrain() {
@@ -701,12 +820,19 @@ export class WorldSystem {
         
         if (!this.currentChunks.has(key)) {
           try {
-            const geometry = this.createChunkGeometry(startX, startZ);
-            const mesh = new THREE.Mesh(geometry, this.materials.terrain);
+            const chunkData = this.createChunkGeometry(startX, startZ);
+            
+            // Get the appropriate material for this LOD level
+            const material = this.terrainLOD.materials[chunkData.materialIndex];
+            
+            const mesh = new THREE.Mesh(chunkData.geometry, material);
             
             mesh.position.set(startX, 0, startZ);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
+            
+            // Store LOD level with the mesh for later updates
+            mesh.userData.lodLevel = chunkData.materialIndex;
             
             this.scene.add(mesh);
             this.currentChunks.set(key, mesh);
@@ -1987,6 +2113,10 @@ export class WorldSystem {
 
       // Keep track of chunks that should remain
       const chunksToKeep = new Set();
+      // Track chunks that need LOD updates
+      const chunksToUpdate = new Map();
+      // Track chunks that need to be created
+      const newChunksToAdd = [];
 
       // Update or create chunks in view distance
       for (let x = -this.viewDistance; x <= this.viewDistance; x++) {
@@ -2000,15 +2130,21 @@ export class WorldSystem {
 
             chunksToKeep.add(key);
 
-            // Create new chunk if it doesn't exist
-            if (!this.currentChunks.has(key)) {
-              const geometry = this.createChunkGeometry(worldX, worldZ);
-              const mesh = new THREE.Mesh(geometry, this.materials.terrain);
-              mesh.position.set(worldX, 0, worldZ);
-              mesh.castShadow = true;
-              mesh.receiveShadow = true;
-              this.scene.add(mesh);
-              this.currentChunks.set(key, mesh);
+            // Check if chunk exists
+            if (this.currentChunks.has(key)) {
+              // Check if LOD needs updating
+              const mesh = this.currentChunks.get(key);
+              const chunkCenterX = worldX + this.chunkSize / 2;
+              const chunkCenterZ = worldZ + this.chunkSize / 2;
+              const lod = this.getChunkLOD(chunkCenterX, chunkCenterZ);
+              
+              // If LOD level has changed, add to update list
+              if (mesh.userData.lodLevel !== lod.materialIndex) {
+                chunksToUpdate.set(key, lod);
+              }
+            } else {
+              // Add to creation list
+              newChunksToAdd.push([worldX, worldZ]);
             }
           }
         }
@@ -2022,21 +2158,164 @@ export class WorldSystem {
           this.currentChunks.delete(key);
         }
       }
+
+      // Update LOD for chunks that need it
+      for (const [key, lod] of chunksToUpdate.entries()) {
+        this.updateChunkLOD(key, lod.materialIndex);
+      }
+
+      // Create new chunks
+      for (const [worldX, worldZ] of newChunksToAdd) {
+        const key = `${worldX},${worldZ}`;
+        const chunkData = this.createChunkGeometry(worldX, worldZ);
+        const material = this.terrainLOD.materials[chunkData.materialIndex];
+        
+        const mesh = new THREE.Mesh(chunkData.geometry, material);
+        mesh.position.set(worldX, 0, worldZ);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.userData.lodLevel = chunkData.materialIndex;
+        
+        this.scene.add(mesh);
+        this.currentChunks.set(key, mesh);
+      }
+      
+      // Apply frustum culling to all visible chunks
+      for (const [key, mesh] of this.currentChunks.entries()) {
+        // Check if the chunk is in view and adjust visibility
+        const inView = this.isInView(mesh);
+        if (mesh.visible !== inView) {
+          mesh.visible = inView;
+          // Log only in development mode to avoid console spam
+          if (import.meta.env.DEV && mesh.userData.visibilityChanged !== inView) {
+            console.log(`Chunk ${key} visibility: ${inView ? 'visible' : 'culled'}`);
+            mesh.userData.visibilityChanged = inView;
+          }
+        }
+      }
     } catch (error) {
       console.warn("Error in updateChunks:", error);
     }
+  }
+
+  /**
+   * Update the LOD level of an existing chunk
+   * @param {string} key - Chunk key
+   * @param {number} newLodLevel - New LOD level index
+   */
+  updateChunkLOD(key, newLodLevel) {
+    const mesh = this.currentChunks.get(key);
+    if (!mesh) return;
+    
+    // Check if we actually need to change the LOD
+    if (mesh.userData.lodLevel === newLodLevel) return;
+    
+    // Extract world coordinates from the key (format: "x,z")
+    const [startX, startZ] = key.split(',').map(Number);
+    
+    // Create new geometry with new LOD level
+    const chunkData = this.createChunkGeometry(startX, startZ);
+    
+    // Dispose old geometry and update mesh with new geometry and material
+    mesh.geometry.dispose();
+    mesh.geometry = chunkData.geometry;
+    mesh.material = this.terrainLOD.materials[newLodLevel];
+    mesh.userData.lodLevel = newLodLevel;
+    
+    // Clear cached bounding sphere since geometry changed
+    this.boundingSpheres.delete(mesh.id);
+    
+    // Log LOD changes in development mode
+    if (import.meta.env.DEV) {
+      console.log(`Chunk at ${key} LOD changed to ${newLodLevel}`);
+    }
+  }
+  
+  /**
+   * Update frustum for culling calculations
+   */
+  updateFrustum() {
+    // Get the camera's projection matrix and view matrix
+    if (!this.engine.camera) return;
+    
+    // Calculate the view-projection matrix
+    this.cameraViewProjectionMatrix.multiplyMatrices(
+      this.engine.camera.projectionMatrix,
+      this.engine.camera.matrixWorldInverse
+    );
+    
+    // Update the frustum from the view-projection matrix
+    this.frustum.setFromProjectionMatrix(this.cameraViewProjectionMatrix);
+  }
+  
+  /**
+   * Checks if an object is within the camera's view frustum
+   * @param {THREE.Object3D} object - The object to check
+   * @returns {boolean} True if the object is in view
+   */
+  isInView(object) {
+    // If frustum culling is disabled or we're on mobile (where it can cause issues with popping),
+    // always return true
+    if (this.engine.isMobile) return true;
+    
+    // Get or create bounding sphere for this object
+    if (!this.boundingSpheres.has(object.id)) {
+      if (!object.geometry) {
+        // Objects without geometry (like groups) are always visible
+        return true;
+      }
+      
+      // Create bounding sphere if needed
+      if (!object.geometry.boundingSphere) {
+        object.geometry.computeBoundingSphere();
+      }
+      
+      // Clone the sphere to avoid modifying the original
+      const sphere = object.geometry.boundingSphere.clone();
+      
+      // Scale the sphere radius based on object scale
+      sphere.radius *= Math.max(
+        object.scale.x, 
+        object.scale.y, 
+        object.scale.z
+      );
+      
+      // Store the sphere for future checks
+      this.boundingSpheres.set(object.id, sphere);
+    }
+    
+    // Get the cached sphere
+    const boundingSphere = this.boundingSpheres.get(object.id);
+    
+    // Transform sphere center to world space
+    const center = boundingSphere.center.clone();
+    center.applyMatrix4(object.matrixWorld);
+    
+    // Check if the sphere intersects with the frustum
+    return this.frustum.intersectsSphere(
+      new THREE.Sphere(center, boundingSphere.radius)
+    );
   }
 
   update(delta, elapsed) {
     const player = this.engine.systems.player?.localPlayer;
     if (!player) return;
 
+    // Update frustum for culling
+    this.updateFrustum();
+    
     // Move water with player
     if (this.water) {
       this.water.position.x = player.position.x;
       this.water.position.z = player.position.z;
       // Gentle water animation
       this.water.position.y = this.waterLevel + Math.sin(elapsed * 0.5) * 0.1;
+    }
+    
+    // Performance metrics tracking in development mode
+    let updateStart;
+    if (import.meta.env.DEV) {
+      updateStart = performance.now();
     }
 
     // Check if we need more mana nodes
@@ -2053,12 +2332,27 @@ export class WorldSystem {
     // Animate mana nodes
     this.manaNodes.forEach((node, index) => {
       if (!node.userData.collected) {
-        // Bobbing motion
-        node.position.y += Math.sin(elapsed * 2 + index * 0.5) * 0.03;
-        // Rotation
-        node.rotation.y += delta * 0.5;
+        // Apply frustum culling to mana nodes as well
+        node.visible = this.isInView(node);
+        
+        // Only animate visible nodes to save performance
+        if (node.visible) {
+          // Bobbing motion
+          node.position.y += Math.sin(elapsed * 2 + index * 0.5) * 0.03;
+          // Rotation
+          node.rotation.y += delta * 0.5;
+        }
       }
     });
+    
+    // Log performance metrics in development mode
+    if (import.meta.env.DEV && updateStart) {
+      const updateTime = performance.now() - updateStart;
+      // Only log occasionally to avoid console spam
+      if (Math.random() < 0.02) {
+        console.log(`World update time: ${updateTime.toFixed(2)}ms, Visible chunks: ${Array.from(this.currentChunks.values()).filter(m => m.visible).length}/${this.currentChunks.size}`);
+      }
+    }
   }
 
   checkManaCollection(position, radius) {
