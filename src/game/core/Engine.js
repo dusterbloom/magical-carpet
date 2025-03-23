@@ -23,7 +23,10 @@ export class Engine {
     this.elapsed = 0;
     this.systems = {};
     this.isRunning = false;
+    this.detectDeviceCapabilities();
+
     this.isVisible = true;
+
     this.maxDeltaTime = 1/15; // Cap at 15 FPS equivalent
     this.devicePixelRatio = Math.min(window.devicePixelRatio, 2);
 
@@ -161,6 +164,50 @@ export class Engine {
     if (this.stats) this.stats.update();
   }
 
+  detectDeviceCapabilities() {
+    // Detect device type and capabilities
+    const userAgent = navigator.userAgent.toLowerCase();
+    this.isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
+    this.isTablet = this.isMobile && Math.min(window.innerWidth, window.innerHeight) > 600;
+    
+    console.log('Device Detection:', {
+      isMobile: this.isMobile,
+      isTablet: this.isTablet,
+      pixelRatio: window.devicePixelRatio,
+      screenSize: `${window.innerWidth}x${window.innerHeight}`
+    });
+    
+    // Apply tablet-specific optimizations if needed
+    if (this.isTablet) {
+      // Key optimization 1: Reduce device pixel ratio
+      this.devicePixelRatio = Math.min(window.devicePixelRatio, 1);
+      
+      // Key optimization 2: Reduce renderer quality
+      this.reduceRendererQuality = true;
+      
+      // Key optimization 3: Reduce terrain resolution
+      this.terrainResolution = 64; // Lower than desktop
+      
+      // Key optimization 4: Limit view distance
+      this.viewDistance = 500;
+      
+      console.log('Applied tablet performance optimizations');
+    } else if (this.isMobile) {
+      // Even more aggressive optimizations for phones
+      this.devicePixelRatio = 1;
+      this.reduceRendererQuality = true;
+      this.terrainResolution = 48; 
+      this.viewDistance = 300;
+      console.log('Applied mobile performance optimizations');
+    } else {
+      // Desktop settings (unchanged)
+      this.devicePixelRatio = Math.min(window.devicePixelRatio, 2);
+      this.reduceRendererQuality = false;
+      this.terrainResolution = 128;
+      this.viewDistance = 2000;
+    }
+  }
+  
   onResize() {
     // Update camera
     this.camera.aspect = window.innerWidth / window.innerHeight;
