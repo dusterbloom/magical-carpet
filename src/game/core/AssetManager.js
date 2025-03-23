@@ -224,9 +224,26 @@ export class AssetManager {
     ];
     
     audioFiles.forEach(({ name, path }) => {
-      this.audioLoader.load(path, (buffer) => {
-        this.audio[name] = buffer;
-      });
+      try {
+        this.audioLoader.load(path, 
+          // onLoad callback
+          (buffer) => {
+            this.audio[name] = buffer;
+          },
+          // onProgress callback
+          (xhr) => {
+            // console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+          },
+          // onError callback
+          (error) => {
+            console.warn(`Error loading audio ${name}: ${error}`);
+            this.audio[name] = null; // Set to null to avoid errors later
+          }
+        );
+      } catch (error) {
+        console.warn(`Exception loading audio ${name}: ${error}`);
+        this.audio[name] = null; // Set to null to avoid errors later
+      }
     });
   }
   

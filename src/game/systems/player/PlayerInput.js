@@ -6,17 +6,24 @@ export class PlayerInput {
     this.engine = playerSystem.engine;
     
     // Reduce mouse sensitivity and add rotation damping
-    this.mouseSensitivity = 0.0015;  // Reduced from 0.002
+    this.mouseSensitivity = 0.0025;  // Increased sensitivity for mouse
     this.throttleSpeed = 1.0;
     this.bankingSensitivity = 0.3;   // Reduced from 0.5
     this.rotationDamping = 0.92;     // New: dampens rotation
     
     this.currentThrottle = 0;
     
-    // Mobile input control values
-    this.verticalControl = 0;       // For altitude control via gestures
+    // Touch control values from revised mobile controls
+    this.verticalControl = 0;       // For altitude control via buttons
+    this.touchRotationSensitivity = 0.01; // Increased for better responsiveness
     this.isBatterySaving = false;   // Battery saving mode tracking
+    this.speedMultiplier = 1.0;     // Normal speed
+    this.boostMultiplier = 1.0;     // No boost by default
+    this.boostActive = false;       // Boost state
+    this.boostTimeout = null;       // For tracking boost duration
   }
+  
+
   
   setupInput() {
     const input = this.engine.input;
@@ -69,65 +76,82 @@ export class PlayerInput {
     // Apply rotation damping
     player.bankAngle *= this.rotationDamping;
     
-    // Check if using mobile controls or keyboard
-    const isMobile = input.isTouchDevice;
+    // Get keys state for direct keyboard controls - Mobile overrides have priority
+    const wPressed = input.isKeyDown('KeyW') || this.currentThrottle > 0.2;
+    const sPressed = input.isKeyDown('KeyS') && !wPressed; // W has priority
+    const aPressed = input.isKeyDown('KeyA');
+    const dPressed = input.isKeyDown('KeyD');
+    const spacePressed = input.isKeyDown('Space');
+    const shiftPressed = input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight');
     
-    if (isMobile) {
-      // Get input from touch manager
-      if (input.moveState) {
-        // Apply forward movement based on joystick position
-        const forwardAmount = input.moveState.forward; 
-        this.currentThrottle = Math.abs(forwardAmount);
+    // Flag to track if mobile controls were used
+    let mobileControlsUsed = false;
+    
+    // Check if using mobile controls
+    if (input.isTouchDevice && input.mobileControls) {
+      // -- MOBILE INPUT HANDLING --
+      const mobileControls = input.mobileControls;
+      
+      // Process camera movement from mobile UI
+      if (mobileControls.camera && (mobileControls.camera.deltaX !== 0 || mobileControls.camera.deltaY !== 0)) {
+        const deltaX = mobileControls.camera.deltaX || 0;
+        const deltaY = mobileControls.camera.deltaY || 0;
         
-        // Apply forward force based on throttle
-        physics.applyForwardForce(player, forwardAmount * player.maxSpeed * delta);
-        
-        // Apply side force for strafing
-        const sideAmount = input.moveState.right;
-        if (Math.abs(sideAmount) > 0.1) { // Apply small deadzone
-          physics.applySideForce(player, player.accelerationValue * sideAmount * delta * 0.5);
+        // Apply camera rotation based on touch movement
+        if (deltaX !== 0) {
+          player.rotation.y -= deltaX * this.touchRotationSensitivity;
         }
         
-        // Apply rotation from touch controls (either from explicit turn control or derived from strafe)
-        if (input.moveState.rotation !== undefined) {
-          // Explicit rotation value
-          player.rotation.y += input.moveState.rotation * delta * 3;
+        if (deltaY !== 0) {
+          // Apply with limits to prevent flipping over
+          const newPitch = player.rotation.x - deltaY * this.touchRotationSensitivity;
+          player.rotation.x = Math.max(-0.8, Math.min(0.8, newPitch));
+        }
+        
+        // Apply banking based on horizontal rotation rate
+        if (deltaX !== 0) {
+          const targetBankAngle = deltaX * this.touchRotationSensitivity * 5;
+          player.bankAngle = THREE.MathUtils.lerp(
+            player.bankAngle,
+            -targetBankAngle, // Negative for correct banking direction
+            0.1 // Smooth transition
+          );
+        }
+      }
+      
+      // Process movement from joystick
+      if (mobileControls.joystick && mobileControls.joystick.active) {
+        mobileControlsUsed = true;
+        // Forward/backward movement
+        const forwardInput = -mobileControls.joystick.deltaY; // Negative because up is negative
+        const strafeInput = mobileControls.joystick.deltaX;
+        
+        if (forwardInput !== 0) {
+          // Calculate speed based on input intensity
+          const intensity = mobileControls.joystick.intensity || 1.0;
+          const moveSpeed = player.maxSpeed * this.speedMultiplier * intensity * 1.5; // Increased speed multiplier
           
-          // Apply banking based on rotation rate
-          player.bankAngle = -input.moveState.rotation * 0.8; 
-        } else if (Math.abs(sideAmount) > 0.1) {
-          // Derive rotation from strafe when no explicit rotation
-          player.rotation.y += sideAmount * delta * 2;
-          player.bankAngle = sideAmount * 0.5;
+          // Apply forward movement in player's direction
+          const forwardDirection = new THREE.Vector3(0, 0, -1).applyEuler(player.rotation);
+          physics.applyForwardForce(player, moveSpeed * forwardInput * delta);
         }
         
-        console.log('Applied mobile movement:', {
-          forward: forwardAmount,
-          side: sideAmount,
-          rotation: input.moveState.rotation
-        });
+        // Handle strafing (left/right movement)
+        if (strafeInput !== 0) {
+          // Apply side force for strafing
+          physics.applySideForce(player, player.accelerationValue * strafeInput * delta * 0.3);
+        }
       }
-      
-      // Handle altitude changes
-      if (this.verticalControl !== 0) {
-        // Use gestures or specific altitude control
-        physics.applyAltitudeChange(player, 40 * this.verticalControl * delta);
-        
-        // Add gradual decay for smoother control
-        this.verticalControl *= 0.95;
-        if (Math.abs(this.verticalControl) < 0.05) this.verticalControl = 0;
-      } else {
-        // Apply gentle falling when no altitude control
-        physics.applyAltitudeChange(player, -5 * delta);
-      }
-      
-    } else {
+    }
+    
+    // Only use keyboard controls if mobile controls weren't used
+    if (!mobileControlsUsed) {
       // --- KEYBOARD CONTROLS ---
       
       // Throttle control with smoother acceleration
-      if (input.isKeyDown('KeyW')) {
+      if (wPressed) {
         this.currentThrottle = Math.min(1.0, this.currentThrottle + this.throttleSpeed * delta);
-      } else if (input.isKeyDown('KeyS')) {
+      } else if (sPressed) {
         this.currentThrottle = Math.max(0.0, this.currentThrottle - this.throttleSpeed * delta);
       }
       
@@ -137,26 +161,24 @@ export class PlayerInput {
       
       // Gentler strafing
       let strafeForce = 0;
-      if (input.isKeyDown('KeyA')) strafeForce -= 0.3; // Reduced from 0.5
-      if (input.isKeyDown('KeyD')) strafeForce += 0.3; // Reduced from 0.5
+      if (aPressed) strafeForce -= 0.3; // Reduced from 0.5
+      if (dPressed) strafeForce += 0.3; // Reduced from 0.5
       
       if (strafeForce !== 0) {
         physics.applySideForce(player, player.accelerationValue * strafeForce * delta * 0.3);
       }
-      
-      // Vertical movement (Space/Shift) - more gradual
-      let verticalForce = 0;
-      if (input.isKeyDown('Space')) verticalForce += 1;
-      if (input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight')) verticalForce -= 1;
-      
-      if (verticalForce !== 0) {
-        physics.applyAltitudeChange(player, 30 * verticalForce * delta);
-      }
-      
+    }
+    
+    // Always handle vertical movement (works for both input methods)
+    let verticalForce = 0;
+    if (spacePressed) verticalForce += 1;
+    if (shiftPressed) verticalForce -= 1;
+    
+    if (verticalForce !== 0) {
+      physics.applyAltitudeChange(player, 30 * verticalForce * delta);
+    } else {
       // Apply natural falling when not using vertical controls
-      if (verticalForce === 0) {
-        physics.applyAltitudeChange(player, -5 * delta); // Gentle falling
-      }
+      physics.applyAltitudeChange(player, -5 * delta); // Gentle falling
     }
     
     // Reduce effects in battery saving mode
@@ -168,10 +190,39 @@ export class PlayerInput {
     }
   }
   
-  // Remove old touch control setup - replaced by optimized TouchInputManager
-  setupTouchControls() {
-    // This method is now deprecated in favor of the new TouchInputManager
-    console.log("TouchInputManager now handles touch input - setupTouchControls is deprecated");
+  // Forward to touch manager's boost functionality
+  applyBoost(multiplier, duration) {
+    // Store existing speed multiplier
+    const normalSpeed = this.speedMultiplier;
+    
+    // Set boost state
+    this.boostActive = true;
+    this.boostMultiplier = multiplier;
+    
+    // Clear any existing boost timeout
+    if (this.boostTimeout) clearTimeout(this.boostTimeout);
+    
+    // Set timeout to end boost
+    this.boostTimeout = setTimeout(() => {
+      this.boostActive = false;
+      this.boostMultiplier = 1.0;
+      
+      // Restore pre-boost speed
+      this.speedMultiplier = normalSpeed;
+    }, duration);
+  }
+  
+  // Set speed multiplier
+  setSpeedMultiplier(value) {
+    // Only update if not currently boosting
+    if (!this.boostActive) {
+      this.speedMultiplier = value;
+    }
+  }
+  
+  // Control vertical movement
+  setVerticalMovement(value) {
+    this.verticalControl = Math.max(-1, Math.min(1, value));
   }
   
   // Set battery saving mode
@@ -181,10 +232,12 @@ export class PlayerInput {
     if (enabled) {
       // Reduce control sensitivity for better battery performance
       this.mouseSensitivity = 0.0012; // Slightly less sensitive
+      this.touchRotationSensitivity = 0.0025; // Reduced for mobile
       this.rotationDamping = 0.95;    // More damping (smoother, fewer updates)
     } else {
       // Restore normal control sensitivity
       this.mouseSensitivity = 0.0015;
+      this.touchRotationSensitivity = 0.003;
       this.rotationDamping = 0.92;
     }
     

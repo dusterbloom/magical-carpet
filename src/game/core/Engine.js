@@ -16,6 +16,7 @@ import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
 import { MaterialSystemIntegration } from "../systems/materials/MaterialSystemIntegration";
 import { PhysicsSystem } from "../systems/physics/PhysicsSystem";
+import { MobileUI } from "../ui/MobileUI";
 
 export class Engine {
   constructor() {
@@ -116,6 +117,27 @@ export class Engine {
     this.systems.atmosphere = new AtmosphereSystem(this);
     this.systems.player = new PlayerSystem(this);
     this.systems.ui = new UISystem(this);
+    
+    // Initialize mobile UI if on mobile device
+    if (this.isMobile) {
+      this.systems.mobileUI = new MobileUI(this);
+      
+      // Hide spell buttons in mobile view
+      setTimeout(() => {
+        const spellButtons = document.querySelectorAll('#ui-container .spell-slot, [id^="spell-button"]');
+        spellButtons.forEach(button => {
+          if (button) button.style.display = 'none';
+        });
+        
+        // Hide any other UI elements that might be present
+        const extraButtons = document.querySelectorAll('#ui-container > div:not(#health-bar):not(#battery-toggle)');
+        extraButtons.forEach(element => {
+          if (element && !element.id.includes('battery')) {
+            element.style.display = 'none';
+          }
+        });
+      }, 500);
+    }
     this.systems.carpetTrail = new CarpetTrailSystem(this);
     this.systems.landmarks = new LandmarkSystem(this);
     this.systems.minimap = new MinimapSystem(this);
@@ -143,6 +165,12 @@ export class Engine {
         await system.initialize();
         console.log(`System initialized: ${systemName}`);
       }
+    }
+    
+    // Initialize mobile UI if available
+    if (this.systems.mobileUI) {
+      this.systems.mobileUI.initialize();
+      console.log('Mobile UI initialized');
     }
 
     // Set up event handling
@@ -175,6 +203,14 @@ export class Engine {
     // Start game loop
     this.isRunning = true;
     this.animate();
+    
+    // No auto-movement on mobile - user controls movement with buttons
+    if (this.isMobile && this.input && this.input.keys) {
+      // Ensure keys are not auto-pressed
+      this.input.keys['KeyW'] = false;
+      
+      console.log('Mobile controls initialized - user must press buttons to move');
+    }
 
     console.log("Engine initialized successfully");
   }
@@ -221,6 +257,11 @@ export class Engine {
           system.update(this.delta, this.elapsed);
         }
       }
+    }
+    
+    // Update mobile UI if available
+    if (this.systems.mobileUI && this.systems.player && this.systems.player.localPlayer) {
+      this.systems.mobileUI.update(this.delta, this.systems.player.localPlayer);
     }
 
     // Render scene

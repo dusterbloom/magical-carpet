@@ -32,33 +32,29 @@ export class MobileUI {
             poolSize: 0
         };
         
-        // Define gestures
-        this.gestures = {
-            lastTapTime: 0,
-            touchStartPos: null,
-            recognizingGesture: false
-        };
-        
         // Current UI visibility state
         this.visible = true;
         
         // Register window resize event
         window.addEventListener('resize', this.onResize.bind(this));
-        
-        // Register gesture events
-        document.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
-        document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-        document.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
     }
+    
+    // Control buttons for user-controlled movement (no auto-movement)
 
     initialize() {
         this.createUIContainer();
-        this.createJoystickContainer();
-        this.createSpellButtons();
-        this.createHealthBar();
+        
+        // Create essential controls
+        this.createSimpleControls();
         this.createBatterySavingToggle();
-        this.createAdaptiveLayout();
-        console.log("Mobile UI initialized with optimized touch targets and adaptive layout");
+        
+        // Create right-hand joystick for camera control
+        this.createCameraJoystick();
+        
+        // Setup invisible camera controls (as backup if joystick is not used)
+        this.setupCameraControls();
+        
+        console.log("Mobile UI initialized with simplified user controls");
     }
     
     createUIContainer() {
@@ -78,208 +74,417 @@ export class MobileUI {
         document.body.appendChild(container);
         this.uiElements.set('container', container);
         this.uiContainer = container;
+        
+        // Apply a viewport height fix for mobile browsers
+        // This addresses the issue with 100vh on mobile browsers
+        const setViewportHeight = () => {
+            document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+            container.style.height = 'calc(var(--vh, 1vh) * 100)';
+        };
+        
+        window.addEventListener('resize', setViewportHeight);
+        setViewportHeight();
     }
-
-    createJoystickContainer() {
-        // Create from pool or new
-        const container = this.getElementFromPool('div') || document.createElement('div');
-        container.id = 'joystick-container';
-        container.style.cssText = `
-            position: fixed;
-            bottom: ${this.sizes.spacing * 2 + 40}px;
-            left: ${this.sizes.spacing * 2}px;
-            width: ${this.sizes.joystickSize}px;
-            height: ${this.sizes.joystickSize}px;
-            background: rgba(255, 255, 255, 0.25);
-            border-radius: 50%;
-            z-index: 1000;
-            border: 3px solid rgba(255, 255, 255, 0.4);
-            backdrop-filter: blur(4px);
-            pointer-events: auto;
-            touch-action: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transform: translate3d(0,0,0); /* Hardware acceleration */
-        `;
-        this.uiContainer.appendChild(container);
-        this.uiElements.set('joystick', container);
-        this.visibleElements.add('joystick');
-        this.memoryUsage.activeElements++;
+    
+    // Helper to check if a touch is on another UI element
+    touchOnUIElement(e) {
+        const touch = e.changedTouches[0];
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
         
-        // Add touch action note to debug
-        console.log('Joystick container created with ID:', container.id, 'and style:', container.style.cssText);
-        
-        // Inner joystick handle for better visual feedback
-        const handle = this.getElementFromPool('div') || document.createElement('div');
-        handle.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: ${this.sizes.joystickSize * 0.4}px;
-            height: ${this.sizes.joystickSize * 0.4}px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
-            pointer-events: none;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        `;
-        container.appendChild(handle);
-        this.uiElements.set('joystickHandle', handle);
-    }
-
-    createSpellButtons() {
-        // Create spellbuttons container
-        const buttonContainer = this.getElementFromPool('div') || document.createElement('div');
-        buttonContainer.id = 'spell-buttons';
-        buttonContainer.style.cssText = `
-            position: fixed;
-            bottom: ${this.sizes.spacing * 2}px;
-            right: ${this.sizes.spacing * 2}px;
-            display: flex;
-            gap: ${this.sizes.spacing}px;
-            z-index: 1000;
-            pointer-events: auto;
-            transform: translate3d(0,0,0); /* Hardware acceleration */
-        `;
-
-        // Create 3 spell buttons with larger hit areas
-        const colors = ['#ff4444', '#44aaff', '#ffaa44'];
-        const spellNames = ['Fire', 'Ice', 'Lightning'];
-        
-        for (let i = 1; i <= 3; i++) {
-            const button = this.getElementFromPool('div') || document.createElement('div');
-            button.id = `spell-button-${i}`;
-            button.style.cssText = `
-                width: ${this.sizes.buttonSize}px;
-                height: ${this.sizes.buttonSize}px;
-                background: rgba(0, 0, 0, 0.4);
-                border: 2px solid ${colors[i-1]};
-                border-radius: 15px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                font-size: ${this.sizes.buttonSize * 0.35}px;
-                color: white;
-                text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-                cursor: pointer;
-                user-select: none;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                transition: transform 0.1s, background-color 0.2s;
-                touch-action: none;
-            `;
-            
-            // Add spell icon
-            const icon = this.getElementFromPool('div') || document.createElement('div');
-            icon.style.cssText = `
-                width: ${this.sizes.buttonSize * 0.5}px;
-                height: ${this.sizes.buttonSize * 0.5}px;
-                background: ${colors[i-1]};
-                border-radius: 50%;
-                margin-bottom: 5px;
-            `;
-            
-            // Add spell name for better UX
-            const name = this.getElementFromPool('div') || document.createElement('div');
-            name.textContent = spellNames[i-1];
-            name.style.cssText = `
-                font-size: ${this.sizes.buttonSize * 0.2}px;
-                opacity: 0.9;
-            `;
-            
-            button.appendChild(icon);
-            button.appendChild(name);
-            buttonContainer.appendChild(button);
-            
-            // Track memory usage
-            this.memoryUsage.activeElements += 3;
-            
-            // Add touch event listeners
-            button.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                button.style.transform = 'scale(1.1)';
-                button.style.backgroundColor = `${colors[i-1]}80`;
+        // Check each UI element with 'button' or 'toggle' type
+        for (const [id, info] of this.touchElements.entries()) {
+            if (info.type === 'button' || info.type === 'toggle') {
+                const elem = info.element;
+                if (!elem) continue;
                 
-                // Trigger haptic feedback
-                this.triggerHapticFeedback('spell');
+                const rect = elem.getBoundingClientRect();
                 
-                // Notify game about spell selection
-                if (this.engine && this.engine.systems.player) {
-                    this.engine.systems.player.selectSpell(i-1);
+                // Check if touch is within element boundaries
+                if (touchX >= rect.left && touchX <= rect.right && 
+                    touchY >= rect.top && touchY <= rect.bottom) {
+                    return true; // Touch is on a UI element
                 }
-            });
-            
-            button.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                button.style.transform = 'scale(1)';
-                button.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
-            });
-            
-            // Register in touchElements map for gesture recognition
-            this.touchElements.set(`spell-button-${i}`, {
-                element: button,
-                type: 'spell',
-                index: i-1
-            });
+            }
         }
-
-        this.uiContainer.appendChild(buttonContainer);
-        this.uiElements.set('spellButtons', buttonContainer);
-        this.visibleElements.add('spellButtons');
-    }
-
-    createHealthBar() {
-        const healthBar = this.getElementFromPool('div') || document.createElement('div');
-        healthBar.id = 'health-bar';
-        healthBar.style.cssText = `
-            position: fixed;
-            bottom: ${this.sizes.spacing}px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: ${this.sizes.healthBarWidth}px;
-            height: 24px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 12px;
-            overflow: hidden;
-            z-index: 1000;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        `;
-
-        const healthFill = this.getElementFromPool('div') || document.createElement('div');
-        healthFill.style.cssText = `
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #ff0055, #ff2277);
-            border-radius: 10px;
-            transition: width 0.2s ease;
-        `;
         
-        // Add health percentage text
-        const healthText = this.getElementFromPool('div') || document.createElement('div');
-        healthText.style.cssText = `
-            position: absolute;
+        return false; // Touch is not on any UI element
+    }
+    
+    // Setup invisible camera controls (full screen, no visible division)
+    setupCameraControls() {
+        // Camera control area (full screen)
+        const cameraControls = this.getElementFromPool('div') || document.createElement('div');
+        cameraControls.id = 'camera-controls';
+        cameraControls.style.cssText = `
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
+            width: 100%; /* Full screen */
             height: 100%;
+            z-index: 500; /* Below other UI controls */
+            pointer-events: auto;
+            touch-action: none;
+            user-select: none;
+        `;
+        
+        // Camera control state
+        this.cameraState = {
+            active: false,
+            lastX: 0,
+            lastY: 0,
+            deltaX: 0,
+            deltaY: 0,
+            touchId: null,
+            startX: 0,  // Track start position to determine if it's a tap
+            startY: 0
+        };
+        
+        // Add touch events for camera control
+        cameraControls.addEventListener('touchstart', (e) => {
+            // Check if touch is on a UI element - if so, don't handle it here
+            if (this.touchOnUIElement(e)) return;
+            
+            e.preventDefault(); // Prevent default to avoid scrolling
+            if (this.cameraState.active) return;
+            
+            const touch = e.changedTouches[0];
+            this.cameraState.touchId = touch.identifier;
+            this.cameraState.active = true;
+            this.cameraState.lastX = touch.clientX;
+            this.cameraState.lastY = touch.clientY;
+            this.cameraState.startX = touch.clientX;
+            this.cameraState.startY = touch.clientY;
+            this.cameraState.deltaX = 0;
+            this.cameraState.deltaY = 0;
+        });
+        
+        cameraControls.addEventListener('touchmove', (e) => {
+            if (!this.cameraState.active) return;
+            e.preventDefault(); // Prevent scrolling
+            
+            // Find our touch
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === this.cameraState.touchId) {
+                    // Calculate delta movement
+                    const deltaX = touch.clientX - this.cameraState.lastX;
+                    const deltaY = touch.clientY - this.cameraState.lastY;
+                    
+                    // Update last position
+                    this.cameraState.lastX = touch.clientX;
+                    this.cameraState.lastY = touch.clientY;
+                    
+                    // Set current delta - increase multiplier for more sensitivity
+                    this.cameraState.deltaX = deltaX * 1.0; // Increased sensitivity
+                    this.cameraState.deltaY = deltaY * 1.0; // Increased sensitivity
+                    
+                    // Emit camera movement event
+                    if (this.engine && this.engine.input) {
+                        this.engine.input.emit('mobileCameraMove', {
+                            deltaX: this.cameraState.deltaX,
+                            deltaY: this.cameraState.deltaY
+                        });
+                    }
+                    
+                    break;
+                }
+            }
+        });
+        
+        const endCameraTouch = (e) => {
+            if (!this.cameraState.active) return;
+            e.preventDefault(); // Prevent default
+            
+            // Find our touch
+            let found = false;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === this.cameraState.touchId) {
+                    found = true;
+                    
+                    // Check if it was a tap (minimal movement) - can use for firing/selection
+                    const distMoved = Math.sqrt(
+                        Math.pow(touch.clientX - this.cameraState.startX, 2) +
+                        Math.pow(touch.clientY - this.cameraState.startY, 2)
+                    );
+                    
+                    if (distMoved < 10) { // If less than 10px movement, consider it a tap
+                        // Emit tap event if needed
+                        if (this.engine && this.engine.input) {
+                            this.engine.input.emit('mobileTap', {
+                                x: touch.clientX,
+                                y: touch.clientY
+                            });
+                        }
+                    }
+                    
+                    break;
+                }
+            }
+            
+            if (found) {
+                // Reset camera control state
+                this.cameraState.active = false;
+                this.cameraState.touchId = null;
+                this.cameraState.deltaX = 0;
+                this.cameraState.deltaY = 0;
+                
+                // Emit camera stop event
+                if (this.engine && this.engine.input) {
+                    this.engine.input.emit('mobileCameraMove', {
+                        deltaX: 0,
+                        deltaY: 0
+                    });
+                }
+            }
+        };
+        
+        cameraControls.addEventListener('touchend', endCameraTouch);
+        cameraControls.addEventListener('touchcancel', endCameraTouch);
+        
+        this.uiContainer.appendChild(cameraControls);
+        this.uiElements.set('cameraControls', cameraControls);
+        this.visibleElements.add('cameraControls');
+        this.memoryUsage.activeElements += 1;
+    }
+    
+    // Create simple control buttons
+    createSimpleControls() {
+        // Container for the controls
+        const controlsContainer = this.getElementFromPool('div') || document.createElement('div');
+        controlsContainer.id = 'simple-controls';
+        controlsContainer.style.cssText = `
+            position: fixed;
+            bottom: 40px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 1000;
+            pointer-events: none;
+        `;
+
+        // Create the forward (W) button
+        const forwardButton = this.getElementFromPool('div') || document.createElement('div');
+        forwardButton.id = 'forward-button';
+        forwardButton.style.cssText = `
+            width: 80px;
+            height: 80px;
+            background: rgba(30, 144, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 14px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            font-size: 30px;
+            pointer-events: auto;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+            user-select: none;
         `;
-        healthText.textContent = '100%';
+        forwardButton.textContent = 'W';
+
+        // Create the backward (S) button
+        const backwardButton = this.getElementFromPool('div') || document.createElement('div');
+        backwardButton.id = 'backward-button';
+        backwardButton.style.cssText = `
+            width: 80px;
+            height: 80px;
+            background: rgba(160, 160, 160, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 30px;
+            pointer-events: auto;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+            user-select: none;
+        `;
+        backwardButton.textContent = 'S';
+
+        // Create the boost button
+        const boostButton = this.getElementFromPool('div') || document.createElement('div');
+        boostButton.id = 'boost-button';
+        boostButton.style.cssText = `
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 69, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            pointer-events: auto;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+            user-select: none;
+            margin-top: 20px;
+        `;
+        boostButton.textContent = 'BOOST';
         
-        healthBar.appendChild(healthFill);
-        healthBar.appendChild(healthText);
-        this.uiContainer.appendChild(healthBar);
-        this.uiElements.set('healthBar', healthBar);
-        this.uiElements.set('healthFill', healthFill);
-        this.uiElements.set('healthText', healthText);
-        this.visibleElements.add('healthBar');
-        this.memoryUsage.activeElements += 3;
+        // Add touch events for forward button (W key)
+        forwardButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            forwardButton.style.background = 'rgba(30, 144, 255, 0.7)';
+            
+            // Press W key
+            if (this.engine && this.engine.input && this.engine.input.keys) {
+                this.engine.input.keys['KeyW'] = true;
+                this.engine.input.keys['KeyS'] = false; // Make sure S is not pressed
+            }
+            
+            // Also set throttle directly in PlayerInput
+            if (this.engine && this.engine.systems && this.engine.systems.player && 
+                this.engine.systems.player.input) {
+                this.engine.systems.player.input.currentThrottle = 1.0;
+            }
+            
+            // Provide haptic feedback
+            this.triggerHapticFeedback('button');
+        });
+        
+        forwardButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            forwardButton.style.background = 'rgba(30, 144, 255, 0.3)';
+            
+            // Release W key
+            if (this.engine && this.engine.input && this.engine.input.keys) {
+                this.engine.input.keys['KeyW'] = false;
+            }
+            
+            // Also reset throttle in PlayerInput
+            if (this.engine && this.engine.systems && this.engine.systems.player && 
+                this.engine.systems.player.input) {
+                this.engine.systems.player.input.currentThrottle = 0.0;
+            }
+        });
+        
+        // Add touch events for backward button (S key)
+        backwardButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            backwardButton.style.background = 'rgba(160, 160, 160, 0.7)';
+            
+            // Press S key
+            if (this.engine && this.engine.input && this.engine.input.keys) {
+                this.engine.input.keys['KeyS'] = true;
+                this.engine.input.keys['KeyW'] = false; // Make sure W is not pressed
+            }
+            
+            // Provide haptic feedback
+            this.triggerHapticFeedback('button');
+        });
+        
+        backwardButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            backwardButton.style.background = 'rgba(160, 160, 160, 0.3)';
+            
+            // Release S key
+            if (this.engine && this.engine.input && this.engine.input.keys) {
+                this.engine.input.keys['KeyS'] = false;
+            }
+        });
+        
+        // Add touch events for boost button
+        boostButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            boostButton.style.background = 'rgba(255, 69, 0, 0.7)';
+            
+            // Apply boost by directly controlling the speed multiplier
+            if (this.engine && this.engine.systems && this.engine.systems.player && 
+                this.engine.systems.player.input) {
+                // Store current throttle
+                const playerInput = this.engine.systems.player.input;
+                const currentThrottle = playerInput.currentThrottle;
+                
+                // Apply boost by increasing speed multiplier
+                playerInput.speedMultiplier = 2.5; // 2.5x boost
+                playerInput.boostActive = true;
+                
+                // Force W key to be pressed for boost
+                if (this.engine.input && this.engine.input.keys) {
+                    this.engine.input.keys['KeyW'] = true;
+                }
+                
+                // Set high throttle for boost
+                playerInput.currentThrottle = Math.max(currentThrottle, 0.8);
+            }
+            
+            // Provide stronger haptic feedback
+            this.triggerHapticFeedback('boost');
+            
+            // Visual boost effect
+            boostButton.style.boxShadow = '0 0 20px rgba(255, 69, 0, 0.7)';
+        });
+        
+        boostButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            boostButton.style.background = 'rgba(255, 69, 0, 0.3)';
+            boostButton.style.boxShadow = 'none';
+            
+            // Reset boost
+            if (this.engine && this.engine.systems && this.engine.systems.player && 
+                this.engine.systems.player.input) {
+                const playerInput = this.engine.systems.player.input;
+                
+                // Reset speed multiplier
+                playerInput.speedMultiplier = 1.0;
+                playerInput.boostActive = false;
+            }
+        });
+        
+        // Create a wrapper div for W and S buttons (vertical layout)
+        const wsButtonsWrapper = this.getElementFromPool('div') || document.createElement('div');
+        wsButtonsWrapper.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        `;
+        
+        wsButtonsWrapper.appendChild(forwardButton);
+        wsButtonsWrapper.appendChild(backwardButton);
+        
+        // Add buttons to the container
+        controlsContainer.appendChild(wsButtonsWrapper);
+        controlsContainer.appendChild(boostButton);
+        
+        // Add container to the UI
+        this.uiContainer.appendChild(controlsContainer);
+        
+        // Store references
+        this.uiElements.set('controlsContainer', controlsContainer);
+        this.uiElements.set('forwardButton', forwardButton);
+        this.uiElements.set('backwardButton', backwardButton);
+        this.uiElements.set('boostButton', boostButton);
+        this.visibleElements.add('controlsContainer');
+        
+        // Register touch elements
+        this.touchElements.set('forward-button', {
+            element: forwardButton,
+            type: 'button',
+            action: 'forward'
+        });
+        
+        this.touchElements.set('backward-button', {
+            element: backwardButton,
+            type: 'button',
+            action: 'backward'
+        });
+        
+        this.touchElements.set('boost-button', {
+            element: boostButton,
+            type: 'button',
+            action: 'boost'
+        });
+        
+        this.memoryUsage.activeElements += 4;
     }
     
     createBatterySavingToggle() {
@@ -291,36 +496,27 @@ export class MobileUI {
             right: ${this.sizes.spacing}px;
             display: flex;
             align-items: center;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.3);
             border-radius: 20px;
-            padding: 5px 10px;
+            padding: 4px 8px;
             z-index: 1000;
             pointer-events: auto;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        `;
-        
-        const icon = this.getElementFromPool('div') || document.createElement('div');
-        icon.style.cssText = `
-            width: 20px;
-            height: 20px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M16 4h-2V2h-4v2H8C7.45 4 7 4.45 7 5v16c0 .55.45 1 1 1h8c.55 0 1-.45 1-1V5c0-.55-.45-1-1-1zm-1 10h-2v2h-2v-2H9v-2h2v-2h2v2h2v2z"/></svg>') center/contain no-repeat;
-            margin-right: 5px;
         `;
         
         const label = this.getElementFromPool('div') || document.createElement('div');
-        label.textContent = 'Battery Saver';
+        label.textContent = 'Power Save';
         label.style.cssText = `
             color: white;
             font-size: 12px;
+            margin-right: 5px;
         `;
         
         const toggle = this.getElementFromPool('div') || document.createElement('div');
         toggle.style.cssText = `
-            width: 36px;
-            height: 20px;
+            width: 30px;
+            height: 16px;
             background: #555;
-            border-radius: 10px;
-            margin-left: 8px;
+            border-radius: 8px;
             position: relative;
             transition: background 0.3s;
         `;
@@ -328,8 +524,8 @@ export class MobileUI {
         const toggleHandle = this.getElementFromPool('div') || document.createElement('div');
         toggleHandle.style.cssText = `
             position: absolute;
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: white;
             top: 2px;
@@ -338,7 +534,6 @@ export class MobileUI {
         `;
         
         toggle.appendChild(toggleHandle);
-        toggleContainer.appendChild(icon);
         toggleContainer.appendChild(label);
         toggleContainer.appendChild(toggle);
         
@@ -347,7 +542,7 @@ export class MobileUI {
         this.uiElements.set('batterySaverToggle', toggle);
         this.uiElements.set('batterySaverHandle', toggleHandle);
         this.visibleElements.add('batterySaver');
-        this.memoryUsage.activeElements += 4;
+        this.memoryUsage.activeElements += 3;
         
         // Add touch event
         toggle.addEventListener('touchend', (e) => {
@@ -394,10 +589,10 @@ export class MobileUI {
             
             // Disable blur effects for better performance
             this.uiElements.forEach((element) => {
-                if (element.style.backdropFilter) {
+                if (element.style && element.style.backdropFilter) {
                     element.style.backdropFilter = 'none';
                 }
-                if (element.style.boxShadow) {
+                if (element.style && element.style.boxShadow) {
                     element.style.boxShadow = 'none';
                 }
             });
@@ -407,9 +602,6 @@ export class MobileUI {
         } else {
             // Restore normal animations
             document.documentElement.style.setProperty('--ui-animation-speed', '1');
-            
-            // Restore blur effects
-            this.uiElements.get('joystick').style.backdropFilter = 'blur(4px)';
             
             // Restore normal update frequency
             this.batteryUpdateFrequency = 1;
@@ -426,89 +618,30 @@ export class MobileUI {
         }
     }
     
-    createAdaptiveLayout() {
-        // Apply different layouts based on device orientation
-        this.adjustLayoutForOrientation();
-    }
-    
-    adjustLayoutForOrientation() {
-        const isLandscape = window.innerWidth > window.innerHeight;
+    // Haptic feedback with battery saving consideration
+    triggerHapticFeedback(type) {
+        if (!this.hasHapticFeedback || this.batterySaving) return;
         
-        if (isLandscape) {
-            // Landscape layout - optimized for gameplay
-            if (this.uiElements.get('joystick')) {
-                this.uiElements.get('joystick').style.bottom = `${this.sizes.spacing * 2 + 40}px`;
-                this.uiElements.get('joystick').style.left = `${this.sizes.spacing * 2}px`;
-            }
-            
-            if (this.uiElements.get('spellButtons')) {
-                this.uiElements.get('spellButtons').style.bottom = `${this.sizes.spacing * 2}px`;
-                this.uiElements.get('spellButtons').style.right = `${this.sizes.spacing * 2}px`;
-            }
-            
-            if (this.uiElements.get('healthBar')) {
-                this.uiElements.get('healthBar').style.bottom = `${this.sizes.spacing}px`;
-                this.uiElements.get('healthBar').style.width = `${this.sizes.healthBarWidth}px`;
-            }
-        } else {
-            // Portrait layout - compress layout to fit
-            if (this.uiElements.get('joystick')) {
-                this.uiElements.get('joystick').style.bottom = `${this.sizes.spacing * 2 + 60}px`;
-                this.uiElements.get('joystick').style.left = `${this.sizes.spacing}px`;
-            }
-            
-            if (this.uiElements.get('spellButtons')) {
-                this.uiElements.get('spellButtons').style.bottom = `${this.sizes.spacing * 2 + 60}px`;
-                this.uiElements.get('spellButtons').style.right = `${this.sizes.spacing}px`;
-            }
-            
-            if (this.uiElements.get('healthBar')) {
-                this.uiElements.get('healthBar').style.bottom = `${this.sizes.spacing}px`;
-                this.uiElements.get('healthBar').style.width = `${Math.min(280, window.innerWidth * 0.8)}px`;
-            }
+        // Different vibration patterns for different interactions
+        switch (type) {
+            case 'button':
+                navigator.vibrate(20);
+                break;
+            case 'toggle':
+                navigator.vibrate(15);
+                break;
+            case 'boost':
+                navigator.vibrate([20, 30, 40]); // Pattern for boost
+                break;
+            default:
+                navigator.vibrate(25);
         }
-        
-        this.orientationLayout = isLandscape ? 'landscape' : 'portrait';
     }
     
     onResize() {
         // Update screen dimensions
         this.screenWidth = window.innerWidth;
         this.screenHeight = window.innerHeight;
-        
-        // Recalculate sizes for adaptive layout
-        this.sizes.healthBarWidth = Math.min(320, this.screenWidth * 0.6);
-        
-        // Apply new layout
-        this.adjustLayoutForOrientation();
-        
-        // Update UI culling
-        this.updateElementCulling();
-    }
-    
-    updateHealthBar(percentage) {
-        // Only update if visible and if exists
-        if (!this.visibleElements.has('healthBar')) return;
-        
-        const healthFill = this.uiElements.get('healthFill');
-        const healthText = this.uiElements.get('healthText');
-        
-        if (healthFill && healthText) {
-            // Make transition smoother by using requestAnimationFrame
-            requestAnimationFrame(() => {
-                healthFill.style.width = `${percentage}%`;
-                healthText.textContent = `${Math.round(percentage)}%`;
-                
-                // Change color based on health
-                if (percentage < 30) {
-                    healthFill.style.background = 'linear-gradient(90deg, #ff0000, #ff4444)';
-                } else if (percentage < 60) {
-                    healthFill.style.background = 'linear-gradient(90deg, #ffaa00, #ffcc44)';
-                } else {
-                    healthFill.style.background = 'linear-gradient(90deg, #ff0055, #ff2277)';
-                }
-            });
-        }
     }
     
     // Pooling system for memory efficiency
@@ -559,170 +692,6 @@ export class MobileUI {
         this.memoryUsage.activeElements--;
     }
     
-    // UI element culling - hide offscreen elements
-    updateElementCulling() {
-        if (!this.uiElements || this.uiElements.size === 0) return;
-        
-        // Get viewport dimensions
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // Check each trackable element
-        this.uiElements.forEach((element, key) => {
-            // Skip container element
-            if (key === 'container') return;
-            
-            // Get element position
-            const rect = element.getBoundingClientRect();
-            
-            // Check if element is outside viewport
-            const isOutside = (
-                rect.bottom < 0 ||
-                rect.top > viewportHeight ||
-                rect.right < 0 ||
-                rect.left > viewportWidth
-            );
-            
-            // Only update visibility if needed
-            if (isOutside && this.visibleElements.has(key)) {
-                // Element moved outside viewport - hide it
-                element.style.display = 'none';
-                this.visibleElements.delete(key);
-            } else if (!isOutside && !this.visibleElements.has(key)) {
-                // Element moved into viewport - show it
-                element.style.display = '';
-                this.visibleElements.add(key);
-            }
-        });
-    }
-    
-    // Gesture recognition system
-    handleTouchStart(e) {
-        if (!e.touches || e.touches.length === 0) return;
-        
-        // Store touch start position for gesture detection
-        this.gestures.touchStartPos = {
-            x: e.touches[0].clientX,
-            y: e.touches[0].clientY,
-            time: Date.now()
-        };
-    }
-    
-    handleTouchMove(e) {
-        if (!this.gestures.touchStartPos || !e.touches || e.touches.length === 0) return;
-        
-        // Check for swipe gesture
-        const touch = e.touches[0];
-        const touchPos = { x: touch.clientX, y: touch.clientY };
-        
-        // Calculate distance moved
-        const dx = touchPos.x - this.gestures.touchStartPos.x;
-        const dy = touchPos.y - this.gestures.touchStartPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // If moved far enough, check for swipe direction
-        if (distance > 80 && !this.gestures.recognizingGesture) {
-            this.gestures.recognizingGesture = true;
-            
-            // Determine direction (up, down, left, right)
-            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-            
-            // Handle swipe gesture
-            if (Math.abs(dx) > Math.abs(dy)) {
-                // Horizontal swipe
-                if (dx > 0) {
-                    this.handleGesture('swipeRight');
-                } else {
-                    this.handleGesture('swipeLeft');
-                }
-            } else {
-                // Vertical swipe
-                if (dy > 0) {
-                    this.handleGesture('swipeDown');
-                } else {
-                    this.handleGesture('swipeUp');
-                }
-            }
-        }
-    }
-    
-    handleTouchEnd(e) {
-        if (!this.gestures.touchStartPos) return;
-        
-        const touchEndTime = Date.now();
-        const touchDuration = touchEndTime - this.gestures.touchStartPos.time;
-        
-        // If touch duration is short, check for double tap
-        if (touchDuration < 300) {
-            const timeSinceLastTap = touchEndTime - this.gestures.lastTapTime;
-            
-            // Double tap detection (within 300ms)
-            if (timeSinceLastTap < 300 && !this.gestures.recognizingGesture) {
-                this.handleGesture('doubleTap');
-            }
-            
-            this.gestures.lastTapTime = touchEndTime;
-        }
-        
-        // Reset gesture tracking
-        this.gestures.touchStartPos = null;
-        this.gestures.recognizingGesture = false;
-    }
-    
-    handleGesture(gestureType) {
-        console.log(`Detected gesture: ${gestureType}`);
-        
-        // Handle different gestures
-        switch (gestureType) {
-            case 'swipeUp':
-                // Example: Trigger ascend
-                if (this.engine && this.engine.systems.player) {
-                    this.engine.systems.player.setVerticalMovement(1);
-                }
-                this.triggerHapticFeedback('swipe');
-                break;
-                
-            case 'swipeDown':
-                // Example: Trigger descend
-                if (this.engine && this.engine.systems.player) {
-                    this.engine.systems.player.setVerticalMovement(-1);
-                }
-                this.triggerHapticFeedback('swipe');
-                break;
-                
-            case 'doubleTap':
-                // Example: Trigger special ability
-                if (this.engine && this.engine.systems.player) {
-                    this.engine.systems.player.triggerSpecialAbility();
-                }
-                this.triggerHapticFeedback('doubleTap');
-                break;
-        }
-    }
-    
-    // Haptic feedback with battery saving consideration
-    triggerHapticFeedback(type) {
-        if (!this.hasHapticFeedback || this.batterySaving) return;
-        
-        // Different vibration patterns for different interactions
-        switch (type) {
-            case 'spell':
-                navigator.vibrate(20);
-                break;
-            case 'swipe':
-                navigator.vibrate(30);
-                break;
-            case 'doubleTap':
-                navigator.vibrate([20, 50, 20]);
-                break;
-            case 'toggle':
-                navigator.vibrate(15);
-                break;
-            default:
-                navigator.vibrate(25);
-        }
-    }
-    
     // Public update method called from game loop
     update(delta, player) {
         try {
@@ -734,15 +703,6 @@ export class MobileUI {
             // Skip updates in battery saving mode to reduce CPU usage
             if (this.batterySaving && (this.frameCounter++ % (this.batteryUpdateFrequency || 1) !== 0)) {
                 return;
-            }
-            
-            // Update UI element culling
-            this.updateElementCulling();
-            
-            // Update health bar if player provided
-            if (player && player.health !== undefined && player.maxHealth !== undefined) {
-                const healthPercentage = (player.health / player.maxHealth) * 100;
-                this.updateHealthBar(healthPercentage);
             }
         } catch (error) {
             console.warn('Error updating mobile UI:', error);
@@ -765,9 +725,6 @@ export class MobileUI {
         
         // Remove event listeners
         window.removeEventListener('resize', this.onResize);
-        document.removeEventListener('touchstart', this.handleTouchStart);
-        document.removeEventListener('touchmove', this.handleTouchMove);
-        document.removeEventListener('touchend', this.handleTouchEnd);
         
         console.log("Mobile UI disposed with memory stats:", this.memoryUsage);
     }

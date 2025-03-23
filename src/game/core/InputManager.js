@@ -6,6 +6,23 @@ export class InputManager {
     this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     this.listeners = {};
     this.pointerLocked = false;
+    
+    // Mobile controls state
+    this.mobileControls = {
+      active: false,
+      joystick: {
+        active: false,
+        deltaX: 0,
+        deltaY: 0,
+        angle: 0,
+        intensity: 0
+      },
+      camera: {
+        active: false,
+        deltaX: 0,
+        deltaY: 0
+      }
+    };
   }
   
   initialize() {
@@ -28,10 +45,73 @@ export class InputManager {
       window.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
       window.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
       window.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+      
+      // Set up mobile control event listeners
+      this.setupMobileControlsListeners();
     }
     
     // Prevent context menu on right click
     window.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  
+  // Set up listeners for mobile UI controls
+  setupMobileControlsListeners() {
+    // Listen for joystick events
+    this.on('mobileJoystick', (data) => {
+      this.mobileControls.joystick = data;
+      
+      // Simulate WASD key presses based on joystick position
+      if (data.active) {
+        // Forward/backward (W/S)
+        if (data.deltaY < -0.2) {
+          this.keys['KeyW'] = true;
+          this.keys['KeyS'] = false;
+        } else if (data.deltaY > 0.2) {
+          this.keys['KeyW'] = false;
+          this.keys['KeyS'] = true;
+        } else {
+          this.keys['KeyW'] = false;
+          this.keys['KeyS'] = false;
+        }
+        
+        // Left/right (A/D)
+        if (data.deltaX < -0.2) {
+          this.keys['KeyA'] = true;
+          this.keys['KeyD'] = false;
+        } else if (data.deltaX > 0.2) {
+          this.keys['KeyA'] = false;
+          this.keys['KeyD'] = true;
+        } else {
+          this.keys['KeyA'] = false;
+          this.keys['KeyD'] = false;
+        }
+      } else {
+        // Reset all movement keys when joystick is released
+        this.keys['KeyW'] = false;
+        this.keys['KeyS'] = false;
+        this.keys['KeyA'] = false;
+        this.keys['KeyD'] = false;
+      }
+    });
+    
+    // Listen for camera control events
+    this.on('mobileCameraMove', (data) => {
+      this.mobileControls.camera = data;
+      
+      // Update mouse movement simulation for camera control
+      if (data.deltaX !== 0 || data.deltaY !== 0) {
+        this.mouse.dx = data.deltaX;
+        this.mouse.dy = data.deltaY;
+        
+        // Emit mousemove event to simulate camera movement
+        this.emit('mousemove', { 
+          movementX: data.deltaX, 
+          movementY: data.deltaY, 
+          clientX: this.mouse.x + data.deltaX,
+          clientY: this.mouse.y + data.deltaY
+        });
+      }
+    });
   }
   
   // Input event handlers
@@ -160,5 +240,10 @@ export class InputManager {
   
   onPointerLockError() {
     console.error('Pointer lock error');
+  }
+  
+  // Add player state provider method
+  setPlayerStateProvider(providerFunc) {
+    this.playerStateProvider = providerFunc;
   }
 }

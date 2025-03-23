@@ -46,6 +46,9 @@ export class PlayerSystem {
       this.updateNetworkPlayer(data);
     });
     
+    // Auto-start forward movement on mobile
+   
+    
     console.log("Player system initialized");
   }
   
@@ -381,11 +384,27 @@ export class PlayerSystem {
       return;
     }
     
-    // Update subsystems
-    this.input.handleInput(delta);
-    this.physics.updatePhysics(delta);
-    this.models.updateModels();
-    this.spells.updateSpells(delta);
+    // Update subsystems with error handling
+    try {
+      // Only call handleInput if the method exists
+      if (this.input && typeof this.input.handleInput === 'function') {
+        this.input.handleInput(delta);
+      }
+      
+      if (this.physics && typeof this.physics.updatePhysics === 'function') {
+        this.physics.updatePhysics(delta);
+      }
+      
+      if (this.models && typeof this.models.updateModels === 'function') {
+        this.models.updateModels();
+      }
+      
+      if (this.spells && typeof this.spells.updateSpells === 'function') {
+        this.spells.updateSpells(delta);
+      }
+    } catch (error) {
+      console.warn('Error updating player subsystems:', error);
+    }
     
     // Check for mana collection
     this.checkManaCollection();
