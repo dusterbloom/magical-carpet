@@ -19,6 +19,9 @@ export class PlayerPhysics {
     const player = this.playerSystem.localPlayer;
     if (!player) return;
     
+    // Apply forces before updating physics
+    this.applyForces(player, delta);
+    
     // Apply momentum preservation during turns
     this.preserveMomentum(player, delta);
     
@@ -79,10 +82,11 @@ export class PlayerPhysics {
       player.acceleration.addScaledVector(rightVector, sidewaysForce);
     }
 
-    // Progressive terrain avoidance
-    const terrainHeight = this.engine.systems.world.getTerrainHeight(
+    // Progressive terrain avoidance - using cached terrain height
+    const terrainHeight = this.engine.systems.physics.getTerrainHeight(
       player.position.x,
-      player.position.z
+      player.position.z,
+      this.engine.systems.world
     );
     
     const heightAboveTerrain = player.position.y - terrainHeight;
@@ -102,10 +106,11 @@ export class PlayerPhysics {
     // Apply damping to altitude velocity
     player.altitudeVelocity *= this.altitudeDamping;
 
-    // Enforce minimum altitude (above terrain)
-    const terrainHeight = this.engine.systems.world.getTerrainHeight(
+    // Enforce minimum altitude (above terrain) - using cached terrain height
+    const terrainHeight = this.engine.systems.physics.getTerrainHeight(
       player.position.x,
-      player.position.z
+      player.position.z,
+      this.engine.systems.world
     );
 
     const minHeightAboveTerrain = Math.max(this.minAltitude, terrainHeight + 5);

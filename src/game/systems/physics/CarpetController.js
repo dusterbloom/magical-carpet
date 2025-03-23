@@ -75,42 +75,7 @@ export class CarpetController {
         thrustForce.applyQuaternion(this.body.quaternion);
         
         // Apply force
-        this.body.forces.add(heightForce);
-    }
-
-    getForwardVector() {
-        return this._tempVec3.set(0, 0, -1).applyQuaternion(this.body.quaternion);
-    }
-
-    getUpVector() {
-        return this._tempVec3.set(0, 1, 0).applyQuaternion(this.body.quaternion);
-    }
-
-    getRightVector() {
-        return this._tempVec3.set(1, 0, 0).applyQuaternion(this.body.quaternion);
-    }
-}
-
-// Helper class for smooth value transitions
-class ExponentialSmoothing {
-    constructor(smoothing = 0.1) {
-        this.smoothing = smoothing;
-        this.current = 0;
-        this.target = 0;
-    }
-
-    update(target, delta) {
-        this.target = target;
-        const alpha = 1.0 - Math.pow(this.smoothing, delta);
-        this.current += (this.target - this.current) * alpha;
-        return this.current;
-    }
-
-    reset(value = 0) {
-        this.current = value;
-        this.target = value;
-    }
-}d(thrustForce);
+        this.body.forces.add(thrustForce);
     }
 
     applyTurn(delta) {
@@ -162,4 +127,39 @@ class ExponentialSmoothing {
             0
         );
         
-        this.body.forces.ad
+        this.body.forces.add(heightForce);
+    }
+
+    getForwardVector() {
+        return this._tempVec3.set(0, 0, -1).applyQuaternion(this.body.quaternion);
+    }
+
+    getUpVector() {
+        return this._tempVec3.set(0, 1, 0).applyQuaternion(this.body.quaternion);
+    }
+
+    getRightVector() {
+        return this._tempVec3.set(1, 0, 0).applyQuaternion(this.body.quaternion);
+    }
+}
+
+// Helper class for smooth value transitions
+class ExponentialSmoothing {
+    constructor(smoothing = 0.1) {
+        this.smoothing = smoothing;
+        this.current = 0;
+        this.target = 0;
+    }
+
+    update(target, delta) {
+        this.target = target;
+        const alpha = 1.0 - Math.pow(this.smoothing, delta);
+        this.current += (this.target - this.current) * alpha;
+        return this.current;
+    }
+
+    reset(value = 0) {
+        this.current = value;
+        this.target = value;
+    }
+}

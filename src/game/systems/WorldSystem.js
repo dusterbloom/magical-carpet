@@ -11,6 +11,12 @@ export class WorldSystem {
     this.frustumMatrix = new THREE.Matrix4();
     this.cameraViewProjectionMatrix = new THREE.Matrix4();
     this.boundingSpheres = new Map();  // Store bounding spheres for quick checks
+    
+    // Chunk pooling for geometry reuse
+    this.geometryPool = {};
+    this.pooledGeometries = 0;
+    this.poolHits = 0;
+    this.poolMisses = 0;
 
     if (engine.renderer) {
       // Improve shadow mapping
@@ -26,6 +32,23 @@ export class WorldSystem {
     // Initialize maps and collections
     this.currentChunks = new Map();
     this.manaNodes = [];
+    
+    // Memory management
+    this.memorySettings = {
+      maxActiveChunks: 256,
+      maxPooledGeometries: 64,
+      maxTerrainCacheEntries: 5000,
+      maxBoundingSpheres: 300
+    };
+    
+    // Performance monitoring
+    this.perfStats = {
+      lastChunkCreationTime: 0,
+      avgChunkCreationTime: 0,
+      chunkCreationSamples: 0,
+      lastUpdateTime: 0,
+      frameTimes: []
+    };
 
     // World configuration
     this.chunkSize = 256;
@@ -56,6 +79,12 @@ export class WorldSystem {
       ];
       // Also reduce view distance on mobile
       this.viewDistance = 4;
+      
+      // Adjust memory settings for mobile
+      this.memorySettings.maxActiveChunks = 128;
+      this.memorySettings.maxPooledGeometries = 32;
+      this.memorySettings.maxTerrainCacheEntries = 2000;
+      this.memorySettings.maxBoundingSpheres = 150;
     }
     
     // Terrain parameters
@@ -242,6 +271,9 @@ export class WorldSystem {
     this.engine.camera.position.set(0, 500, 500);
     this.engine.camera.lookAt(0, 0, 0);
     
+    // Initialize geometry pool for different LOD levels
+    this.initializeGeometryPool();
+    
     // Generate initial world
     this.createInitialTerrain();
     this.createWater();
@@ -252,7 +284,102 @@ export class WorldSystem {
       this.engine.camera.updateProjectionMatrix();
     }
     
+    // Setup memory management - periodically check memory usage
+    this.memoryCheckInterval = setInterval(() => this.checkMemoryUsage(), 30000);
+    
     console.log("WorldSystem initialized");
+  }
+  
+  initializeGeometryPool() {
+    // Create pools for each LOD level
+    for (let i = 0; i < this.terrainLOD.distances.length; i++) {
+      const resolution = this.terrainLOD.distances[i].resolution;
+      this.geometryPool[resolution] = [];
+    }
+  }
+  
+  getPooledGeometry(resolution) {
+    // Try to get geometry from pool
+    if (this.geometryPool[resolution] && this.geometryPool[resolution].length > 0) {
+      this.poolHits++;
+      return this.geometryPool[resolution].pop();
+    }
+    
+    // No pooled geometry available, create a new one
+    this.poolMisses++;
+    return new THREE.PlaneGeometry(
+      this.chunkSize,
+      this.chunkSize,
+      resolution,
+      resolution
+    );
+  }
+  
+  returnGeometryToPool(geometry) {
+    if (!geometry) return;
+    
+    // Get resolution from geometry parameters
+    const resolution = geometry.parameters.widthSegments;
+    
+    // Clear any vertex colors to free up memory
+    if (geometry.attributes.color) {
+      geometry.deleteAttribute('color');
+    }
+    
+    // Add back to pool if we have space
+    if (this.geometryPool[resolution] && 
+        this.pooledGeometries < this.memorySettings.maxPooledGeometries) {
+      this.geometryPool[resolution].push(geometry);
+      this.pooledGeometries++;
+    } else {
+      // Dispose if pool is full
+      geometry.dispose();
+    }
+  }
+  
+  checkMemoryUsage() {
+    // Check and manage memory usage
+    
+    // Get current memory stats if available
+    let memInfo = '';
+    if (this.engine.renderer && this.engine.renderer.info) {
+      const rendererInfo = this.engine.renderer.info;
+      memInfo = `Geometries: ${rendererInfo.memory.geometries}, ` +
+               `Textures: ${rendererInfo.memory.textures}, ` +
+               `Programs: ${rendererInfo.programs?.length || 0}`;
+    }
+    
+    // Log memory usage and pool stats
+    console.log(`Memory usage: ${memInfo}`);
+    console.log(`Geometry pool: ${this.pooledGeometries} cached, ` +
+               `hit rate: ${(this.poolHits / (this.poolHits + this.poolMisses) * 100).toFixed(1)}%`);
+    
+    // Adaptive memory management based on performance
+    this.adaptMemorySettings();
+  }
+  
+  adaptMemorySettings() {
+    // Calculate average frame time (if we have samples)
+    if (this.perfStats.frameTimes.length > 0) {
+      const avgFrameTime = this.perfStats.frameTimes.reduce((a, b) => a + b, 0) / 
+                          this.perfStats.frameTimes.length;
+      
+      // Adjust memory settings based on performance
+      if (avgFrameTime > 33) { // Below 30 FPS
+        // Reduce memory usage to improve performance
+        this.memorySettings.maxActiveChunks = Math.max(64, this.memorySettings.maxActiveChunks * 0.8);
+        this.memorySettings.maxPooledGeometries = Math.max(16, this.memorySettings.maxPooledGeometries * 0.8);
+        console.log('Performance low, reducing memory usage');
+      } else if (avgFrameTime < 20 && !this.engine.isMobile) { // Good performance on desktop
+        // Can use more memory for better quality
+        this.memorySettings.maxActiveChunks = Math.min(400, this.memorySettings.maxActiveChunks * 1.1);
+        this.memorySettings.maxPooledGeometries = Math.min(128, this.memorySettings.maxPooledGeometries * 1.1);
+        console.log('Performance good, increasing memory usage');
+      }
+    }
+    
+    // Reset frame time samples for next interval
+    this.perfStats.frameTimes = [];
   }
 
   createMaterials() {
@@ -758,6 +885,9 @@ export class WorldSystem {
    * @returns {Object} Object containing geometry and material index
    */
   createChunkGeometry(startX, startZ) {
+    // Measure chunk creation time for performance monitoring
+    const startTime = performance.now();
+    
     // Calculate chunk center for LOD determination
     const chunkCenterX = startX + this.chunkSize / 2;
     const chunkCenterZ = startZ + this.chunkSize / 2;
@@ -765,13 +895,8 @@ export class WorldSystem {
     // Get appropriate LOD for this chunk
     const lod = this.getChunkLOD(chunkCenterX, chunkCenterZ);
     
-    // Create plane geometry with LOD-appropriate resolution
-    const geometry = new THREE.PlaneGeometry(
-      this.chunkSize,
-      this.chunkSize,
-      lod.resolution,
-      lod.resolution
-    );
+    // Get a pooled geometry if available or create a new one
+    const geometry = this.getPooledGeometry(lod.resolution);
 
     // Rotate the plane to be horizontal (X-Z plane)
     geometry.rotateX(-Math.PI / 2);
@@ -801,6 +926,14 @@ export class WorldSystem {
     
     // Update normals
     geometry.computeVertexNormals();
+    
+    // Update performance metrics
+    const creationTime = performance.now() - startTime;
+    this.perfStats.lastChunkCreationTime = creationTime;
+    this.perfStats.avgChunkCreationTime = 
+      (this.perfStats.avgChunkCreationTime * this.perfStats.chunkCreationSamples + creationTime) / 
+      (this.perfStats.chunkCreationSamples + 1);
+    this.perfStats.chunkCreationSamples++;
     
     return {
       geometry: geometry,
@@ -2107,6 +2240,8 @@ export class WorldSystem {
     if (!player) return;
 
     try {
+      const updateStart = performance.now();
+      
       // Calculate current chunk coordinates
       const chunkX = Math.floor(player.position.x / this.chunkSize);
       const chunkZ = Math.floor(player.position.z / this.chunkSize);
@@ -2143,8 +2278,41 @@ export class WorldSystem {
                 chunksToUpdate.set(key, lod);
               }
             } else {
-              // Add to creation list
-              newChunksToAdd.push([worldX, worldZ]);
+              // Add to creation list if we haven't hit the chunk limit
+              if (this.currentChunks.size < this.memorySettings.maxActiveChunks) {
+                newChunksToAdd.push([worldX, worldZ]);
+              } else {
+                // Skip chunk creation if we've hit the limit
+                // Prioritize closer chunks
+                const sortedChunks = Array.from(this.currentChunks.entries())
+                  .map(([key, mesh]) => {
+                    const [cx, cz] = key.split(',').map(Number);
+                    const dx = cx - player.position.x;
+                    const dz = cz - player.position.z;
+                    const dist = Math.sqrt(dx*dx + dz*dz);
+                    return { key, dist };
+                  })
+                  .sort((a, b) => b.dist - a.dist); // Sort by distance descending
+
+                // Only create new chunk if it's closer than the furthest existing chunk
+                const dx = worldX - player.position.x;
+                const dz = worldZ - player.position.z;
+                const newDist = Math.sqrt(dx*dx + dz*dz);
+                
+                if (newDist < sortedChunks[0].dist) {
+                  // Remove furthest chunk
+                  const keyToRemove = sortedChunks[0].key;
+                  const meshToRemove = this.currentChunks.get(keyToRemove);
+                  
+                  this.scene.remove(meshToRemove);
+                  // Return geometry to pool instead of disposing
+                  this.returnGeometryToPool(meshToRemove.geometry);
+                  this.currentChunks.delete(keyToRemove);
+                  
+                  // Add new closer chunk
+                  newChunksToAdd.push([worldX, worldZ]);
+                }
+              }
             }
           }
         }
@@ -2154,7 +2322,8 @@ export class WorldSystem {
       for (const [key, mesh] of this.currentChunks.entries()) {
         if (!chunksToKeep.has(key)) {
           this.scene.remove(mesh);
-          mesh.geometry.dispose();
+          // Return geometry to pool instead of disposing
+          this.returnGeometryToPool(mesh.geometry);
           this.currentChunks.delete(key);
         }
       }
@@ -2193,6 +2362,17 @@ export class WorldSystem {
           }
         }
       }
+      
+      // Track performance
+      const updateTime = performance.now() - updateStart;
+      this.perfStats.lastUpdateTime = updateTime;
+      
+      // Store frame time for adaptive memory management
+      if (this.perfStats.frameTimes.length > 20) {
+        this.perfStats.frameTimes.shift();
+      }
+      this.perfStats.frameTimes.push(updateTime);
+      
     } catch (error) {
       console.warn("Error in updateChunks:", error);
     }
@@ -2216,8 +2396,10 @@ export class WorldSystem {
     // Create new geometry with new LOD level
     const chunkData = this.createChunkGeometry(startX, startZ);
     
-    // Dispose old geometry and update mesh with new geometry and material
-    mesh.geometry.dispose();
+    // Return old geometry to pool instead of disposing
+    this.returnGeometryToPool(mesh.geometry);
+    
+    // Update mesh with new geometry and material
     mesh.geometry = chunkData.geometry;
     mesh.material = this.terrainLOD.materials[newLodLevel];
     mesh.userData.lodLevel = newLodLevel;
@@ -2246,6 +2428,15 @@ export class WorldSystem {
     
     // Update the frustum from the view-projection matrix
     this.frustum.setFromProjectionMatrix(this.cameraViewProjectionMatrix);
+    
+    // Memory management for bounding spheres cache
+    if (this.boundingSpheres.size > this.memorySettings.maxBoundingSpheres) {
+      // Remove random entries when the cache gets too large
+      const keysToDelete = Array.from(this.boundingSpheres.keys())
+        .slice(0, this.boundingSpheres.size - this.memorySettings.maxBoundingSpheres);
+        
+      keysToDelete.forEach(key => this.boundingSpheres.delete(key));
+    }
   }
   
   /**
@@ -2350,7 +2541,15 @@ export class WorldSystem {
       const updateTime = performance.now() - updateStart;
       // Only log occasionally to avoid console spam
       if (Math.random() < 0.02) {
-        console.log(`World update time: ${updateTime.toFixed(2)}ms, Visible chunks: ${Array.from(this.currentChunks.values()).filter(m => m.visible).length}/${this.currentChunks.size}`);
+        // Calculate visible chunks for performance tracking
+        const visibleChunkCount = Array.from(this.currentChunks.values())
+          .filter(m => m.visible).length;
+          
+        console.log(`World update time: ${updateTime.toFixed(2)}ms, ` +
+                   `Visible chunks: ${visibleChunkCount}/${this.currentChunks.size}, ` +
+                   `Geometry pool hits/misses: ${this.poolHits}/${this.poolMisses}`);
+        
+        console.log(`Average chunk creation time: ${this.perfStats.avgChunkCreationTime.toFixed(2)}ms`);
       }
     }
   }

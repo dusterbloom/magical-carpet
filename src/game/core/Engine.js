@@ -15,6 +15,7 @@ import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
 import { MaterialSystemIntegration } from "../systems/materials/MaterialSystemIntegration";
+import { PhysicsSystem } from "../systems/physics/PhysicsSystem";
 
 export class Engine {
   constructor() {
@@ -106,6 +107,7 @@ export class Engine {
     // Create systems in correct order (dependencies first)
     this.systems.materials = new MaterialSystemIntegration(this);
     this.systems.network = new NetworkManager(this);
+    this.systems.physics = new PhysicsSystem(this);
     this.systems.world = new WorldSystem(this);
     this.systems.water = new WaterSystem(this);
     this.systems.vegetation = new VegetationSystem(this);
@@ -120,6 +122,7 @@ export class Engine {
     const initOrder = [
       "materials",
       "network",
+      "physics", // Physics system should be initialized before world
       "world", // Base terrain must be initialized first
       "water", // Water depends on world terrain
       "vegetation", // Vegetation needs terrain to place trees
@@ -172,6 +175,7 @@ export class Engine {
     const updateOrder = [
       "materials",
       "network",
+      "physics", // Update physics before world and player
       "world",
       "water",
       "vegetation",
@@ -187,7 +191,12 @@ export class Engine {
     for (const systemName of updateOrder) {
       const system = this.systems[systemName];
       if (system && typeof system.update === "function") {
-        system.update(this.delta, this.elapsed);
+        // Special case for physics system that needs the world reference
+        if (systemName === "physics") {
+          system.update(this.delta, this.systems.world, this.elapsed);
+        } else {
+          system.update(this.delta, this.elapsed);
+        }
       }
     }
 

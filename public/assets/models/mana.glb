@@ -1,5 +1,78 @@
-<<<<<<< HEAD
-  
-=======
-
->>>>>>> 3ba54ef83a25f19ba1b39a083bea4b653822e498
+{
+  "asset": {
+    "generator": "Claude Placeholder",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "PlaceholderScene",
+      "nodes": [0]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "name": "PlaceholderMana"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Mana",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1
+          },
+          "indices": 2
+        }
+      ]
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 4,
+      "max": [1, 1, 1],
+      "min": [-1, -1, -1],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 4,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5123,
+      "count": 6,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 48,
+      "byteOffset": 0
+    },
+    {
+      "buffer": 0,
+      "byteLength": 48,
+      "byteOffset": 48
+    },
+    {
+      "buffer": 0,
+      "byteLength": 12,
+      "byteOffset": 96
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 108,
+      "uri": "data:application/octet-stream;base64,AACAvwAAAAAAAIA/AACAPwAAAAAAAIA/AACAvwAAAAAAAIC/AACAPwAAAAAAAIC/AAAAAAAAgD8AAAAAAACAPwAAAAAAAIA/AAAAAAAAgD8AAAAAAACAPwAAAAAAAIA/AAAAAAAAgD8AAAAAAACAPwAAAAABAAIAAAACAAMA"
+    }
+  ]
+}

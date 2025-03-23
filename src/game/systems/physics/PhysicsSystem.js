@@ -39,7 +39,9 @@ class RigidBody {
 }
 
 export class PhysicsSystem {
-    constructor() {
+    constructor(engine) {
+        this.engine = engine;
+        
         // Physics constants
         this.gravity = -9.81; // m/s²
         this.airDensity = 1.225; // kg/m³
@@ -49,13 +51,43 @@ export class PhysicsSystem {
         // Reusable vectors for calculations
         this._tempVec3 = new THREE.Vector3();
         this._tempVec3_2 = new THREE.Vector3();
+        this._tempVec3_3 = new THREE.Vector3(); // Additional reusable vector
         this._tempQuat = new THREE.Quaternion();
         
         // Collection of physics bodies
         this.bodies = new Map();
         
-        // Terrain collision cache
-        this.heightCache = new HeightCache(32);
+        // Advanced terrain collision caching
+        this.heightCache = new HeightCache();
+        this.normalCache = new Map(); // Cache for terrain normals
+        this.maxNormalCacheSize = 500;
+        
+        // Performance metrics
+        this.lastPerformanceLog = 0;
+        this.performanceLogInterval = 5000; // Log every 5 seconds
+        
+        // Adapt caching to device capabilities
+        if (engine && engine.isMobile !== undefined) {
+            this.heightCache.adaptToDeviceCapabilities(engine.isMobile);
+        }
+    }
+
+    /**
+     * Initialize the physics system
+     */
+    async initialize() {
+        console.log("Initializing PhysicsSystem...");
+        
+        // Prepare height cache for terrain
+        this.heightCache.clear();
+        
+        // Adapt to device capabilities
+        if (this.engine && this.engine.isMobile !== undefined) {
+            this.heightCache.adaptToDeviceCapabilities(this.engine.isMobile);
+        }
+        
+        console.log("PhysicsSystem initialized");
+        return Promise.resolve();
     }
 
     createRigidBody(id, mass = 1) {
@@ -68,7 +100,7 @@ export class PhysicsSystem {
         this.bodies.delete(id);
     }
 
-    update(delta, world) {
+    update(delta, world, elapsed) {
         // Calculate number of physics steps
         const numSteps = Math.min(Math.ceil(delta / this.timeStep), this.maxSubSteps);
         const stepDelta = delta / numSteps;
@@ -76,6 +108,21 @@ export class PhysicsSystem {
         for (let step = 0; step < numSteps; step++) {
             this.updatePhysics(stepDelta, world);
         }
+        
+        // Log performance metrics periodically
+        if (elapsed && elapsed - this.lastPerformanceLog > this.performanceLogInterval) {
+            this.logPerformanceMetrics();
+            this.lastPerformanceLog = elapsed;
+        }
+    }
+    
+    logPerformanceMetrics() {
+        if (!this.engine || !this.engine.debug) return;
+        
+        // Log cache hit rate and size
+        const cacheStats = this.heightCache.getStats();
+        console.log('Terrain Height Cache Stats:', cacheStats);
+        console.log('Normal Cache Size:', this.normalCache.size);
     }
 
     updatePhysics(delta, world) {
@@ -198,6 +245,17 @@ export class PhysicsSystem {
     }
 
     calculateTerrainNormal(x, z, world) {
+        // Generate key for normal cache - use coarser resolution than height
+        const normalCacheResolution = this.heightCache.resolution * 2;
+        const nx = Math.floor(x / normalCacheResolution) * normalCacheResolution;
+        const nz = Math.floor(z / normalCacheResolution) * normalCacheResolution;
+        const key = `${nx},${nz}`;
+        
+        // Check if normal is already cached
+        if (this.normalCache.has(key)) {
+            return this._tempVec3.copy(this.normalCache.get(key));
+        }
+        
         const epsilon = 1.0; // Sample distance
         
         // Get heights at nearby points
@@ -206,41 +264,159 @@ export class PhysicsSystem {
         const hz = this.getTerrainHeight(x, z + epsilon, world);
         
         // Calculate normal using cross product of terrain vectors
-        const normal = this._tempVec3;
-        normal.set(
+        const normal = new THREE.Vector3(
             -(hx - h0) / epsilon,
             1,
             -(hz - h0) / epsilon
         ).normalize();
         
-        return normal;
+        // Cache the normal
+        if (this.normalCache.size >= this.maxNormalCacheSize) {
+            // Remove a random entry if cache is full
+            const firstKey = this.normalCache.keys().next().value;
+            this.normalCache.delete(firstKey);
+        }
+        this.normalCache.set(key, normal.clone());
+        
+        return this._tempVec3.copy(normal);
     }
 }
 
 class HeightCache {
-    constructor(resolution) {
+    constructor(resolution = 32) {
         this.resolution = resolution;
         this.cache = new Map();
-        this.maxEntries = 1000;
+        this.maxEntries = 5000; // Increased from 1000 for better coverage
+        this.hits = 0;
+        this.misses = 0;
+        this.accessCount = 0;
+        
+        // Maintain a list of keys in order of access for LRU eviction
+        this.accessOrder = [];
+        
+        // Setup adaptive resolution based on access patterns
+        this.adaptiveResolution = true;
+        this.highActivityRegions = new Map(); // Tracks regions with frequent access
+        this.regionAccessThreshold = 10; // How many accesses to consider a region high-activity
+        this.regionSize = 512; // Size of regions for adaptive resolution
     }
 
     key(x, z) {
-        const qx = Math.floor(x / this.resolution) * this.resolution;
-        const qz = Math.floor(z / this.resolution) * this.resolution;
+        // Get effective resolution for this region based on activity
+        let effectiveResolution = this.resolution;
+        
+        if (this.adaptiveResolution) {
+            const regionX = Math.floor(x / this.regionSize) * this.regionSize;
+            const regionZ = Math.floor(z / this.regionSize) * this.regionSize;
+            const regionKey = `${regionX},${regionZ}`;
+            
+            // Check if this is a high-activity region
+            if (this.highActivityRegions.has(regionKey)) {
+                // Use higher resolution (smaller cells) for high-activity regions
+                effectiveResolution = this.resolution / 2;
+            }
+        }
+        
+        const qx = Math.floor(x / effectiveResolution) * effectiveResolution;
+        const qz = Math.floor(z / effectiveResolution) * effectiveResolution;
         return `${qx},${qz}`;
     }
 
     get(x, z) {
-        return this.cache.get(this.key(x, z));
+        this.accessCount++;
+        
+        // Track region activity
+        if (this.adaptiveResolution && this.accessCount % 10 === 0) { // Only track every 10th access for performance
+            const regionX = Math.floor(x / this.regionSize) * this.regionSize;
+            const regionZ = Math.floor(z / this.regionSize) * this.regionSize;
+            const regionKey = `${regionX},${regionZ}`;
+            
+            const accessCount = this.highActivityRegions.get(regionKey) || 0;
+            this.highActivityRegions.set(regionKey, accessCount + 1);
+            
+            // Clean up old regions periodically
+            if (this.highActivityRegions.size > 20) {
+                this.cleanupActivityRegions();
+            }
+        }
+        
+        const cacheKey = this.key(x, z);
+        const value = this.cache.get(cacheKey);
+        
+        if (value !== undefined) {
+            // Update access order for LRU (move to end of array)
+            const index = this.accessOrder.indexOf(cacheKey);
+            if (index !== -1) {
+                this.accessOrder.splice(index, 1);
+            }
+            this.accessOrder.push(cacheKey);
+            
+            this.hits++;
+            return value;
+        }
+        
+        this.misses++;
+        return undefined;
     }
 
     set(x, z, height) {
-        // Clear old entries if cache is too large
-        if (this.cache.size >= this.maxEntries) {
-            const firstKey = this.cache.keys().next().value;
-            this.cache.delete(firstKey);
+        const cacheKey = this.key(x, z);
+        
+        // Clear old entries if cache is too large using LRU policy
+        while (this.cache.size >= this.maxEntries && this.accessOrder.length > 0) {
+            const oldestKey = this.accessOrder.shift();
+            this.cache.delete(oldestKey);
         }
         
-        this.cache.set(this.key(x, z), height);
+        // Add to cache and update access order
+        this.cache.set(cacheKey, height);
+        this.accessOrder.push(cacheKey);
+    }
+    
+    cleanupActivityRegions() {
+        // Sort regions by access count
+        const sortedRegions = Array.from(this.highActivityRegions.entries())
+            .sort((a, b) => b[1] - a[1]); // Sort by count, descending
+        
+        // Keep only the top 10 most active regions
+        this.highActivityRegions = new Map(
+            sortedRegions.slice(0, 10)
+                .filter(entry => entry[1] >= this.regionAccessThreshold)
+        );
+    }
+    
+    clear() {
+        this.cache.clear();
+        this.accessOrder = [];
+        this.hits = 0;
+        this.misses = 0;
+        this.accessCount = 0;
+    }
+    
+    getStats() {
+        const hitRate = this.accessCount > 0 ? 
+            this.hits / this.accessCount * 100 : 0;
+            
+        return {
+            size: this.cache.size,
+            hits: this.hits,
+            misses: this.misses,
+            hitRate: hitRate.toFixed(2) + '%',
+            highActivityRegions: this.highActivityRegions.size
+        };
+    }
+    
+    adaptToDeviceCapabilities(isMobile) {
+        if (isMobile) {
+            // Reduce cache size and use larger resolution cells on mobile
+            this.maxEntries = 2000;
+            this.resolution = 48; // Larger cells
+            this.regionSize = 256;
+        } else {
+            // Full cache on desktop
+            this.maxEntries = 5000;
+            this.resolution = 32;
+            this.regionSize = 512;
+        }
     }
 }
