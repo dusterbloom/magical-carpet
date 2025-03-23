@@ -14,6 +14,7 @@ import { WaterSystem } from "../systems/WaterSystem";
 import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
+import { MaterialSystemIntegration } from "../systems/materials/MaterialSystemIntegration";
 
 export class Engine {
   constructor() {
@@ -34,7 +35,10 @@ export class Engine {
       resolutionScale: 1.0,
       minResolutionScale: 0.5,
       updateInterval: 1.0, // seconds
-      timeSinceLastUpdate: 0
+      timeSinceLastUpdate: 0,
+      materialQuality: this.isMobile ? 'low' : (this.isTablet ? 'medium' : 'high'),
+      lastMaterialQualityUpdate: 0,
+      materialQualityUpdateInterval: 5.0
     };
 
     this.isVisible = true;
@@ -100,6 +104,7 @@ export class Engine {
     await this.assets.initialize();
 
     // Create systems in correct order (dependencies first)
+    this.systems.materials = new MaterialSystemIntegration(this);
     this.systems.network = new NetworkManager(this);
     this.systems.world = new WorldSystem(this);
     this.systems.water = new WaterSystem(this);
@@ -113,6 +118,7 @@ export class Engine {
 
     // Define initialization order (some systems depend on others)
     const initOrder = [
+      "materials",
       "network",
       "world", // Base terrain must be initialized first
       "water", // Water depends on world terrain
@@ -164,6 +170,7 @@ export class Engine {
 
     // Update systems in correct order
     const updateOrder = [
+      "materials",
       "network",
       "world",
       "water",
@@ -268,6 +275,28 @@ export class Engine {
     const avgFPS = qualityManager.fpsHistory.reduce((a, b) => a + b, 0) / 
                   qualityManager.fpsHistory.length;
     qualityManager.currentFPS = avgFPS;
+
+    // Update material quality if needed
+    qualityManager.lastMaterialQualityUpdate += delta;
+    if (qualityManager.lastMaterialQualityUpdate >= qualityManager.materialQualityUpdateInterval) {
+      qualityManager.lastMaterialQualityUpdate = 0;
+      
+      // Determine appropriate quality level based on performance
+      let targetQuality = 'medium';
+      if (avgFPS < 30) {
+        targetQuality = 'low';
+      } else if (avgFPS > 55 && !this.isMobile) {
+        targetQuality = 'high';
+      }
+      
+      // Update material quality if changed
+      if (targetQuality !== qualityManager.materialQuality) {
+        qualityManager.materialQuality = targetQuality;
+        if (this.systems.materials) {
+          this.systems.materials.reoptimizeMaterials();
+        }
+      }
+    }
     
     // Adjust resolution if FPS is too low
     if (avgFPS < qualityManager.targetFPS * 0.8) {
@@ -321,6 +350,11 @@ export class Engine {
   }
   
   resetSystems() {
+    // Reset material system
+    if (this.systems.materials) {
+      this.systems.materials.materialManager.resetMaterials();
+    }
+    
     // Reset trail system which is causing errors
     if (this.systems.carpetTrail) {
       this.systems.carpetTrail.resetTrail();
