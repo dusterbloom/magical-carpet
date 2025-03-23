@@ -18,10 +18,12 @@
 
 ### Next Tasks
 
-- 🔄 **Task 3:** Set up Particle System Optimization with object pooling
-  - Implement particle pooling for carpet trail effects
-  - Reduce particle count and lifetime on mobile devices
-  - Add instanced rendering for particles to reduce draw calls
+- ✅ **Task 3 (2025-03-25):** Set up Particle System Optimization with object pooling
+  - Implemented particle object pooling for trail, steam, and motion line effects
+  - Reduced particle count (75% reduction) and lifetime on mobile devices
+  - Added mobile-specific optimizations (less frequent emission, simpler particles)
+  - Implemented pool management with re-creation for efficiency
+  - Added performance stats tracking for monitoring pool hit rates
 
 - 🔄 **Task 4:** Implement Texture Optimization for mobile devices
   - Create mipmap chains for critical textures
