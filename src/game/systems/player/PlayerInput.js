@@ -12,6 +12,10 @@ export class PlayerInput {
     this.rotationDamping = 0.92;     // New: dampens rotation
     
     this.currentThrottle = 0;
+    
+    // Mobile input control values
+    this.verticalControl = 0;       // For altitude control via gestures
+    this.isBatterySaving = false;   // Battery saving mode tracking
   }
   
   setupInput() {
@@ -65,222 +69,125 @@ export class PlayerInput {
     // Apply rotation damping
     player.bankAngle *= this.rotationDamping;
     
-    // Throttle control with smoother acceleration
-    if (input.isKeyDown('KeyW')) {
-      this.currentThrottle = Math.min(1.0, this.currentThrottle + this.throttleSpeed * delta);
-    } else if (input.isKeyDown('KeyS')) {
-      this.currentThrottle = Math.max(0.0, this.currentThrottle - this.throttleSpeed * delta);
-    }
+    // Check if using mobile controls or keyboard
+    const isMobile = input.isTouchDevice;
     
-    // Calculate forward movement based on throttle with smoother acceleration
-    const forwardForce = this.currentThrottle * player.maxSpeed;
-    physics.applyForwardForce(player, forwardForce * delta);
-    
-    // Gentler strafing
-    let strafeForce = 0;
-    if (input.isKeyDown('KeyA')) strafeForce -= 0.3; // Reduced from 0.5
-    if (input.isKeyDown('KeyD')) strafeForce += 0.3; // Reduced from 0.5
-    
-    if (strafeForce !== 0) {
-      physics.applySideForce(player, player.accelerationValue * strafeForce * delta * 0.3);
-    }
-    
-    
-    // Vertical movement (Space/Shift) - more gradual
-    let verticalForce = 0;
-    if (input.isKeyDown('Space')) verticalForce += 1;
-    if (input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight')) verticalForce -= 1;
-    
-    if (verticalForce !== 0) {
-      physics.applyAltitudeChange(player, 30 * verticalForce * delta);
-    }
-    
-    // Apply natural falling when not using vertical controls
-    if (verticalForce === 0) {
-      physics.applyAltitudeChange(player, -5 * delta); // Gentle falling
-    }
-  }
-  
-  setupTouchControls() {
-    const input = this.engine.input;
-    
-    // Create virtual joystick for mobile
-    const joystickContainer = document.createElement('div');
-    joystickContainer.style.position = 'absolute';
-    joystickContainer.style.bottom = '20px';
-    joystickContainer.style.left = '20px';
-    joystickContainer.style.width = '120px';
-    joystickContainer.style.height = '120px';
-    joystickContainer.style.borderRadius = '60px';
-    joystickContainer.style.background = 'rgba(255, 255, 255, 0.2)';
-    document.body.appendChild(joystickContainer);
-    
-    const joystick = document.createElement('div');
-    joystick.style.position = 'absolute';
-    joystick.style.top = '35px';
-    joystick.style.left = '35px';
-    joystick.style.width = '50px';
-    joystick.style.height = '50px';
-    joystick.style.borderRadius = '25px';
-    joystick.style.background = 'rgba(255, 255, 255, 0.5)';
-    joystickContainer.appendChild(joystick);
-    
-    // Create altitude controls
-    const altUpButton = document.createElement('div');
-    altUpButton.style.position = 'absolute';
-    altUpButton.style.bottom = '150px';
-    altUpButton.style.right = '20px';
-    altUpButton.style.width = '60px';
-    altUpButton.style.height = '60px';
-    altUpButton.style.borderRadius = '30px';
-    altUpButton.style.background = 'rgba(255, 255, 255, 0.5)';
-    altUpButton.style.display = 'flex';
-    altUpButton.style.alignItems = 'center';
-    altUpButton.style.justifyContent = 'center';
-    altUpButton.style.fontSize = '24px';
-    altUpButton.textContent = '↑';
-    altUpButton.style.pointerEvents = 'auto';
-    document.body.appendChild(altUpButton);
-    
-    const altDownButton = document.createElement('div');
-    altDownButton.style.position = 'absolute';
-    altDownButton.style.bottom = '80px';
-    altDownButton.style.right = '20px';
-    altDownButton.style.width = '60px';
-    altDownButton.style.height = '60px';
-    altDownButton.style.borderRadius = '30px';
-    altDownButton.style.background = 'rgba(255, 255, 255, 0.5)';
-    altDownButton.style.display = 'flex';
-    altDownButton.style.alignItems = 'center';
-    altDownButton.style.justifyContent = 'center';
-    altDownButton.style.fontSize = '24px';
-    altDownButton.textContent = '↓';
-    altDownButton.style.pointerEvents = 'auto';
-    document.body.appendChild(altDownButton);
-    
-    // Create fire button
-    const fireButton = document.createElement('div');
-    fireButton.style.position = 'absolute';
-    fireButton.style.bottom = '80px';
-    fireButton.style.right = '100px';
-    fireButton.style.width = '80px';
-    fireButton.style.height = '80px';
-    fireButton.style.borderRadius = '40px';
-    fireButton.style.background = 'rgba(255, 0, 0, 0.5)';
-    fireButton.style.display = 'flex';
-    fireButton.style.alignItems = 'center';
-    fireButton.style.justifyContent = 'center';
-    fireButton.style.fontSize = '16px';
-    fireButton.textContent = 'FIRE';
-    fireButton.style.pointerEvents = 'auto';
-    document.body.appendChild(fireButton);
-    
-    // Initialize joystick state
-    this.joystick = {
-      active: false,
-      position: { x: 0, y: 0 },
-      startPosition: { x: 0, y: 0 },
-      container: {
-        rect: joystickContainer.getBoundingClientRect(),
-        radius: 60
-      }
-    };
-    
-    // Update joystick container rect on resize
-    window.addEventListener('resize', () => {
-      this.joystick.container.rect = joystickContainer.getBoundingClientRect();
-    });
-    
-    // Handle altitude button events
-    altUpButton.addEventListener('touchstart', () => {
-      this.touchAltitude.up = true;
-    });
-    
-    altUpButton.addEventListener('touchend', () => {
-      this.touchAltitude.up = false;
-    });
-    
-    altDownButton.addEventListener('touchstart', () => {
-      this.touchAltitude.down = true;
-    });
-    
-    altDownButton.addEventListener('touchend', () => {
-      this.touchAltitude.down = false;
-    });
-    
-    // Handle fire button events
-    fireButton.addEventListener('touchstart', () => {
-      this.playerSystem.spells.castSpell();
-    });
-    
-    this.setupJoystickEvents(input, joystick);
-  }
-  
-  setupJoystickEvents(input, joystickElement) {
-    // Handle touch events for joystick
-    input.on('touchstart', (event) => {
-      for (let i = 0; i < event.touches.length; i++) {
-        const touch = event.touches[i];
-        const touchX = touch.clientX;
-        const touchY = touch.clientY;
+    if (isMobile) {
+      // Get input from touch manager
+      if (input.moveState) {
+        // Apply forward movement based on joystick position
+        const forwardAmount = input.moveState.forward; 
+        this.currentThrottle = Math.abs(forwardAmount);
         
-        // Check if touch is within joystick container
-        const containerRect = this.joystick.container.rect;
-        if (
-          touchX >= containerRect.left &&
-          touchX <= containerRect.right &&
-          touchY >= containerRect.top &&
-          touchY <= containerRect.bottom
-        ) {
-          this.joystick.active = true;
-          this.joystick.startPosition.x = touchX;
-          this.joystick.startPosition.y = touchY;
-          break;
+        // Apply forward force based on throttle
+        physics.applyForwardForce(player, forwardAmount * player.maxSpeed * delta);
+        
+        // Apply side force for strafing
+        const sideAmount = input.moveState.right;
+        if (Math.abs(sideAmount) > 0.1) { // Apply small deadzone
+          physics.applySideForce(player, player.accelerationValue * sideAmount * delta * 0.5);
         }
-      }
-    });
-    
-    input.on('touchmove', (event) => {
-      if (this.joystick.active) {
-        for (let i = 0; i < event.touches.length; i++) {
-          const touch = event.touches[i];
-          const touchX = touch.clientX;
-          const touchY = touch.clientY;
+        
+        // Apply rotation from touch controls (either from explicit turn control or derived from strafe)
+        if (input.moveState.rotation !== undefined) {
+          // Explicit rotation value
+          player.rotation.y += input.moveState.rotation * delta * 3;
           
-          const containerRect = this.joystick.container.rect;
-          const centerX = containerRect.left + containerRect.width / 2;
-          const centerY = containerRect.top + containerRect.height / 2;
-          
-          // Calculate joystick position
-          let dx = touchX - centerX;
-          let dy = touchY - centerY;
-          
-          // Limit to container radius
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const maxDistance = this.joystick.container.radius;
-          
-          if (distance > maxDistance) {
-            dx = dx * (maxDistance / distance);
-            dy = dy * (maxDistance / distance);
-          }
-          
-          // Update joystick position
-          joystickElement.style.transform = `translate(${dx}px, ${dy}px)`;
-          
-          // Store normalized joystick position (-1 to 1)
-          this.joystick.position.x = dx / maxDistance;
-          this.joystick.position.y = dy / maxDistance;
-          
-          break;
+          // Apply banking based on rotation rate
+          player.bankAngle = -input.moveState.rotation * 0.8; 
+        } else if (Math.abs(sideAmount) > 0.1) {
+          // Derive rotation from strafe when no explicit rotation
+          player.rotation.y += sideAmount * delta * 2;
+          player.bankAngle = sideAmount * 0.5;
         }
+        
+        console.log('Applied mobile movement:', {
+          forward: forwardAmount,
+          side: sideAmount,
+          rotation: input.moveState.rotation
+        });
       }
-    });
+      
+      // Handle altitude changes
+      if (this.verticalControl !== 0) {
+        // Use gestures or specific altitude control
+        physics.applyAltitudeChange(player, 40 * this.verticalControl * delta);
+        
+        // Add gradual decay for smoother control
+        this.verticalControl *= 0.95;
+        if (Math.abs(this.verticalControl) < 0.05) this.verticalControl = 0;
+      } else {
+        // Apply gentle falling when no altitude control
+        physics.applyAltitudeChange(player, -5 * delta);
+      }
+      
+    } else {
+      // --- KEYBOARD CONTROLS ---
+      
+      // Throttle control with smoother acceleration
+      if (input.isKeyDown('KeyW')) {
+        this.currentThrottle = Math.min(1.0, this.currentThrottle + this.throttleSpeed * delta);
+      } else if (input.isKeyDown('KeyS')) {
+        this.currentThrottle = Math.max(0.0, this.currentThrottle - this.throttleSpeed * delta);
+      }
+      
+      // Calculate forward movement based on throttle with smoother acceleration
+      const forwardForce = this.currentThrottle * player.maxSpeed;
+      physics.applyForwardForce(player, forwardForce * delta);
+      
+      // Gentler strafing
+      let strafeForce = 0;
+      if (input.isKeyDown('KeyA')) strafeForce -= 0.3; // Reduced from 0.5
+      if (input.isKeyDown('KeyD')) strafeForce += 0.3; // Reduced from 0.5
+      
+      if (strafeForce !== 0) {
+        physics.applySideForce(player, player.accelerationValue * strafeForce * delta * 0.3);
+      }
+      
+      // Vertical movement (Space/Shift) - more gradual
+      let verticalForce = 0;
+      if (input.isKeyDown('Space')) verticalForce += 1;
+      if (input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight')) verticalForce -= 1;
+      
+      if (verticalForce !== 0) {
+        physics.applyAltitudeChange(player, 30 * verticalForce * delta);
+      }
+      
+      // Apply natural falling when not using vertical controls
+      if (verticalForce === 0) {
+        physics.applyAltitudeChange(player, -5 * delta); // Gentle falling
+      }
+    }
     
-    input.on('touchend', (event) => {
-      this.joystick.active = false;
-      this.joystick.position.x = 0;
-      this.joystick.position.y = 0;
-      joystickElement.style.transform = 'translate(0px, 0px)';
-    });
+    // Reduce effects in battery saving mode
+    if (this.isBatterySaving) {
+      // Reduce particle effects, camera shake, etc.
+      player.particleIntensity = 0.5; // Half the normal particle intensity
+    } else {
+      player.particleIntensity = 1.0;
+    }
+  }
+  
+  // Remove old touch control setup - replaced by optimized TouchInputManager
+  setupTouchControls() {
+    // This method is now deprecated in favor of the new TouchInputManager
+    console.log("TouchInputManager now handles touch input - setupTouchControls is deprecated");
+  }
+  
+  // Set battery saving mode
+  setBatterySavingMode(enabled) {
+    this.isBatterySaving = enabled;
+    
+    if (enabled) {
+      // Reduce control sensitivity for better battery performance
+      this.mouseSensitivity = 0.0012; // Slightly less sensitive
+      this.rotationDamping = 0.95;    // More damping (smoother, fewer updates)
+    } else {
+      // Restore normal control sensitivity
+      this.mouseSensitivity = 0.0015;
+      this.rotationDamping = 0.92;
+    }
+    
+    console.log(`Input battery saving mode: ${enabled ? 'enabled' : 'disabled'}`);
   }
 }

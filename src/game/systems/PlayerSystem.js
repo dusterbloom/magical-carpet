@@ -298,6 +298,81 @@ export class PlayerSystem {
     });
   }
   
+  // Get local player state for mobile UI
+  getLocalPlayerState() {
+    if (!this.localPlayer) {
+      console.log('No local player available yet');
+      return {
+        health: 100,
+        maxHealth: 100,
+        mana: 0,
+        currentSpell: 0,
+        speed: 0,
+        maxSpeed: 700,
+        altitude: 0,
+        position: new THREE.Vector3(0, 0, 0)
+      };
+    }
+    
+    return {
+      health: this.localPlayer.health,
+      maxHealth: this.localPlayer.maxHealth,
+      mana: this.localPlayer.mana || 0,
+      currentSpell: this.localPlayer.currentSpell || 0,
+      speed: this.localPlayer.velocity ? this.localPlayer.velocity.length() : 0,
+      maxSpeed: this.localPlayer.maxSpeed || 700,
+      altitude: this.localPlayer.position ? this.localPlayer.position.y : 0,
+      position: this.localPlayer.position ? this.localPlayer.position.clone() : new THREE.Vector3(0, 0, 0)
+    };
+  }
+  
+  // Set vertical movement for gesture control
+  setVerticalMovement(direction) {
+    if (!this.localPlayer) return;
+    
+    // Apply vertical movement in the range of -1 to 1
+    const clampedDirection = Math.max(-1, Math.min(1, direction));
+    
+    // Use the input system to apply this movement
+    if (this.input && this.input.verticalControl) {
+      this.input.verticalControl = clampedDirection;
+    }
+  }
+  
+  // Select spell for mobile UI
+  selectSpell(index) {
+    if (!this.localPlayer) return;
+    
+    // Ensure index is valid
+    if (index >= 0 && index < 3) {
+      this.localPlayer.currentSpell = index;
+      
+      // Update UI if needed
+      if (this.engine.systems.ui) {
+        this.engine.systems.ui.selectSpell(index);
+      }
+      
+      return true;
+    }
+    
+    return false;
+  }
+  
+  // Trigger special ability for double-tap gesture
+  triggerSpecialAbility() {
+    if (!this.localPlayer) return false;
+    
+    // Example: Quick boost
+    const direction = new THREE.Vector3(0, 0, -1).applyEuler(this.localPlayer.rotation);
+    this.localPlayer.velocity.addScaledVector(direction, 100);
+    
+    // Create boost effect
+    this.models.createBoostEffect(this.localPlayer.position, direction);
+    
+    // Apply cooldown logic here
+    return true;
+  }
+  
   update(delta) {
     if (!this.localPlayer) return;
     

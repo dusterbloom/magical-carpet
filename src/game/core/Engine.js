@@ -27,7 +27,7 @@ export class Engine {
     this.isRunning = false;
     this.detectDeviceCapabilities();
 
-    // Initialize quality manager for adaptive resolution scaling
+    // Initialize quality manager with mobile optimizations
     this.qualityManager = {
       targetFPS: 60,
       currentFPS: 60,
@@ -39,7 +39,9 @@ export class Engine {
       timeSinceLastUpdate: 0,
       materialQuality: this.isMobile ? 'low' : (this.isTablet ? 'medium' : 'high'),
       lastMaterialQualityUpdate: 0,
-      materialQualityUpdateInterval: 5.0
+      materialQualityUpdateInterval: 5.0,
+      batterySavingMode: false,
+      uiAnimationLevel: this.isMobile ? 'low' : 'high'
     };
 
     this.isVisible = true;
@@ -145,6 +147,27 @@ export class Engine {
 
     // Set up event handling
     this.input.initialize();
+    
+    // Configure input system to provide player state to UI
+    if (this.input && this.systems.player) {
+      // Add a small delay to ensure player system is ready
+      setTimeout(() => {
+        try {
+          this.input.setPlayerStateProvider(() => {
+            return this.systems.player.getLocalPlayerState();
+          });
+          console.log('Player state provider configured successfully');
+        } catch (error) {
+          console.warn('Error setting player state provider:', error);
+        }
+      }, 100); // 100ms delay
+    }
+    
+    // Set CSS variables for UI animations based on device capabilities
+    document.documentElement.style.setProperty(
+      '--ui-animation-speed', 
+      this.qualityManager.uiAnimationLevel === 'high' ? '1' : '0.5'
+    );
 
     // Hide loading screen
     document.getElementById("loading").style.display = "none";
@@ -205,12 +228,19 @@ export class Engine {
 
     // Update stats if available
     if (this.stats) this.stats.update();
+    
+    // Update memory usage stats every 30 frames if in dev mode
+    if (import.meta.env.DEV && (this.frameCounter = this.frameCounter || 0) && this.frameCounter++ % 30 === 0) {
+      this.updateMemoryStats();
+    }
   }
 
   detectDeviceCapabilities() {
-    // Detect device type and capabilities
+    // Enhanced device detection
     const userAgent = navigator.userAgent.toLowerCase();
-    this.isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
+    this.isMobile = (/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent) || 
+                     'ontouchstart' in window || 
+                     navigator.maxTouchPoints > 0);
     this.isTablet = this.isMobile && Math.min(window.innerWidth, window.innerHeight) > 600;
     
     console.log('Device Detection:', {
@@ -261,6 +291,40 @@ export class Engine {
   }
   
   // Adaptive resolution scaling methods
+  // Enable/disable battery saving mode
+  setBatterySavingMode(enabled) {
+    console.log(`Engine battery saving mode: ${enabled ? 'enabled' : 'disabled'}`);
+    
+    // Update quality manager
+    this.qualityManager.batterySavingMode = enabled;
+    this.qualityManager.targetFPS = enabled ? 30 : 60;
+    
+    // Update input systems
+    if (this.input && typeof this.input.setBatterySavingMode === 'function') {
+      this.input.setBatterySavingMode(enabled);
+    }
+    
+    // Apply renderer optimizations for battery saving
+    if (enabled) {
+      // Reduce shadow quality
+      this.renderer.shadowMap.type = THREE.BasicShadowMap;
+      
+      // Disable expensive post-processing
+      if (this.systems.postprocessing) {
+        this.systems.postprocessing.disableEffects(['bloom', 'ssao', 'dof']);
+      }
+    } else {
+      // Restore shadow quality based on device
+      this.renderer.shadowMap.type = this.isMobile ? 
+        THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+      
+      // Re-enable post-processing effects if available
+      if (this.systems.postprocessing) {
+        this.systems.postprocessing.restoreEffects();
+      }
+    }
+  }
+  
   updateQuality(delta) {
     const { qualityManager } = this;
     
@@ -273,9 +337,12 @@ export class Engine {
       qualityManager.fpsHistory.shift();
     }
     
-    // Only update periodically
+    // Only update periodically, less often in battery saving mode
     qualityManager.timeSinceLastUpdate += delta;
-    if (qualityManager.timeSinceLastUpdate < qualityManager.updateInterval) return;
+    const updateInterval = qualityManager.batterySavingMode ? 
+      qualityManager.updateInterval * 2 : qualityManager.updateInterval;
+      
+    if (qualityManager.timeSinceLastUpdate < updateInterval) return;
     
     // Reset timer
     qualityManager.timeSinceLastUpdate = 0;
@@ -356,6 +423,21 @@ export class Engine {
     } else {
       console.log('Game visibility lost');
     }
+  }
+  
+  updateMemoryStats() {
+    // Skip in non-dev environments
+    if (!import.meta.env.DEV) return;
+    
+    // Display memory statistics
+    if (window.performance && window.performance.memory) {
+      const memory = window.performance.memory;
+      console.log(`Memory Usage: ${(memory.usedJSHeapSize / 1048576).toFixed(2)}MB / ${(memory.jsHeapSizeLimit / 1048576).toFixed(2)}MB`);
+    }
+    
+    // Log renderer info
+    const rendererInfo = this.renderer.info;
+    console.log(`Renderer: ${rendererInfo.render.triangles} triangles, ${rendererInfo.render.calls} calls, ${rendererInfo.memory.geometries} geometries, ${rendererInfo.memory.textures} textures`);
   }
   
   resetSystems() {
