@@ -51,6 +51,9 @@ export class MobileUI {
         // Setup invisible camera controls for right-side of screen
         this.setupCameraControls();
         
+        // Ensure the minimap is visible on mobile
+        this.ensureMobileMinimapVisibility();
+        
         console.log("Mobile UI initialized with simplified user controls");
     }
     
@@ -479,6 +482,56 @@ export class MobileUI {
         });
     }
     
+    ensureMobileMinimapVisibility() {
+        // This method ensures the minimap is visible on mobile
+        setTimeout(() => {
+            // Get the minimap container created by MinimapSystem
+            const minimapContainer = document.getElementById('minimap-container');
+            
+            if (minimapContainer) {
+                // Set explicit styles to ensure visibility
+                minimapContainer.style.position = 'absolute';
+                minimapContainer.style.top = '10px';
+                minimapContainer.style.left = '10px';
+                minimapContainer.style.width = '100px';
+                minimapContainer.style.height = '100px';
+                minimapContainer.style.zIndex = '1500'; // Higher z-index to ensure visibility
+                minimapContainer.style.display = 'block'; // Force display
+                minimapContainer.style.opacity = '1'; // Ensure it's not transparent
+                minimapContainer.style.visibility = 'visible'; // Ensure it's not hidden
+                
+                console.log('Mobile minimap visibility enforced');
+            } else {
+                console.warn('Minimap container not found, creating it manually');
+                
+                // If the minimap container doesn't exist, create it temporarily
+                const tempContainer = document.createElement('div');
+                tempContainer.id = 'minimap-container';
+                tempContainer.style.cssText = `
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    width: 100px;
+                    height: 100px;
+                    border-radius: 50%;
+                    overflow: hidden;
+                    background-color: rgba(0, 0, 20, 0.5);
+                    border: 2px solid rgba(255, 255, 255, 0.5);
+                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+                    z-index: 1500;
+                    display: block;
+                    opacity: 1;
+                    visibility: visible;
+                `;
+                
+                // Add it to the UI container
+                this.uiContainer.appendChild(tempContainer);
+                
+                // It will be replaced when MinimapSystem initializes
+            }
+        }, 1000); // Delay execution to ensure the minimap system has initialized
+    }
+    
     toggleBatterySavingMode() {
         this.batterySaving = !this.batterySaving;
         
@@ -623,6 +676,15 @@ export class MobileUI {
             // Skip updates in battery saving mode to reduce CPU usage
             if (this.batterySaving && (this.frameCounter++ % (this.batteryUpdateFrequency || 1) !== 0)) {
                 return;
+            }
+            
+            // Check minimap visibility periodically (every 60 frames)
+            if (this.frameCounter % 60 === 0) {
+                const minimapContainer = document.getElementById('minimap-container');
+                if (minimapContainer && (minimapContainer.style.display === 'none' || !minimapContainer.isConnected)) {
+                    // Re-enforce visibility if needed
+                    this.ensureMobileMinimapVisibility();
+                }
             }
         } catch (error) {
             console.warn('Error updating mobile UI:', error);

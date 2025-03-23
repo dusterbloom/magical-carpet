@@ -63,8 +63,22 @@ export class MinimapSystem {
     this.minimapContainer = document.createElement('div');
     this.minimapContainer.id = 'minimap-container';
     this.minimapContainer.style.position = 'absolute';
-    this.minimapContainer.style.top = '70px'; // Position below FPS counter
-    this.minimapContainer.style.left = '10px';
+    
+    // Check if we're on mobile
+    if (this.engine.isMobile) {
+      // Mobile positioning
+      this.minimapContainer.style.top = '10px';
+      this.minimapContainer.style.left = '10px';
+      // Smaller size on mobile
+      this.size = 100;
+      this.canvas.width = this.size;
+      this.canvas.height = this.size;
+    } else {
+      // Desktop positioning
+      this.minimapContainer.style.top = '70px'; // Position below FPS counter
+      this.minimapContainer.style.left = '10px';
+    }
+    
     this.minimapContainer.style.width = `${this.size}px`;
     this.minimapContainer.style.height = `${this.size}px`;
     this.minimapContainer.style.border = `2px solid ${this.colors.border}`;
