@@ -143,24 +143,24 @@ export class PlayerSystem {
   updateNetworkPlayer(data) {
     const player = this.players.get(data.id);
     if (player && !player.isLocal) {
-      // Update position with smoothing
+      // NetworkManager now handles interpolation for smoother movement
+      // Just apply the already interpolated values directly
       if (data.x !== undefined && data.y !== undefined && data.z !== undefined) {
-        const targetPos = new THREE.Vector3(data.x, data.y, data.z);
-        player.position.lerp(targetPos, 0.3);
+        player.position.set(data.x, data.y, data.z);
       }
       
-      // Update rotation with smoothing
+      // Apply already interpolated rotation
       if (data.rotationY !== undefined) {
-        player.rotation.y = THREE.MathUtils.lerp(
-          player.rotation.y,
-          data.rotationY,
-          0.3
-        );
+        player.rotation.y = data.rotationY;
       }
       
       // Update other properties
       if (data.mana !== undefined) player.mana = data.mana;
       if (data.health !== undefined) player.health = data.health;
+      
+      // Update model position
+      player.model.position.copy(player.position);
+      player.model.rotation.y = player.rotation.y;
     }
   }
   
@@ -281,15 +281,20 @@ export class PlayerSystem {
   sendPlayerUpdate() {
     if (!this.localPlayer) return;
     
-    const { position, rotation, mana, health } = this.localPlayer;
+    const { position, rotation, mana, health, velocity } = this.localPlayer;
     
+    // Send additional data for improved network interpolation
     this.engine.systems.network.sendPlayerUpdate({
       x: position.x,
       y: position.y,
       z: position.z,
       rotationY: rotation.y,
       mana,
-      health
+      health,
+      // Send velocity for better prediction
+      velocityX: velocity.x,
+      velocityY: velocity.y,
+      velocityZ: velocity.z
     });
   }
   
