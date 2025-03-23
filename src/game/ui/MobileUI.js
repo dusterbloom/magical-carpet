@@ -303,28 +303,6 @@ export class MobileUI {
             user-select: none;
         `;
         backwardButton.textContent = 'S';
-
-        // Create the boost button
-        const boostButton = this.getElementFromPool('div') || document.createElement('div');
-        boostButton.id = 'boost-button';
-        boostButton.style.cssText = `
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 69, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            border-radius: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 20px;
-            pointer-events: auto;
-            text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
-            user-select: none;
-            margin-top: 20px;
-        `;
-        boostButton.textContent = 'BOOST';
         
         // Add touch events for forward button (W key)
         forwardButton.addEventListener('touchstart', (e) => {
@@ -388,55 +366,7 @@ export class MobileUI {
             }
         });
         
-        // Add touch events for boost button
-        boostButton.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            boostButton.style.background = 'rgba(255, 69, 0, 0.7)';
-            
-            // Apply boost by directly controlling the speed multiplier
-            if (this.engine && this.engine.systems && this.engine.systems.player && 
-                this.engine.systems.player.input) {
-                // Store current throttle
-                const playerInput = this.engine.systems.player.input;
-                const currentThrottle = playerInput.currentThrottle;
-                
-                // Apply boost by increasing speed multiplier
-                playerInput.speedMultiplier = 2.5; // 2.5x boost
-                playerInput.boostActive = true;
-                
-                // Force W key to be pressed for boost
-                if (this.engine.input && this.engine.input.keys) {
-                    this.engine.input.keys['KeyW'] = true;
-                }
-                
-                // Set high throttle for boost
-                playerInput.currentThrottle = Math.max(currentThrottle, 0.8);
-            }
-            
-            // Provide stronger haptic feedback
-            this.triggerHapticFeedback('boost');
-            
-            // Visual boost effect
-            boostButton.style.boxShadow = '0 0 20px rgba(255, 69, 0, 0.7)';
-        });
-        
-        boostButton.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            boostButton.style.background = 'rgba(255, 69, 0, 0.3)';
-            boostButton.style.boxShadow = 'none';
-            
-            // Reset boost
-            if (this.engine && this.engine.systems && this.engine.systems.player && 
-                this.engine.systems.player.input) {
-                const playerInput = this.engine.systems.player.input;
-                
-                // Reset speed multiplier
-                playerInput.speedMultiplier = 1.0;
-                playerInput.boostActive = false;
-            }
-        });
-        
-        // Create a wrapper div for W and S buttons (vertical layout)
+        // Create the wrapper div for W and S buttons (vertical layout)
         const wsButtonsWrapper = this.getElementFromPool('div') || document.createElement('div');
         wsButtonsWrapper.style.cssText = `
             display: flex;
@@ -450,7 +380,7 @@ export class MobileUI {
         
         // Add buttons to the container
         controlsContainer.appendChild(wsButtonsWrapper);
-        controlsContainer.appendChild(boostButton);
+        // Boost button removed
         
         // Add container to the UI
         this.uiContainer.appendChild(controlsContainer);
@@ -459,7 +389,6 @@ export class MobileUI {
         this.uiElements.set('controlsContainer', controlsContainer);
         this.uiElements.set('forwardButton', forwardButton);
         this.uiElements.set('backwardButton', backwardButton);
-        this.uiElements.set('boostButton', boostButton);
         this.visibleElements.add('controlsContainer');
         
         // Register touch elements
@@ -475,13 +404,7 @@ export class MobileUI {
             action: 'backward'
         });
         
-        this.touchElements.set('boost-button', {
-            element: boostButton,
-            type: 'button',
-            action: 'boost'
-        });
-        
-        this.memoryUsage.activeElements += 4;
+        this.memoryUsage.activeElements += 3; // Reduced from 4 (removed boost button)
     }
     
     createBatterySavingToggle() {

@@ -63,7 +63,7 @@ export class MinimapSystem {
     this.minimapContainer = document.createElement('div');
     this.minimapContainer.id = 'minimap-container';
     this.minimapContainer.style.position = 'absolute';
-    this.minimapContainer.style.top = '10px';
+    this.minimapContainer.style.top = '70px'; // Position below FPS counter
     this.minimapContainer.style.left = '10px';
     this.minimapContainer.style.width = `${this.size}px`;
     this.minimapContainer.style.height = `${this.size}px`;
@@ -72,6 +72,7 @@ export class MinimapSystem {
     this.minimapContainer.style.overflow = 'hidden';
     this.minimapContainer.style.backgroundColor = this.colors.background;
     this.minimapContainer.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+    this.minimapContainer.style.zIndex = '100'; // Ensure it's visible
     
     // Append canvas to container
     this.minimapContainer.appendChild(this.canvas);
