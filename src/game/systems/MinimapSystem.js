@@ -6,7 +6,7 @@ export class MinimapSystem {
     this.canvas = null;
     this.context = null;
     this.size = 150;             // Size in pixels
-    this.range = 500;            // World units to show on map
+    this.range = 10000;            // World units to show on map
     this.minimapContainer = null;
     this.initialized = false;
     this.lastUpdate = 0;         // For throttling updates

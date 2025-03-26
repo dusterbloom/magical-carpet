@@ -23,35 +23,35 @@ export class WorldSystem {
     this.manaNodes = [];
 
     // World configuration
-    this.chunkSize = 256;
-    this.terrainResolution = 64;
-    this.maxHeight = 400;  // Increased from 120
-    this.minHeight = -40;  // Deeper valleys
-    this.waterLevel = 0;
+    this.chunkSize = 1024;
+    this.terrainResolution = 32;
+    this.maxHeight = 120;  // Increased from 120
+    this.minHeight = -10;  // Deeper valleys
+    this.waterLevel = -20;
     this.viewDistance = 6;
     
     // Terrain parameters
     this.terrainParams = {
-      baseScale: 0.0015,        // Reduced from 0.003 - larger features
-      detailScale: 0.01,        // Reduced from 0.015 - smoother details
-      mountainScale: 0.004,     // Reduced from 0.008 - larger mountains
-      baseHeight: 80,          // Increased from 40
-      mountainHeight: 240,      // Increased from 80 
-      detailHeight: 40          // Increased from 20
+      baseScale: 0.002,        // Reduced from 0.003 - larger features
+      detailScale: 0.015,        // Reduced from 0.015 - smoother details
+      mountainScale: 0.003,     // Reduced from 0.008 - larger mountains
+      baseHeight: 40,          // Increased from 40
+      mountainHeight: 80,      // Increased from 80 
+      detailHeight: 10          // Increased from 20
     };
 
     // Initialize noise generator
-    this.seed = Math.random() * 10000;
+    this.seed = Math.random() * 1000;
     this.noise = createNoise2D();
     
     // Define biomes
     this.biomes = {
-      ocean: { threshold: -0.3, color: new THREE.Color(0x0066aa) },
-      beach: { threshold: -0.2, color: new THREE.Color(0xdddd77) },
-      plains: { threshold: 0.2, color: new THREE.Color(0x44aa44) },
-      forest: { threshold: 0.4, color: new THREE.Color(0x227722) },
-      mountains: { threshold: 0.6, color: new THREE.Color(0x888888) },
-      snow: { threshold: 0.8, color: new THREE.Color(0xffffff) }
+      ocean: { threshold: 0.02, color: new THREE.Color(0x0066aa) },
+      beach: { threshold: 0.02, color: new THREE.Color(0xdddd77) },
+      plains: { threshold: 0.03, color: new THREE.Color(0x44aa44) },
+      forest: { threshold: 0.04, color: new THREE.Color(0x227722) },
+      mountains: { threshold: 0.02, color: new THREE.Color(0x888888) },
+      snow: { threshold: 0.008, color: new THREE.Color(0xffffff) }
     };
 
     // Materials collection
@@ -135,7 +135,7 @@ export class WorldSystem {
    */
   fractalNoise(x, z, baseFrequency, octaves, persistence, lacunarity) {
     let frequency = baseFrequency;
-    let amplitude = 1.0;
+    let amplitude = 2.0;
     let total = 0;
     let maxValue = 0;
     
@@ -220,7 +220,7 @@ export class WorldSystem {
     this.createManaNodes();
 
     if (this.engine.camera) {
-      this.engine.camera.far = 25000; // Increased from 15000
+      this.engine.camera.far = 12000; // Increased from 15000
       this.engine.camera.updateProjectionMatrix();
     }
     
@@ -317,7 +317,7 @@ export class WorldSystem {
     this.scene.background = new THREE.Color(0x88ccff);
     
     // Use FogExp2 for more natural distance fog
-    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.00008); // Reduced from 0.0002 for longer view distance
+    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0008); // Reduced from 0.0002 for longer view distance
   }
 
   getTerrainHeight(x, z) {
@@ -325,10 +325,10 @@ export class WorldSystem {
       // Generate continent shape using large-scale noise
       const continentShape = this.fractalNoise(
         x, z,
-        0.00005, // Even lower frequency for larger landmasses (was 0.0001)
-        3,      // Just a few octaves for smooth continent shape
+        0.0001, // Even lower frequency for larger landmasses (was 0.0001)
+        4,      // Just a few octaves for smooth continent shape
         0.5,    // Persistence
-        2.0     // Lacunarity
+        1.5     // Lacunarity
       );
       
       // Apply continent mask to create oceans and landmasses
@@ -341,7 +341,7 @@ export class WorldSystem {
       }
       
       // Add beach transition zone
-      if (continentMask > 0.1 && continentMask < 0.25) {
+      if (continentMask > 0.1 && continentMask < 0.35) {
         // Calculate how far into the beach zone we are (0.0 to 1.0)
         const beachProgress = (continentMask - 0.1) / 0.15;
         
@@ -349,16 +349,16 @@ export class WorldSystem {
         const beachHeight = this.waterLevel - 2 + (beachProgress * beachProgress * 20);
         
         // Add some small dunes and texture to beaches
-        const beachNoiseScale = 0.05;
+        const beachNoiseScale = 0.01;
         const beachNoise = this.fractalNoise(x, z, beachNoiseScale, 2, 0.5, 2.0);
-        return beachHeight + beachNoise * 3 * beachProgress;
+        return beachHeight + beachNoise * 2 * beachProgress;
       }
       
       // Generate base terrain with multiple noise octaves
       const baseNoise = this.fractalNoise(
         x, z,
         this.terrainParams.baseScale,
-        4, // More octaves for varied terrain
+        8, // More octaves for varied terrain
         0.5,
         2.0
       );
@@ -367,9 +367,9 @@ export class WorldSystem {
       let height = (baseNoise + 1) * 0.5 * this.terrainParams.baseHeight;
       
       // Add coastal cliffs in some areas but not others
-      if (continentMask > 0.25 && continentMask < 0.35) {
+      if (continentMask > 0.15 && continentMask < 0.2) {
         // Calculate coastal influence (0.0 to 1.0)
-        const coastProgress = (continentMask - 0.25) / 0.1;
+        const coastProgress = (continentMask - 0.25) / 0.25;
         
         // Create cliff noise that varies along coastlines
         const cliffNoiseScale = 0.02;
@@ -384,15 +384,15 @@ export class WorldSystem {
       }
       
       // Add mountains using ridged noise
-      if (continentMask > 0.3) { // Only add mountains on land, away from shores
+      if (continentMask > 0.8) { // Only add mountains on land, away from shores
         const mountainNoise = this.ridgedNoise(
           x, z,
           this.terrainParams.mountainScale,
-          4
+          6
         );
         
         // Apply mountains with continent mask and more dramatic scaling
-        height += mountainNoise * this.terrainParams.mountainHeight * (continentMask - 0.2) * 1.5;
+        height += mountainNoise * this.terrainParams.mountainHeight * (continentMask - 0.2) * 1;
       }
       
       // Get temperature and moisture for biome-specific height adjustments
@@ -412,7 +412,7 @@ export class WorldSystem {
       
       // Add plateaus occasionally
       const plateauNoise = this.noise(x * 0.0004 + this.seed * 9, z * 0.0004 + this.seed * 10);
-      if (plateauNoise > 0.7 && height > 60 && height < 250) {
+      if (plateauNoise > 0.7 && height > 20 && height < 70) {
         // Flatten areas with plateau noise
         const targetHeight = Math.round(height / 40) * 40; // Round to nearest 40 units
         const plateauWeight = (plateauNoise - 0.7) * (1 / 0.3);

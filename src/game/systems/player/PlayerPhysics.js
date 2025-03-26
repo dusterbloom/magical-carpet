@@ -8,7 +8,7 @@ export class PlayerPhysics {
     // Adjusted physics constants for better control
     this.gravity = 5.8; // Reduced from 9.8 for gentler falling
     this.minAltitude = 5;
-    this.maxAltitude = 200;
+    this.maxAltitude = 450;
     this.dragCoefficient = 0.15; // Reduced for smoother movement
     this.altitudeDamping = 0.92; // Increased for more gradual altitude changes
     this.bankingSensitivity = 0.08; // New constant for banking control

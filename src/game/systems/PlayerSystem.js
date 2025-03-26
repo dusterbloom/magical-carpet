@@ -72,7 +72,7 @@ export class PlayerSystem {
       accelerationValue: 400, // Increased for better response (was 300)
       rotationSpeed: 3, // Increased for better turning
       spells: [],
-      altitude: 150, // Track target altitude (increased from 50)
+      altitude: 350, // Track target altitude (increased from 50)
       altitudeVelocity: 400, // Increased from 300,
       currentSpell: 0
     };
