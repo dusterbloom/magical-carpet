@@ -494,58 +494,81 @@ export class WorldSystem {
         0.4 + depth * 0.1
       );
     }
-    // SHALLOW WATER
-    else if (height < this.waterLevel) {
-      // Transition from deep to shallow
-      const t = (height - (this.waterLevel - 10)) / 10;
-      color.setRGB(0.1, 0.2, 0.5).lerp(new THREE.Color(0.2, 0.4, 0.6), t);
-      
-      // Add underwater features
-      if (textureNoise > 0.7) {
-        // Coral or underwater features
-        color.r += 0.1;
-        color.g += 0.05;
-      }
+   // SHALLOW WATER
+  else if (height < this.waterLevel) {
+    // Calculate how deep the water is - this will be visible at the bottom of water
+    const waterDepth = this.waterLevel - height;
+    const maxDepth = 20; // Reduced for more visible sand under water
+    const depthFactor = Math.min(1.0, waterDepth / maxDepth);
+    
+    // Underwater sand color - more visible through water
+    const underwaterSandColor = new THREE.Color(0x9e9272);
+    // Shallow water is almost transparent, showing sand below
+    const shallowColor = new THREE.Color(0x99ccee);
+    // Deep water is darker blue
+    const deepColor = new THREE.Color(0x001e66);
+    
+    if (waterDepth < 1.5) {
+      // Very shallow - mostly sand with blue tint
+      const t = waterDepth / 1.5;
+      color.copy(underwaterSandColor).lerp(shallowColor, t * 0.4);
+    } else if (waterDepth < 5) {
+      // Shallow - transition from sandy bottom to blue
+      const t = (waterDepth - 1.5) / 3.5;
+      color.copy(underwaterSandColor).lerp(shallowColor, 0.4 + t * 0.6);
+    } else {
+      // Deeper water - blue gradient
+      const t = Math.min(1.0, (waterDepth - 5) / 15);
+      color.copy(shallowColor).lerp(deepColor, t);
     }
-    // BEACHES AND SHORELINES
-    else if (height < this.waterLevel + 15) {  // Wider beach zone (increased from 3)
-      if (normalizedMoisture > 0.7) {
-        // Wet shoreline
-        color.setRGB(0.65, 0.65, 0.55);
+  }
+  // BEACHES AND SHORELINES
+    // BEACHES AND SHORELINES - make this transition much more gradual
+    else if (height < this.waterLevel + 15) {
+      // Calculate normalized position in the beach zone
+      const beachProgress = (height - this.waterLevel) / 15;
+      
+      // Create more color zones for better transitions
+      if (beachProgress < 0.2) {
+        // Wet sand zone - darker, slightly blue tint
+        const wetness = 1.0 - beachProgress / 0.2;
+        color.setRGB(
+          0.76 - wetness * 0.2,
+          0.7 - wetness * 0.15,
+          0.6 - wetness * 0.05 + wetness * 0.1 // Add slight blue tint when wet
+        );
+      } else if (beachProgress < 0.6) {
+        // Damp sand zone - transitional
+        const t = (beachProgress - 0.2) / 0.4;
+        color.setRGB(
+          0.76 + t * 0.12,  // Getting lighter
+          0.7 + t * 0.1,
+          0.6 + t * 0.05
+        );
       } else {
-        // Sandy beach - lighter color
-        color.setRGB(0.82, 0.78, 0.65);  // Lighter, more yellow beach
-        
-        // Add subtle beach texture
-        color.r += textureVariation * 1.2;  // Increased variation
-        color.g += textureVariation * 1.0;
-        color.b += textureVariation * 0.5;
+        // Dry sand zone - lightest
+        const t = (beachProgress - 0.6) / 0.4;
+        color.setRGB(
+          0.88 - t * 0.05,  // Slight darkening as we transition to grass
+          0.8 - t * 0.1,
+          0.65 - t * 0.05
+        );
       }
       
-      // Add wet/dry gradient based on height from water
-      const wetnessFactor = 1.0 - Math.min(1.0, (height - this.waterLevel) / 5);
-      if (wetnessFactor > 0) {
-        // Darker when closer to water
-        color.multiplyScalar(1.0 - wetnessFactor * 0.15);
-      }
-    }
-    // LOWLANDS - Biome-specific coloring
-    else if (height < 30) {
-      if (normalizedTemp > 0.7 && normalizedMoisture < 0.3) {
-        // Desert
-        color.setRGB(0.8, 0.7, 0.4);
-      } else if (normalizedMoisture > 0.6) {
-        // Lush grassland or wetland
-        color.setRGB(0.2, 0.6, 0.2);
-      } else {
-        // Standard grassland
-        color.setRGB(0.4, 0.6, 0.3);
-      }
+      // Add beach texture variation - more prominent in dry areas
+      const noiseScale = 0.05;
+      const noiseValue = Math.sin(x * noiseScale) * Math.cos(z * noiseScale) * 0.05;
       
-      // Add texture variation
-      color.r += textureVariation;
-      color.g += textureVariation;
-      color.b += textureVariation * 0.5;
+      // Apply noise more strongly to drier areas
+      const noiseStrength = Math.min(1.0, beachProgress + 0.3);
+      color.r += noiseValue * noiseStrength;
+      color.g += noiseValue * noiseStrength;
+      color.b += noiseValue * noiseStrength * 0.7;
+      
+      // Add small random dips/bumps to break up uniformity
+      const smallNoise = (Math.sin(x * 0.2) * Math.cos(z * 0.3) * 
+                         Math.sin(x * 0.1 + z * 0.5)) * 0.03;
+      color.multiplyScalar(1.0 + smallNoise);
     }
     // MID-ALTITUDE - Hills and forests
     else if (height < 120) {  // Increased from 60
@@ -708,6 +731,14 @@ export class WorldSystem {
             mesh.position.set(startX, 0, startZ);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
+
+            // Ensure terrain renders beneath water/shores:
+    mesh.renderOrder = 0;
+    this.materials.terrain.polygonOffset = true;
+    this.materials.terrain.polygonOffsetFactor = 1;
+    this.materials.terrain.polygonOffsetUnits = 1;
+    
+   this.scene.add(mesh);
             
             this.scene.add(mesh);
             this.currentChunks.set(key, mesh);

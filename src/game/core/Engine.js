@@ -14,6 +14,8 @@ import { WaterSystem } from "../systems/WaterSystem";
 import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
+import { ShorelineEffect } from "./ShorelineEffect";
+
 
 export class Engine {
   constructor() {
@@ -83,6 +85,8 @@ export class Engine {
     this.systems.carpetTrail = new CarpetTrailSystem(this);
     this.systems.landmarks = new LandmarkSystem(this);
     this.systems.minimap = new MinimapSystem(this);
+    this.shorelineEffect = new ShorelineEffect(this);
+
 
     // Define initialization order (some systems depend on others)
     const initOrder = [
@@ -154,21 +158,32 @@ export class Engine {
       }
     }
 
-    // Render scene
+  // Render scene using ShorelineEffect
+  if (this.shorelineEffect) {
+    this.shorelineEffect.render(this.renderer, this.scene, this.camera);
+  } else {
+    // Fallback to standard rendering if effect isn't available
     this.renderer.render(this.scene, this.camera);
-
-    // Update stats if available
-    if (this.stats) this.stats.update();
   }
 
-  onResize() {
-    // Update camera
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
+  // Update stats if available
+  if (this.stats) this.stats.update();
+}
 
-    // Update renderer
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+onResize() {
+  // Update camera
+  this.camera.aspect = window.innerWidth / window.innerHeight;
+  this.camera.updateProjectionMatrix();
+
+  // Update renderer
+  this.renderer.setSize(window.innerWidth, window.innerHeight);
+  
+  // Update the shoreline effect if it exists
+  if (this.shorelineEffect && typeof this.shorelineEffect.setSize === 'function') {
+    this.shorelineEffect.setSize(window.innerWidth, window.innerHeight);
   }
+}
   
   onVisibilityChange() {
     this.isVisible = document.visibilityState === 'visible';

@@ -19,6 +19,9 @@ export class PlayerPhysics {
     const player = this.playerSystem.localPlayer;
     if (!player) return;
     
+
+    
+
     // Apply momentum preservation during turns
     this.preserveMomentum(player, delta);
     

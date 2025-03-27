@@ -40,528 +40,241 @@ export class WaterSystem {
   async initialize() {
     console.log("Initializing WaterSystem...");
     
-    // Create materials
-    this.createMaterials();
+    // Skip materials creation as we're using WaterSurfaceComplex directly
     
     // Initialize new water surface
     this.initializeWaterSurface();
     
-    // Generate rivers
+    // Generate empty river paths
     this.generateRiverPaths();
     
-    // Create ocean
-    this.createOcean();
+    // // Create ocean
+    // this.createOcean();
     
-    // Create shoreline buffer
-    this.createShoreline();
+    // // Create shoreline buffer
+    // this.createShoreline();
     
     console.log("WaterSystem initialized");
   }
 
   initializeWaterSurface() {
-    // Create the complex water surface
-    const oceanSize = this.worldSystem.chunkSize * 20;
+    console.log("Creating water surface with simplified approach...");
+    
+    // Create separate components: main water body + shoreline
+    this.createMainWater();
+    this.createShoreline();
+    
+    console.log("Water surface created");
+  }
+  
+  createMainWater() {
+    // Create a MUCH larger water surface for main water body
+    const oceanSize = this.worldSystem.chunkSize * 40; // Even larger to ensure coverage
+    
+    // Very simple, low-detail geometry for the main water body
+    const waterGeometry = new THREE.PlaneGeometry(
+      oceanSize,
+      oceanSize,
+      64,  // Lower resolution is fine for main water
+      64
+    );
+    
+    // Add subtle random height variations for more natural look
+    this.createWaterWaves(waterGeometry);
+    
+    // Position water exactly at water level
+    const waterPos = [0, this.waterLevel, 0];
+    
+    // Create water surface with darker blue for depth
     this.waterSurface = new WaterSurfaceComplex({
-      width: oceanSize,
-      length: oceanSize,
-      position: [0, this.waterLevel - 0.3, 0],
-      color: 0x4a7eb5,
-      scale: 3.5,
+      geometry: waterGeometry,
+      position: waterPos,
+      color: 0x003366,  // Darker blue for deep water
+      scale: 0.8,       // Less distortion
       flowDirection: [1, 1],
-      flowSpeed: 0.25,
-      dimensions: 512,
-      reflectivity: 0.25,
-      fxDistortionFactor: 0.08,
+      flowSpeed: 0.0001,  // Very slow and subtle flow
+      reflectivity: 0.2,
+      fxDistortionFactor: 0.02,
       fxDisplayColorAlpha: 0.3
     });
 
     // Add fluid effects
     this.fluidFX = new FluidFX({
-      densityDissipation: 0.97,
-      velocityDissipation: 0.98,
-      velocityAcceleration: 10,
-      curlStrength: 35
+      densityDissipation: 0.98,
+      velocityDissipation: 0.99,
+      velocityAcceleration: 5,
+      curlStrength: 15
     });
 
-    // Add water surface to scene
+    // Configure the water mesh
     const waterMesh = this.waterSurface.getMesh();
     waterMesh.receiveShadow = true;
+    
+    // Very simple rendering settings
+    if (waterMesh.material) {
+      waterMesh.material.transparent = true;
+      waterMesh.material.opacity = 0.9;
+         waterMesh.material.depthWrite = false;
+            // Enable polygon offset to push water slightly forward
+            waterMesh.material.polygonOffset = true;
+            waterMesh.material.polygonOffsetFactor = -1;  // push closer to camera
+           waterMesh.material.polygonOffsetUnits = -1;
+            
+            waterMesh.renderOrder = 1;  // Render after terrain (0) but before shoreline (set later)
+    }
+    
+    // Add main water body to scene
     this.scene.add(waterMesh);
   }
   
-  createMaterials() {
-    // Shared water properties
-    const waterColor = new THREE.Color(0x4a7eb5);
-    
-    // Load normal maps for materials
-    const textureLoader = new THREE.TextureLoader();
-    const waterNormalMap1 = textureLoader.load('/water/complex/Water_1_M_Normal.jpg');
-    waterNormalMap1.wrapS = waterNormalMap1.wrapT = THREE.RepeatWrapping;
-
-    // Create ocean material
-    this.materials.ocean = new THREE.MeshStandardMaterial({
-      color: waterColor,
-      transparent: true,
-      opacity: 0.8,
-      metalness: 0.2,
-      roughness: 0.2,
-      normalMap: waterNormalMap1,
-      normalScale: new THREE.Vector2(0.5, 0.5),
-      envMapIntensity: 0.8
-    });
-    
-    // Create river material
-    this.materials.river = new THREE.MeshStandardMaterial({
-      color: waterColor.clone().multiplyScalar(1.2),
-      transparent: true,
-      opacity: 0.6,
-      metalness: 0.2,
-      roughness: 0.1
-    });
-    
-    // Create lake material
-    this.materials.lake = new THREE.MeshStandardMaterial({
-      color: waterColor.clone().multiplyScalar(1.1),
-      transparent: true,
-      opacity: 0.65,
-      metalness: 0.15,
-      roughness: 0.2
-    });
-    
-    // Create shoreline material
-    this.materials.shoreline = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0x88CCFF),
-      transparent: true,
-      opacity: 0.8,
-      metalness: 0.05,
-      roughness: 0.1
-    });
-  }
-  
-  createShorelineAlphaMap() {
-    // Create a gradual alpha map for shoreline blending
-    const size = 512;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // Create radial gradient for alpha
-    const gradient = ctx.createRadialGradient(
-      size/2, size/2, size * 0.3,
-      size/2, size/2, size * 0.5
-    );
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.7)');
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    
-    return texture;
-  }
-  
   createShoreline() {
-    const oceanSize = this.worldSystem.chunkSize * 20;
-    const shorelineWidth = 40;
-    const segments = 192;
-    const radialSegments = 12;
+    console.log("Creating shoreline transition...");
     
-    const geometry = new THREE.BufferGeometry();
-    const vertices = [];
+    // Create a ring-shaped shoreline that will blend water and land
+    const shoreSize = this.worldSystem.chunkSize * 20;
+    const innerRadius = shoreSize * 0.33; // Controls where shoreline starts
+    const outerRadius = shoreSize * 0.5;  // Controls where shoreline ends
+    
+    // Create a high-resolution ring for the shoreline
+    const segments = 128; // High segment count for smooth edge
+    const rings = 24;     // Multiple rings for gradual transition
+    
+    const shorelineGeometry = new THREE.RingGeometry(
+      innerRadius, outerRadius, segments, rings
+    );
+    
+    // Rotate to lie flat
+    shorelineGeometry.rotateX(-Math.PI / 0.5);
+    
+    // We'll calculate vertex colors for the shoreline
+    const positions = shorelineGeometry.attributes.position.array;
     const colors = [];
-    const uvs = [];
-    const indices = [];
     
-    const centerX = 0;
-    const centerZ = 0;
-    const innerRadius = oceanSize / 2 - shorelineWidth;
-    const outerRadius = oceanSize / 2 + shorelineWidth;
-    
-    const waterColor = new THREE.Color(0x0066aa);
-    const shallowWaterColor = new THREE.Color(0x88aacc);
-    const wetSandColor = new THREE.Color(0xd9d0b0);
-    const beachColor = new THREE.Color(0xe8e4cf);
-    
-    for (let i = 0; i <= segments; i++) {
-      const theta = (i / segments) * Math.PI * 2;
-      const cosTheta = Math.cos(theta);
-      const sinTheta = Math.sin(theta);
+    // Need to create a colors buffer
+    for (let i = 0; i < positions.length / 3; i++) {
+      const i3 = i * 3;
+      const x = positions[i3];
+      const y = positions[i3 + 1];
+      const z = positions[i3 + 2];
       
-      for (let r = 0; r <= radialSegments; r++) {
-        const radius = innerRadius + (outerRadius - innerRadius) * (r / radialSegments);
-        
-        const x = centerX + radius * cosTheta;
-        const z = centerZ + radius * sinTheta;
-        const y = 0;
-        
-        vertices.push(x, y, z);
-        uvs.push(i / segments, r / radialSegments);
-        
-        const t = r / radialSegments;
-        let color;
-        
-        if (t < 0.3) {
-          const normalizedT = t / 0.3;
-          color = new THREE.Color().copy(waterColor).lerp(shallowWaterColor, normalizedT);
-        } else if (t < 0.65) {
-          const normalizedT = (t - 0.3) / 0.35;
-          color = new THREE.Color().copy(shallowWaterColor).lerp(wetSandColor, normalizedT);
-        } else {
-          const normalizedT = (t - 0.65) / 0.35;
-          color = new THREE.Color().copy(wetSandColor).lerp(beachColor, normalizedT);
-        }
-        
-        colors.push(color.r, color.g, color.b);
-      }
+      // Calculate distance from center as percentage
+      const distFromCenter = Math.sqrt(x*x + z*z);
+      const t = (distFromCenter - innerRadius) / (outerRadius - innerRadius);
+      
+      // Create color gradient from water to sand
+      const waterColor = new THREE.Color(0x4477AA);   // Blue for water side
+      const sandColor = new THREE.Color(0xDDCCAA);    // Tan for sand side
+      
+      // Create noise pattern for irregular edge
+      const noiseScale = 0.05;
+      const noiseVal = Math.sin(x * noiseScale) * Math.cos(z * noiseScale) * 0.15;
+      
+      // Adjust transition with noise for irregular edge
+      const adjustedT = Math.max(0, Math.min(1, t + noiseVal));
+      
+      // Mix colors based on position in ring
+      const mixedColor = new THREE.Color().copy(waterColor).lerp(sandColor, adjustedT);
+      
+      // Add to colors array
+      colors.push(mixedColor.r, mixedColor.g, mixedColor.b);
+      
+      // Also vary height for subtle undulation
+      positions[i3 + 1] = (Math.random() - 0.5) * 0.3 + this.waterLevel;
     }
     
-    for (let i = 0; i < segments; i++) {
-      for (let r = 0; r < radialSegments; r++) {
-        const a = i * (radialSegments + 1) + r;
-        const b = i * (radialSegments + 1) + r + 1;
-        const c = (i + 1) * (radialSegments + 1) + r;
-        const d = (i + 1) * (radialSegments + 1) + r + 1;
-        
-        indices.push(a, b, c);
-        indices.push(c, b, d);
-      }
-    }
+    // Add colors attribute to geometry
+    shorelineGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-    
-    
-
-const material = new THREE.MeshStandardMaterial({
+    // Create a material for the shoreline
+    const shorelineMaterial = new THREE.MeshStandardMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.8,
-      metalness: 0.15,
-      roughness: 0.4,
+      opacity: 0.9,
       side: THREE.DoubleSide,
-      flatShading: false,
-      alphaMap: this.createShorelineAlphaMap(),
+      roughness: 0.8,
+      metalness: 0.1,
       depthWrite: false,
-      blending: THREE.CustomBlending,
-      blendSrc: THREE.SrcAlphaFactor,
-      blendDst: THREE.OneMinusSrcAlphaFactor,
-      blendEquation: THREE.AddEquation
     });
-
-    this.shorelineMesh = new THREE.Mesh(geometry, material);
-    this.materials.shoreline = material;
     
-    this.shorelineMesh.position.y = this.waterLevel - 0.2;
-    this.shorelineMesh.rotation.x = -Math.PI / 2;
+    // Create the shoreline mesh
+    this.shorelineMesh = new THREE.Mesh(shorelineGeometry, shorelineMaterial);
+    this.shorelineMesh.renderOrder = 2;
+    this.shorelineMesh.position.y = this.waterLevel + 0.15;
     
+    // Add shoreline to scene
     this.scene.add(this.shorelineMesh);
   }
-  
-  createOcean() {
-    const oceanSize = this.worldSystem.chunkSize * 20;
-    const segments = 32;
-    const oceanGeometry = new THREE.PlaneGeometry(oceanSize, oceanSize, segments, segments);
-    oceanGeometry.rotateX(-Math.PI / 2);
-    
-    const positions = oceanGeometry.attributes.position.array;
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const z = positions[i + 2];
-      const distanceFromCenter = Math.sqrt(x * x + z * z);
-      const maxDistance = oceanSize * 0.5;
-      
-      const edgeFactor = Math.max(0, 1 - distanceFromCenter / maxDistance);
-      positions[i + 1] = (Math.random() - 0.5) * 0.6 * edgeFactor;
-    }
-    
-    oceanGeometry.computeVertexNormals();
-    
-    this.oceanMesh = new THREE.Mesh(oceanGeometry, this.materials.ocean);
-    this.oceanMesh.position.y = this.waterLevel - 0.5;
-    this.oceanMesh.receiveShadow = true;
-    
-    this.scene.add(this.oceanMesh);
-  }
-  
-  generateRiverPaths() {
-    this.riverPaths = [];
-    const chunkSize = this.worldSystem.chunkSize;
-    const worldExtent = chunkSize * this.worldSystem.viewDistance * 2;
-    
-    for (let i = 0; i < this.riverCount; i++) {
-      const startX = (Math.random() - 0.5) * worldExtent;
-      const startZ = (Math.random() - 0.5) * worldExtent;
-      
-      let bestHeight = -Infinity;
-      let bestX = startX;
-      let bestZ = startZ;
-      
-      for (let j = 0; j < 20; j++) {
-        const sampleX = startX + (Math.random() - 0.5) * 500;
-        const sampleZ = startZ + (Math.random() - 0.5) * 500;
-        const height = this.worldSystem.getTerrainHeight(sampleX, sampleZ);
-        
-        if (height > bestHeight && height > this.waterLevel + 30) {
-          bestHeight = height;
-          bestX = sampleX;
-          bestZ = sampleZ;
-        }
-      }
-      
-      if (bestHeight === -Infinity) continue;
-      
-      const riverPath = this.generateRiverFlow(bestX, bestZ);
-      if (riverPath.length > 0) {
-        this.riverPaths.push(riverPath);
-      }
-    }
-  }
-  
-  generateRiverFlow(startX, startZ) {
-    const path = [];
-    let currentX = startX;
-    let currentZ = startZ;
-    let currentHeight = this.worldSystem.getTerrainHeight(currentX, currentZ);
-    
-    path.push({ x: currentX, z: currentZ, y: currentHeight });
-    
-    const maxSegments = 1000;
-    let segmentCount = 0;
-    
-    while (currentHeight > this.waterLevel + 0.5 && segmentCount < maxSegments) {
-      const sampleRadius = 15;
-      const sampleCount = 8;
-      let lowestHeight = currentHeight;
-      let lowestX = currentX;
-      let lowestZ = currentZ;
-      
-      for (let i = 0; i < sampleCount; i++) {
-        const angle = (i / sampleCount) * Math.PI * 2;
-        const sampleX = currentX + Math.cos(angle) * sampleRadius;
-        const sampleZ = currentZ + Math.sin(angle) * sampleRadius;
-        const height = this.worldSystem.getTerrainHeight(sampleX, sampleZ);
-        
-        if (height < lowestHeight) {
-          lowestHeight = height;
-          lowestX = sampleX;
-          lowestZ = sampleZ;
-        }
-      }
-      
-      if (lowestHeight >= currentHeight) {
-        lowestX = currentX + (Math.random() - 0.5) * 20;
-        lowestZ = currentZ + (Math.random() - 0.5) * 20;
-        lowestHeight = this.worldSystem.getTerrainHeight(lowestX, lowestZ);
-        
-        if (lowestHeight >= currentHeight) break;
-      }
-      
-      path.push({ x: lowestX, z: lowestZ, y: lowestHeight });
-      
-      currentX = lowestX;
-      currentZ = lowestZ;
-      currentHeight = lowestHeight;
-      
-      segmentCount++;
-    }
-    
-    return path;
-  }
-  
-  createRiverMeshForSegment(path, startIndex, endIndex) {
-    if (startIndex >= endIndex || endIndex >= path.length) return null;
-    
-    const points = [];
-    for (let i = startIndex; i <= endIndex; i++) {
-      points.push(new THREE.Vector3(path[i].x, path[i].y + 0.2, path[i].z));
-    }
-    
-    const curve = new THREE.CatmullRomCurve3(points);
-    const segments = (endIndex - startIndex) * 2;
-    const tubeGeometry = new THREE.TubeGeometry(curve, segments, this.riverWidth / 2, 8, false);
-    
-    const river = new THREE.Mesh(tubeGeometry, this.materials.river);
-    river.receiveShadow = true;
-    
-    return river;
-  }
-  
-  updateRivers() {
-    const player = this.engine.systems.player?.localPlayer;
-    if (!player) return;
-    
-    const chunkSize = this.worldSystem.chunkSize;
-    const playerChunkX = Math.floor(player.position.x / chunkSize);
-    const playerChunkZ = Math.floor(player.position.z / chunkSize);
-    const viewDistance = this.worldSystem.viewDistance;
-    const chunksToKeep = new Set();
-    
-    this.riverPaths.forEach((path, riverIndex) => {
-      for (let i = 0; i < path.length - 1; i++) {
-        const startChunkX = Math.floor(path[i].x / chunkSize);
-        const startChunkZ = Math.floor(path[i].z / chunkSize);
-        
-        const distX = Math.abs(startChunkX - playerChunkX);
-        const distZ = Math.abs(startChunkZ - playerChunkZ);
-        const isVisible = Math.sqrt(distX * distX + distZ * distZ) <= viewDistance;
-        
-        if (isVisible) {
-          const key = `river_${riverIndex}_${i}`;
-          chunksToKeep.add(key);
-          
-          if (!this.riverSegments.has(key)) {
-            let endIndex = i + 1;
-            while (endIndex < path.length &&
-                  Math.abs(Math.floor(path[endIndex].x / chunkSize) - startChunkX) <= 1 &&
-                  Math.abs(Math.floor(path[endIndex].z / chunkSize) - startChunkZ) <= 1) {
-              endIndex++;
-            }
-            
-            const riverMesh = this.createRiverMeshForSegment(path, i, Math.min(endIndex, path.length - 1));
-            
-            if (riverMesh) {
-              this.scene.add(riverMesh);
-              this.riverSegments.set(key, riverMesh);
-            }
-          }
-        }
-      }
-    });
-    
-    for (const [key, mesh] of this.riverSegments.entries()) {
-      if (!chunksToKeep.has(key)) {
-        this.scene.remove(mesh);
-        mesh.geometry.dispose();
-        this.riverSegments.delete(key);
-      }
-    }
-  }
-  
-  updateOcean() {
-    const player = this.engine.systems.player?.localPlayer;
-    if (player) {
-      if (this.oceanMesh) {
-        this.oceanMesh.position.x = player.position.x;
-        this.oceanMesh.position.z = player.position.z;
-      }
-      
-      if (this.shorelineMesh) {
-        this.shorelineMesh.position.x = player.position.x;
-        this.shorelineMesh.position.z = player.position.z;
-      }
-    }
-  }
-  
-  animateWater(delta) {
-    this.time += delta;
-    
-    if (this.oceanMesh) {
-      if (this.oceanMesh.geometry.attributes && this.oceanMesh.geometry.attributes.position) {
-        const positions = this.oceanMesh.geometry.attributes.position.array;
-        
-        const waveSpeed = 0.2;
-        const waveHeight = 0.6;
-        const wavePeriod = 20.0;
-        
-        for (let i = 0; i < positions.length; i += 3) {
-          const x = positions[i];
-          const z = positions[i + 2];
-          
-          const distanceFromCenter = Math.sqrt(x * x + z * z);
-          const maxDistance = this.worldSystem.chunkSize * 10;
-          const edgeFactor = Math.max(0, 1 - distanceFromCenter / maxDistance);
-          
-          const vertexOffset = (x * 0.02) + (z * 0.02);
-          
-          // Main waves
-          const waveOffset = Math.sin((this.time * waveSpeed) + vertexOffset) * waveHeight * edgeFactor;
-          
-          // Secondary waves for complexity
-          const waveOffset2 = Math.cos((this.time * waveSpeed * 0.7) + vertexOffset * 1.3) * waveHeight * 0.4 * edgeFactor;
-          
-          // Fine ripples
-          const rippleOffset = Math.sin((this.time * waveSpeed * 2.2) + (x * 0.1) + (z * 0.1)) * waveHeight * 0.15 * edgeFactor;
-          
-          // Wind-driven choppy waves
-          const choppyOffset = Math.sin((this.time * waveSpeed * 1.5) + (x * 0.05) - (z * 0.07)) * 
-                               Math.cos((this.time * waveSpeed * 1.2) - (x * 0.06) + (z * 0.04)) * 
-                               waveHeight * 0.2 * edgeFactor;
-          
-          if (!this.initialWaveHeights) {
-            this.initialWaveHeights = new Float32Array(positions.length / 3);
-            for (let j = 0; j < positions.length / 3; j++) {
-              this.initialWaveHeights[j] = Math.sin(j * 0.1) * 0.2;
-            }
-          }
-          
-          const idx = Math.floor(i / 3);
-          const baseHeight = this.initialWaveHeights[idx] || 0;
-          
-          positions[i + 1] = baseHeight + waveOffset + waveOffset2 + rippleOffset + choppyOffset;
-        }
-        
-        this.oceanMesh.geometry.attributes.position.needsUpdate = true;
-        this.oceanMesh.geometry.computeVertexNormals();
-      }
-      
-      // Update oceanMesh material
-      if (this.materials.ocean && this.materials.ocean.normalMap) {
-        // Animate normal map offset for flowing water effect
-        const normalMap = this.materials.ocean.normalMap;
-        if (!normalMap.userData.offset) {
-          normalMap.userData.offset = { x: 0, y: 0 };
-        }
-        
-        normalMap.userData.offset.x += delta * 0.05;
-        normalMap.userData.offset.y += delta * 0.03;
-        
-        normalMap.offset.set(normalMap.userData.offset.x, normalMap.userData.offset.y);
-      }
-    }
-    
-    if (this.materials.river.userData) {
-      // Could be extended with flow animation
-    }
-    
-    if (this.shorelineMesh) {
-      const pulseSpeed = 0.8;
-      const baseOpacity = 0.95;
-      const pulseAmount = 0.05;
-      
-      this.materials.shoreline.opacity = baseOpacity + Math.sin(this.time * pulseSpeed) * pulseAmount;
-      this.shorelineMesh.position.y = this.waterLevel - 0.2 + Math.sin(this.time * 1.2) * 0.03;
-    }
-  }
-  
-  update(delta) {
-    this.updateOcean();
-    this.updateRivers();
-    this.animateWater(delta);
 
+
+
+  // We're no longer using this approach
+  // Instead, we're relying on the natural intersection between
+  // the water plane and terrain geometry
+  createWaterWaves(geometry) {
+    if (!geometry || !geometry.attributes || !geometry.attributes.position) {
+      console.error("Invalid geometry for wave creation");
+      return geometry;
+    }
+    
+    const positions = geometry.attributes.position.array;
+    const count = positions.length / 3;
+    
+    // Add subtle random height variation to water surface
+    // to break up the perfectly flat appearance
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      // Y is the height coordinate (index 1)
+      // Add very small random height offset
+      positions[i3 + 1] += (Math.random() - 0.5) * 0.02;
+    }
+    
+    // Update normals after position changes
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+
+  generateRiverPaths() {
+    // Empty implementation to prevent errors
+    console.log("River paths generation skipped");
+    this.riverPaths = [];
+  }
+
+  update(delta) {
+    // Update water animations
     if (this.waterSurface) {
       this.waterSurface.update(delta);
     }
+    
     if (this.fluidFX) {
       this.fluidFX.update(this.engine.renderer, delta);
     }
 
+    // Follow player with water and shoreline
     const player = this.engine.systems.player?.localPlayer;
-    if (player && this.waterSurface) {
-      const waterMesh = this.waterSurface.getMesh();
-      waterMesh.position.x = player.position.x;
-      waterMesh.position.z = player.position.z;
+    if (player) {
+      // Update main water position
+      if (this.waterSurface) {
+        const waterMesh = this.waterSurface.getMesh();
+        waterMesh.position.x = player.position.x;
+        waterMesh.position.z = player.position.z;
+      }
+      
+      // Update shoreline position
+      if (this.shorelineMesh) {
+        this.shorelineMesh.position.x = player.position.x;
+        this.shorelineMesh.position.z = player.position.z;
+        
+        // Add subtle animation to shoreline
+        this.time += delta;
+        const waveAmount = 0.05;
+        this.shorelineMesh.position.y = this.waterLevel + 0.1 + 
+          Math.sin(this.time * 0.5) * waveAmount;
+      }
     }
   }
 
   dispose() {
+    // Clean up main water surface
     if (this.waterSurface) {
       const waterMesh = this.waterSurface.getMesh();
       this.scene.remove(waterMesh);
@@ -569,31 +282,25 @@ const material = new THREE.MeshStandardMaterial({
       this.waterSurface = null;
     }
 
+    // Clean up fluid effects
     if (this.fluidFX) {
       this.fluidFX.dispose();
       this.fluidFX = null;
     }
-
-    if (this.oceanMesh) {
-      this.scene.remove(this.oceanMesh);
-      this.oceanMesh.geometry.dispose();
-      this.oceanMesh = null;
-    }
-
+    
+    // Clean up shoreline
     if (this.shorelineMesh) {
       this.scene.remove(this.shorelineMesh);
-      this.shorelineMesh.geometry.dispose();
+      if (this.shorelineMesh.geometry) {
+        this.shorelineMesh.geometry.dispose();
+      }
+      if (this.shorelineMesh.material) {
+        this.shorelineMesh.material.dispose();
+      }
       this.shorelineMesh = null;
     }
-
-    for (const [key, mesh] of this.riverSegments.entries()) {
-      this.scene.remove(mesh);
-      mesh.geometry.dispose();
-    }
-    this.riverSegments.clear();
-
-    Object.values(this.materials).forEach(material => {
-      if (material) material.dispose();
-    });
   }
 }
+
+// MODIFY THE WATERSURFACECOMPLEX.JS CONSTRUCTOR
+// To accept a custom geometry and use vertex colors
