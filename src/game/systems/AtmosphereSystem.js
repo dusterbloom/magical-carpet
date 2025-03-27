@@ -41,17 +41,8 @@ export class AtmosphereSystem {
   
 
   createSky() {
-    // Clear any existing sky first
-    if (this.sky) {
-      this.scene.remove(this.sky);
-      this.sky.geometry.dispose();
-      this.sky.material.dispose();
-    }
-  
-    // Use a much larger sky dome to prevent the edge from being visible
+    // Existing day sky creation:
     const skyGeometry = new THREE.SphereGeometry(8000, 32, 15);
-    
-    // Instead of shader material that might be causing issues, use a simple gradient
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
         topColor: { value: new THREE.Color(0x3388ff) },
@@ -79,24 +70,51 @@ export class AtmosphereSystem {
         }
       `,
       side: THREE.BackSide,
-      fog: false // Disable fog for sky dome
+      fog: false
     });
   
     this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
-    
-    // Make sure sky follows camera
     this.sky.onBeforeRender = () => {
       if (this.engine.camera) {
         this.sky.position.copy(this.engine.camera.position);
       }
     };
-    
     this.scene.add(this.sky);
+    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0003);
     
-    // Use a more gentle fog that won't create sharp visual boundaries
-    this.scene.fog = new THREE.FogExp2(0xaaddff, 0.0003);
+    // Create night sky components (stars and moon)
+    this.createNightSky();
   }
-  
+
+  createNightSky() {
+    const textureLoader = new THREE.TextureLoader();
+    // Make sure you have appropriate textures in your assets
+    const starsTexture = textureLoader.load('/textures/stars.jpg');
+    const moonTexture = textureLoader.load('/textures/moon.jpg');
+
+    // Create a star field: a very large sphere with the stars texture on the inside.
+    const starsGeometry = new THREE.SphereGeometry(8000, 64, 32);
+    const starsMaterial = new THREE.MeshBasicMaterial({
+      map: starsTexture,
+      side: THREE.BackSide,
+      transparent: true,
+      opacity: 0  // Start hidden during daytime
+    });
+    this.starsMesh = new THREE.Mesh(starsGeometry, starsMaterial);
+    this.scene.add(this.starsMesh);
+
+    // Create a moon: a smaller sphere with a moon texture.
+    const moonGeometry = new THREE.SphereGeometry(200, 32, 32);
+    const moonMaterial = new THREE.MeshBasicMaterial({
+      map: moonTexture,
+      transparent: true,
+      opacity: 0  // Start hidden during daytime
+    });
+    this.moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
+    // Set an initial position for the moon in the sky.
+    this.moonMesh.position.set(1000, 1000, -2000);
+    this.scene.add(this.moonMesh);
+  }
 
 createCloudParticle() {
   // Create a more natural-looking cloud particle
@@ -505,22 +523,45 @@ updateSkyColors() {
   }
   
   update(delta) {
-    // Update time of day
-    this.timeOfDay += delta / this.dayDuration;
-    if (this.timeOfDay >= 1.0) this.timeOfDay -= 1.0;
-    
-    // Update sky colors
-    this.updateSkyColors();
-    
-    // Make sure sky follows camera
-    if (this.sky && this.engine.camera) {
-      this.sky.position.copy(this.engine.camera.position);
+        // Update time of day
+        this.timeOfDay += delta / this.dayDuration;
+        if (this.timeOfDay >= 1.0) this.timeOfDay -= 1.0;
+        
+        // Update sky colors
+        this.updateSkyColors();
+        
+        // Make sure sky follows camera
+        if (this.sky && this.engine.camera) {
+          this.sky.position.copy(this.engine.camera.position);
+        }
+        
+        // Update clouds
+        this.updateClouds(delta);
+        
+        // Update birds
+        this.updateBirds(delta);
+        
+        // --- New: Update night sky elements ---
+        let nightOpacity = 0;
+        // Assume night if timeOfDay is less than 0.25 or greater than 0.75
+        if (this.timeOfDay < 0.25) {
+           nightOpacity = (0.25 - this.timeOfDay) / 0.25;
+        } else if (this.timeOfDay > 0.75) {
+           nightOpacity = (this.timeOfDay - 0.75) / 0.25;
+        }
+        nightOpacity = Math.min(1, Math.max(0, nightOpacity));
+        
+        // Update stars opacity
+        if (this.starsMesh && this.starsMesh.material) {
+           this.starsMesh.material.opacity = nightOpacity;
+        }
+        
+        // Update moon opacity and position
+        if (this.moonMesh && this.moonMesh.material) {
+           this.moonMesh.material.opacity = nightOpacity;
+           // Configure the moon to follow a circular path over the day:
+           const moonAngle = this.timeOfDay * Math.PI * 2; // full circle over one day
+           this.moonMesh.position.set(1000 * Math.cos(moonAngle), 800, 1000 * Math.sin(moonAngle));
+        }
+      }
     }
-    
-    // Update clouds
-    this.updateClouds(delta);
-    
-    // Update birds
-    this.updateBirds(delta);
-  }
-}
