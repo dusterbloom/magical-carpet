@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@three.ez/instanced-mesh": "^latest_version",
     "@funtech-inc/use-shader-fx": "^0.3.5",
     "@react-three/drei": "^9.92.7",
     "@react-three/fiber": "^8.15.12",

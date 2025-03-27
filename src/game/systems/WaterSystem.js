@@ -95,7 +95,7 @@ export class WaterSystem {
     
     // Load normal maps for materials
     const textureLoader = new THREE.TextureLoader();
-    const waterNormalMap1 = textureLoader.load('/public/water/complex/Water_1_M_Normal.jpg');
+    const waterNormalMap1 = textureLoader.load('/water/complex/Water_1_M_Normal.jpg');
     waterNormalMap1.wrapS = waterNormalMap1.wrapT = THREE.RepeatWrapping;
 
     // Create ocean material
