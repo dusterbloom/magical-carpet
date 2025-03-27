@@ -84,7 +84,49 @@ export class AtmosphereSystem {
     
     // Create night sky components (stars and moon)
     this.createNightSky();
+    this.createClouds();
+
   }
+
+  createClouds() {
+    const textureLoader = new THREE.TextureLoader();
+    // Make sure to use a good quality cloud texture asset
+    const cloudTexture = textureLoader.load('/textures/cloud.png');
+    
+    // Create an array to hold individual cloud sprites
+    this.clouds = [];
+    const cloudCount = 50; // Adjust for density
+  
+    for (let i = 0; i < cloudCount; i++) {
+      // Create a sprite for the cloud
+      const cloudMaterial = new THREE.SpriteMaterial({
+        map: cloudTexture,
+        transparent: true,
+        opacity: 0.8, // Base opacity. Can vary per cloud if desired.
+        depthWrite: false,
+      });
+      const cloud = new THREE.Sprite(cloudMaterial);
+      
+      // Randomize the size of each cloud
+      const scale = 150 + Math.random() * 100;
+      cloud.scale.set(scale, scale, 1);
+      
+      // Position clouds high in the sky (adjust the Y value as needed)
+      // Spread clouds over a large area
+      cloud.position.set(
+        Math.random() * 10000 - 5000,
+        1000 + Math.random() * 400,
+        Math.random() * 10000 - 5000
+      );
+      
+      // Optionally, rotate each cloud a little
+      cloud.material.rotation = Math.random() * Math.PI * 2;
+      
+      this.scene.add(cloud);
+      this.clouds.push(cloud);
+    }
+  }
+
 
   createNightSky() {
     const textureLoader = new THREE.TextureLoader();
@@ -522,6 +564,27 @@ updateSkyColors() {
     });
   }
   
+
+  updateClouds(delta) {
+    if (!this.clouds) return;
+    // Drift speed (adjust as needed)
+    const driftSpeed = 20; // units per second
+    
+    this.clouds.forEach(cloud => {
+      // Example: move clouds slowly along the x-axis.
+      cloud.position.x += driftSpeed * delta;
+      // Wrap around so clouds stay in bounds
+      if (cloud.position.x > 5000) {
+        cloud.position.x = -5000;
+      }
+      
+      // Optionally add a very slight drift along the z-axis
+      cloud.position.z += driftSpeed * 0.1 * delta;
+      if (cloud.position.z > 5000) {
+        cloud.position.z = -5000;
+      }
+    });
+  }
   update(delta) {
         // Update time of day
         this.timeOfDay += delta / this.dayDuration;
