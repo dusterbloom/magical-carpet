@@ -313,11 +313,35 @@ export class WorldSystem {
   }
 
   createSky() {
-    // Simple sky color
-    this.scene.background = new THREE.Color(0x88ccff);
+    // Existing day sky setup
+    const skyGeometry = new THREE.SphereGeometry(8000, 32, 15);
+    const skyMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(0x3388ff) },
+        bottomColor: { value: new THREE.Color(0xaaddff) },
+        offset: { value: 400 },
+        exponent: { value: 0.7 }
+      },
+      vertexShader: `...`,
+      fragmentShader: `...`,
+      side: THREE.BackSide,
+      fog: false
+    });
+    this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    this.sky.onBeforeRender = () => {
+      if (this.engine.camera) {
+        this.sky.position.copy(this.engine.camera.position);
+      }
+    };
+    this.scene.add(this.sky);
+    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0003);
     
-    // Use FogExp2 for more natural distance fog
-    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0008); // Reduced from 0.0002 for longer view distance
+    // Create night sky elements (stars and moon)
+    // this.createNightSky();
+    // Create the basic cloud sprites (if needed)
+    // this.createClouds();
+    // Create volumetric clouds for improved realism
+    // this.createVolumetricClouds();
   }
 
   getTerrainHeight(x, z) {

@@ -85,8 +85,77 @@ export class AtmosphereSystem {
     // Create night sky components (stars and moon)
     this.createNightSky();
     this.createClouds();
+    this.createVolumetricClouds();
 
   }
+
+
+  // Add this method inside the AtmosphereSystem class
+
+createVolumetricClouds() {
+  const textureLoader = new THREE.TextureLoader();
+  // Use a noise texture that gives a soft, irregular cloud pattern.
+  // Replace the path with your actual cloud noise texture, e.g., '/textures/cloudNoise.png'
+  const cloudNoiseTexture = textureLoader.load('/textures/cloudNoise.png');
+  cloudNoiseTexture.wrapS = cloudNoiseTexture.wrapT = THREE.RepeatWrapping;
+  
+  this.cloudLayers = [];
+  const cloudLayerCount = 3; // Increase for more depth
+  for (let i = 0; i < cloudLayerCount; i++) {
+    // Create a large plane geometry for each cloud layer
+    const geometry = new THREE.PlaneGeometry(10000, 10000);
+    const material = new THREE.ShaderMaterial({
+      uniforms: { 
+        time: { value: 0 },
+        cloudNoise: { value: cloudNoiseTexture },
+        layerOffset: { value: i * 0.2 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform sampler2D cloudNoise;
+        uniform float layerOffset;
+        varying vec2 vUv;
+        
+        void main() {
+          // Animate UV coordinates to simulate drifting clouds
+          vec2 uv = vUv + vec2(time * 0.005 + layerOffset, time * 0.003 + layerOffset);
+          // Sample the noise texture
+          float noise = texture2D(cloudNoise, uv * 2.0).r;
+          // Create soft edges
+          float alpha = smoothstep(0.55, 0.65, noise);
+          gl_FragColor = vec4(vec3(1.0), alpha);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    
+    const cloudMesh = new THREE.Mesh(geometry, material);
+    cloudMesh.rotation.x = -Math.PI / 2;
+    // Position each layer at a different height (adjust these values as needed)
+    cloudMesh.position.y = 1500 + (i * 200);
+    this.scene.add(cloudMesh);
+    this.cloudLayers.push(cloudMesh);
+  }
+}
+
+updateVolumetricClouds(delta) {
+  if (!this.cloudLayers) return;
+  // Update each cloud layer's time uniform so that the clouds drift
+  this.cloudLayers.forEach(layer => {
+    if (layer.material && layer.material.uniforms.time) {
+      layer.material.uniforms.time.value += delta;
+    }
+  });
+}
 
   createClouds() {
     const textureLoader = new THREE.TextureLoader();
@@ -585,46 +654,110 @@ updateSkyColors() {
       }
     });
   }
-  update(delta) {
-        // Update time of day
-        this.timeOfDay += delta / this.dayDuration;
-        if (this.timeOfDay >= 1.0) this.timeOfDay -= 1.0;
-        
-        // Update sky colors
-        this.updateSkyColors();
-        
-        // Make sure sky follows camera
-        if (this.sky && this.engine.camera) {
-          this.sky.position.copy(this.engine.camera.position);
-        }
-        
-        // Update clouds
-        this.updateClouds(delta);
-        
-        // Update birds
-        this.updateBirds(delta);
-        
-        // --- New: Update night sky elements ---
-        let nightOpacity = 0;
-        // Assume night if timeOfDay is less than 0.25 or greater than 0.75
-        if (this.timeOfDay < 0.25) {
-           nightOpacity = (0.25 - this.timeOfDay) / 0.25;
-        } else if (this.timeOfDay > 0.75) {
-           nightOpacity = (this.timeOfDay - 0.75) / 0.25;
-        }
-        nightOpacity = Math.min(1, Math.max(0, nightOpacity));
-        
-        // Update stars opacity
-        if (this.starsMesh && this.starsMesh.material) {
-           this.starsMesh.material.opacity = nightOpacity;
-        }
-        
-        // Update moon opacity and position
-        if (this.moonMesh && this.moonMesh.material) {
-           this.moonMesh.material.opacity = nightOpacity;
-           // Configure the moon to follow a circular path over the day:
-           const moonAngle = this.timeOfDay * Math.PI * 2; // full circle over one day
-           this.moonMesh.position.set(1000 * Math.cos(moonAngle), 800, 1000 * Math.sin(moonAngle));
-        }
+
+  reateVolumetricClouds() {
+    const textureLoader = new THREE.TextureLoader();
+    // Use a noise texture that gives a soft, irregular cloud pattern.
+    // Replace the path with your actual cloud noise texture, e.g., '/textures/cloudNoise.png'
+    const cloudNoiseTexture = textureLoader.load('/textures/cloudNoise.png');
+    cloudNoiseTexture.wrapS = cloudNoiseTexture.wrapT = THREE.RepeatWrapping;
+    
+    this.cloudLayers = [];
+    const cloudLayerCount = 3; // Increase for more depth
+    for (let i = 0; i < cloudLayerCount; i++) {
+      // Create a large plane geometry for each cloud layer
+      const geometry = new THREE.PlaneGeometry(10000, 10000);
+      const material = new THREE.ShaderMaterial({
+        uniforms: { 
+          time: { value: 0 },
+          cloudNoise: { value: cloudNoiseTexture },
+          layerOffset: { value: i * 0.2 }
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float time;
+          uniform sampler2D cloudNoise;
+          uniform float layerOffset;
+          varying vec2 vUv;
+          
+          void main() {
+            // Animate UV coordinates to simulate drifting clouds
+            vec2 uv = vUv + vec2(time * 0.005 + layerOffset, time * 0.003 + layerOffset);
+            // Sample the noise texture
+            float noise = texture2D(cloudNoise, uv * 2.0).r;
+            // Create soft edges
+            float alpha = smoothstep(0.55, 0.65, noise);
+            gl_FragColor = vec4(vec3(1.0), alpha);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      
+      const cloudMesh = new THREE.Mesh(geometry, material);
+      cloudMesh.rotation.x = -Math.PI / 2;
+      // Position each layer at a different height (adjust these values as needed)
+      cloudMesh.position.y = 1500 + (i * 200);
+      this.scene.add(cloudMesh);
+      this.cloudLayers.push(cloudMesh);
+    }
+  }
+  
+  updateVolumetricClouds(delta) {
+    if (!this.cloudLayers) return;
+    // Update each cloud layer's time uniform so that the clouds drift
+    this.cloudLayers.forEach(layer => {
+      if (layer.material && layer.material.uniforms.time) {
+        layer.material.uniforms.time.value += delta;
       }
+    });
+  }
+
+  update(delta) {
+    // Update time of day
+    this.timeOfDay += delta / this.dayDuration;
+    if (this.timeOfDay >= 1.0) this.timeOfDay -= 1.0;
+    
+    // Update sky colors
+    this.updateSkyColors();
+    
+    // Make sure sky follows camera
+    if (this.sky && this.engine.camera) {
+      this.sky.position.copy(this.engine.camera.position);
+    }
+    
+    // Update the basic clouds (if still used)
+    this.updateClouds(delta);
+    // Update the volumetric clouds
+    this.updateVolumetricClouds(delta);
+    
+    // Update birds
+    this.updateBirds(delta);
+    
+    // Update night sky elements (stars/moon)
+    let nightOpacity = 0;
+    if (this.timeOfDay < 0.25) {
+      nightOpacity = (0.25 - this.timeOfDay) / 0.25;
+    } else if (this.timeOfDay > 0.75) {
+      nightOpacity = (this.timeOfDay - 0.75) / 0.25;
+    }
+    nightOpacity = Math.min(1, Math.max(0, nightOpacity));
+    
+    if (this.starsMesh && this.starsMesh.material) {
+      this.starsMesh.material.opacity = nightOpacity;
+    }
+    
+    if (this.moonMesh && this.moonMesh.material) {
+      this.moonMesh.material.opacity = nightOpacity;
+      const moonAngle = this.timeOfDay * Math.PI * 2;
+      this.moonMesh.position.set(1000 * Math.cos(moonAngle), 800, 1000 * Math.sin(moonAngle));
+    }
+  }
     }
