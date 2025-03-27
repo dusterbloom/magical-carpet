@@ -345,8 +345,9 @@ export class WorldSystem {
         // Calculate how far into the beach zone we are (0.0 to 1.0)
         const beachProgress = (continentMask - 0.1) / 0.15;
         
-        // Create smooth beach slopes that rise gently from water
-        const beachHeight = this.waterLevel - 2 + (beachProgress * beachProgress * 20);
+        // Create smooth beach slopes that rise more gently from water
+        // Ensure beach begins slightly higher than water level
+        const beachHeight = this.waterLevel + (beachProgress * beachProgress * 22);
         
         // Add some small dunes and texture to beaches
         const beachNoiseScale = 0.01;
@@ -718,19 +719,11 @@ export class WorldSystem {
     }
   }
 
+  // NOTE: We don't need this second water mesh as it's handled by the WaterSystem
+  // This method is kept for compatibility but doesn't create anything
   createWater() {
-    // Create a large water plane
-    const waterGeometry = new THREE.PlaneGeometry(
-      this.chunkSize * 20,
-      this.chunkSize * 20
-    );
-    waterGeometry.rotateX(-Math.PI / 2);
-
-    // Create water mesh
-    this.water = new THREE.Mesh(waterGeometry, this.materials.water);
-    this.water.position.y = this.waterLevel;
-    this.water.receiveShadow = true;
-    this.scene.add(this.water);
+    console.log("Water creation is handled by WaterSystem");
+    // Not creating a duplicate water mesh since WaterSystem handles this
   }
 
   createManaNodes() {
@@ -2031,13 +2024,7 @@ export class WorldSystem {
     const player = this.engine.systems.player?.localPlayer;
     if (!player) return;
 
-    // Move water with player
-    if (this.water) {
-      this.water.position.x = player.position.x;
-      this.water.position.z = player.position.z;
-      // Gentle water animation
-      this.water.position.y = this.waterLevel + Math.sin(elapsed * 0.5) * 0.1;
-    }
+    // Water is now fully handled by WaterSystem
 
     // Check if we need more mana nodes
     if (this.manaNodes.filter(node => !node.userData.collected).length < 10) {
