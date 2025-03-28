@@ -25,14 +25,16 @@ export class AtmosphereSystem {
     this.elapsed = 0;
     
     // Day/night cycle
-    this.dayDuration = 600; // 10 minutes per day cycle
+    this.dayDuration = 86400; // 10 minutes per day cycle
     
     // DEBUGGING: Force to night time
     // Keep this forced value for testing night sky stars
     const now = new Date();
     const secondsInDay = 86400;
     const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-    this.timeOfDay = currentSeconds / secondsInDay;
+
+    // this.timeOfDay = currentSeconds / secondsInDay; // sync to user time
+    this.timeOfDay = 40000 / 86400 ; // afternoon
     console.log("Synced Time of Day:", this.timeOfDay);
     
     this.sunPosition = new THREE.Vector3();
@@ -51,7 +53,16 @@ export class AtmosphereSystem {
     console.log("AtmosphereSystem: Initializing star field...");
     await this.starSystem.initialize();
     console.log("AtmosphereSystem: Star field initialized");
-    
+
+        // --- NEW CODE: Reduce the number of stars by drawing only 50% ---
+    if (this.starSystem.starField && this.starSystem.starField.geometry) {
+      const count = this.starSystem.starField.geometry.attributes.position.count;
+      this.starSystem.starField.geometry.setDrawRange(0, Math.floor(count * 0.2));
+    }
+    if (this.starSystem.horizonStarField && this.starSystem.horizonStarField.geometry) {
+      const count = this.starSystem.horizonStarField.geometry.attributes.position.count;
+      this.starSystem.horizonStarField.geometry.setDrawRange(0, Math.floor(count * 0.2));
+    }
     // Create enhanced sky
     this.createSky();
     
@@ -556,28 +567,26 @@ export class AtmosphereSystem {
   updateStarsVisibility(nightFactor) {
     if (!this.starSystem) return;
     
-    // Access star fields
     const starField = this.starSystem.starField;
     const horizonStarField = this.starSystem.horizonStarField;
     
+    // Compute a flicker effect (the frequency and amplitude can be adjusted)
+    const flickerRegular = 0.05 * Math.sin(this.elapsed * 10);
+    const flickerHorizon = 0.05 * Math.sin(this.elapsed * 10 + Math.PI / 2);
+    
     if (starField) {
-      // Adjust regular stars visibility
-      starField.visible = nightFactor > 0.1; // Only visible when somewhat dark
-      
-      // Adjust opacity based on how dark it is
+      starField.visible = nightFactor > 0.1; // Visible only when dark enough
       if (starField.material) {
-        starField.material.opacity = 0.5 + (nightFactor * 0.5);
+        const baseOpacity = 0.5 + (nightFactor * 0.5);
+        starField.material.opacity = baseOpacity + flickerRegular;
       }
     }
     
     if (horizonStarField) {
-      // Horizon stars are visible slightly before other stars
       horizonStarField.visible = nightFactor > 0.08;
-      
-      // Adjust horizon stars opacity
       if (horizonStarField.material) {
-        // Horizon stars should be slightly more visible
-        horizonStarField.material.opacity = Math.min(1.0, 0.6 + (nightFactor * 0.4));
+        const baseOpacity = Math.min(1.0, 0.6 + (nightFactor * 0.4));
+        horizonStarField.material.opacity = baseOpacity + flickerHorizon;
       }
     }
   }
