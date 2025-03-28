@@ -85,7 +85,7 @@ export class Engine {
     this.systems.carpetTrail = new CarpetTrailSystem(this);
     this.systems.landmarks = new LandmarkSystem(this);
     this.systems.minimap = new MinimapSystem(this);
-    this.shorelineEffect = new ShorelineEffect(this);
+    // this.shorelineEffect = new ShorelineEffect(this);
 
 
     // Define initialization order (some systems depend on others)

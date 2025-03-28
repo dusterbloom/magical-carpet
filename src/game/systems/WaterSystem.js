@@ -48,10 +48,7 @@ export class WaterSystem {
     // Generate empty river paths
     this.generateRiverPaths();
     
-    // // Create ocean
-    // this.createOcean();
-    
-    // // Create shoreline buffer
+    // Create shoreline buffer
     // this.createShoreline();
     
     console.log("WaterSystem initialized");
@@ -62,7 +59,7 @@ export class WaterSystem {
     
     // Create separate components: main water body + shoreline
     this.createMainWater();
-    this.createShoreline();
+    // this.createShoreline();
     
     console.log("Water surface created");
   }
@@ -162,7 +159,7 @@ export class WaterSystem {
       const t = (distFromCenter - innerRadius) / (outerRadius - innerRadius);
       
       // Create color gradient from water to sand
-      const waterColor = new THREE.Color(0x4477AA);   // Blue for water side
+      const waterColor = new THREE.Color(0x3399ff);   // Blue for water side
       const sandColor = new THREE.Color(0xDDCCAA);    // Tan for sand side
       
       // Create noise pattern for irregular edge

@@ -526,16 +526,16 @@ export class WorldSystem {
     const depthFactor = Math.min(1.0, waterDepth / maxDepth);
     
     // Underwater sand color - more visible through water
-    const underwaterSandColor = new THREE.Color(0x9e9272);
+    const underwaterSandColor = new THREE.Color(0xffffff);
     // Shallow water is almost transparent, showing sand below
-    const shallowColor = new THREE.Color(0x99ccee);
+    const shallowColor = new THREE.Color(0x3399ff);
     // Deep water is darker blue
-    const deepColor = new THREE.Color(0x001e66);
+    const deepColor = new THREE.Color(0x3399ff);
     
     if (waterDepth < 1.5) {
       // Very shallow - mostly sand with blue tint
       const t = waterDepth / 1.5;
-      color.copy(underwaterSandColor).lerp(shallowColor, t * 0.4);
+      color.copy(underwaterSandColor).lerp(shallowColor, t * 1.4);
     } else if (waterDepth < 5) {
       // Shallow - transition from sandy bottom to blue
       const t = (waterDepth - 1.5) / 3.5;
