@@ -1,10 +1,14 @@
 import * as THREE from "three";
+import { StarsParticleSystem } from "./StarsParticleSystem";
 
 export class AtmosphereSystem {
   constructor(engine) {
     this.engine = engine;
     this.scene = engine.scene;
     this.worldSystem = engine.systems.world;
+    
+    // Initialize components
+    this.starSystem = null;  // Will be initialized in initialize()
     
     // Clouds
     this.clouds = [];
@@ -24,7 +28,7 @@ export class AtmosphereSystem {
     this.dayDuration = 600; // 10 minutes per day cycle
     
     // DEBUGGING: Force to night time
-    // Remove this forced value for normal time cycle
+    // Keep this forced value for testing night sky stars
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
@@ -32,10 +36,6 @@ export class AtmosphereSystem {
     // For testing - force to night time
     this.timeOfDay = 0.95; // Very late night (just before midnight) for testing
     console.log("FORCED TIME OF DAY FOR TESTING:", this.timeOfDay);
-    
-    // Uncomment this for normal time behavior
-    //this.timeOfDay = ((hours * 60 + minutes) % (24 * 60)) / (24 * 60);
-    //console.log("Current time of day set to:", this.timeOfDay, "(Local time: " + hours + ":" + minutes + ")");
     
     this.sunPosition = new THREE.Vector3();
     this.sunLight = null;
@@ -46,6 +46,13 @@ export class AtmosphereSystem {
     
     // Create sunlight
     this.createSunLight();
+    
+    // Create and initialize star system
+    console.log("AtmosphereSystem: Creating star field...");
+    this.starSystem = new StarsParticleSystem(this.scene, this.engine.camera);
+    console.log("AtmosphereSystem: Initializing star field...");
+    await this.starSystem.initialize();
+    console.log("AtmosphereSystem: Star field initialized");
     
     // Create enhanced sky
     this.createSky();
@@ -84,129 +91,124 @@ export class AtmosphereSystem {
     console.log("Created sun light and ambient light");
   }
   
-// Updated createSky method with precision declaration and skinning disabled
-createSky() {
-  const skyGeometry = new THREE.SphereGeometry(8000, 32, 15);
-  const skyMaterial = new THREE.ShaderMaterial({
-    precision: "mediump", // Explicitly set the precision for the shader
-    uniforms: {
-      topColor: { value: new THREE.Color(0x3388ff) },
-      bottomColor: { value: new THREE.Color(0xaaddff) },
-      offset: { value: 400 },
-      exponent: { value: 0.7 }
-    },
-    vertexShader: `
-      precision mediump float;
-      varying vec3 vWorldPosition;
-      void main() {
-        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-        vWorldPosition = worldPosition.xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      precision mediump float;
-      uniform vec3 topColor;
-      uniform vec3 bottomColor;
-      uniform float offset;
-      uniform float exponent;
-      varying vec3 vWorldPosition;
-      void main() {
-        float h = normalize(vWorldPosition + offset).y;
-        gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
-      }
-    `,
-    side: THREE.BackSide,
-    fog: false,
-    skinning: false // Explicitly disable skinning
-  });
-
-  this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
-  this.sky.onBeforeRender = () => {
-    if (this.engine.camera) {
-      this.sky.position.copy(this.engine.camera.position);
-    }
-  };
-  this.scene.add(this.sky);
-  this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0003);
-
-  // Create night sky components (stars and moon)
-  this.createNightSky();
-  this.createClouds();
-  this.createVolumetricClouds();
-}
-
-
-  // Add this method inside the AtmosphereSystem class
-// Updated createVolumetricClouds method with precision declaration and skinning disabled
-createVolumetricClouds() {
-  const textureLoader = new THREE.TextureLoader();
-  // Load the noise texture for a soft, irregular cloud pattern.
-  const cloudNoiseTexture = textureLoader.load('/textures/cloudNoise.png');
-  cloudNoiseTexture.wrapS = cloudNoiseTexture.wrapT = THREE.RepeatWrapping;
-  
-  this.cloudLayers = [];
-  const cloudLayerCount = 3; // Increase for more depth
-  for (let i = 0; i < cloudLayerCount; i++) {
-    // Create a large plane geometry for each cloud layer
-    const geometry = new THREE.PlaneGeometry(10000, 10000);
-    const material = new THREE.ShaderMaterial({
-      precision: "mediump", // Set precision
-      uniforms: { 
-        time: { value: 0 },
-        cloudNoise: { value: cloudNoiseTexture },
-        layerOffset: { value: i * 0.2 }
+  // Updated createSky method with precision declaration and skinning disabled
+  createSky() {
+    const skyGeometry = new THREE.SphereGeometry(8000, 32, 15);
+    const skyMaterial = new THREE.ShaderMaterial({
+      precision: "mediump", // Explicitly set the precision for the shader
+      uniforms: {
+        topColor: { value: new THREE.Color(0x3388ff) },
+        bottomColor: { value: new THREE.Color(0xaaddff) },
+        offset: { value: 400 },
+        exponent: { value: 0.7 }
       },
       vertexShader: `
         precision mediump float;
-        varying vec2 vUv;
+        varying vec3 vWorldPosition;
         void main() {
-          vUv = uv;
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
         precision mediump float;
-        uniform float time;
-        uniform sampler2D cloudNoise;
-        uniform float layerOffset;
-        varying vec2 vUv;
-        
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
         void main() {
-          // Animate UV coordinates to simulate drifting clouds
-          vec2 uv = vUv + vec2(time * 0.005 + layerOffset, time * 0.003 + layerOffset);
-          // Sample the noise texture
-          float noise = texture2D(cloudNoise, uv * 2.0).r;
-          // Create soft edges
-          float alpha = smoothstep(0.55, 0.65, noise);
-          gl_FragColor = vec4(vec3(1.0), alpha);
+          float h = normalize(vWorldPosition + offset).y;
+          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
         }
       `,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      skinning: false // Disable skinning for this material as well
+      side: THREE.BackSide,
+      fog: false,
+      skinning: false // Explicitly disable skinning
     });
-    
-    const cloudMesh = new THREE.Mesh(geometry, material);
-    cloudMesh.rotation.x = -Math.PI / 2;
-    // Position each layer at a different height
-    cloudMesh.position.y = 1500 + (i * 200);
-    this.scene.add(cloudMesh);
-    this.cloudLayers.push(cloudMesh);
+
+    this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    this.sky.onBeforeRender = () => {
+      if (this.engine.camera) {
+        this.sky.position.copy(this.engine.camera.position);
+      }
+    };
+    this.scene.add(this.sky);
+    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0003);
+
+    // Create night sky components (moon)
+    this.createNightSky();
+    this.createVolumetricClouds();
   }
-}
 
-
-updateVolumetricClouds(delta) {
-  if (!this.cloudLayers) return;
-  // Update each cloud layer's time uniform so that the clouds drift
-  this.cloudLayers.forEach(layer => {
-    if (layer.material && layer.material.uniforms.time) {
-      layer.material.uniforms.time.value += delta;
+  createVolumetricClouds() {
+    const textureLoader = new THREE.TextureLoader();
+    // Load the noise texture for a soft, irregular cloud pattern.
+    const cloudNoiseTexture = textureLoader.load('/textures/cloudNoise.png');
+    cloudNoiseTexture.wrapS = cloudNoiseTexture.wrapT = THREE.RepeatWrapping;
+    
+    this.cloudLayers = [];
+    const cloudLayerCount = 3; // Increase for more depth
+    for (let i = 0; i < cloudLayerCount; i++) {
+      // Create a large plane geometry for each cloud layer
+      const geometry = new THREE.PlaneGeometry(10000, 10000);
+      const material = new THREE.ShaderMaterial({
+        precision: "mediump", // Set precision
+        uniforms: { 
+          time: { value: 0 },
+          cloudNoise: { value: cloudNoiseTexture },
+          layerOffset: { value: i * 0.2 }
+        },
+        vertexShader: `
+          precision mediump float;
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          precision mediump float;
+          uniform float time;
+          uniform sampler2D cloudNoise;
+          uniform float layerOffset;
+          varying vec2 vUv;
+          
+          void main() {
+            // Animate UV coordinates to simulate drifting clouds
+            vec2 uv = vUv + vec2(time * 0.005 + layerOffset, time * 0.003 + layerOffset);
+            // Sample the noise texture
+            float noise = texture2D(cloudNoise, uv * 2.0).r;
+            // Create soft edges
+            float alpha = smoothstep(0.55, 0.65, noise);
+            gl_FragColor = vec4(vec3(1.0), alpha);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        skinning: false // Disable skinning for this material as well
+      });
+      
+      const cloudMesh = new THREE.Mesh(geometry, material);
+      cloudMesh.rotation.x = -Math.PI / 2;
+      // Position each layer at a different height
+      cloudMesh.position.y = 1500 + (i * 200);
+      this.scene.add(cloudMesh);
+      this.cloudLayers.push(cloudMesh);
     }
-  });
-}
+  }
+
+  updateVolumetricClouds(delta) {
+    if (!this.cloudLayers) return;
+    // Update each cloud layer's time uniform so that the clouds drift
+    this.cloudLayers.forEach(layer => {
+      if (layer.material && layer.material.uniforms.time) {
+        layer.material.uniforms.time.value += delta;
+      }
+    });
+  }
 
   createClouds() {
     const textureLoader = new THREE.TextureLoader();
@@ -247,61 +249,12 @@ updateVolumetricClouds(delta) {
     }
   }
 
-
   createNightSky() {
     const textureLoader = new THREE.TextureLoader();
-    
-    // Create procedural star texture
-    const starCanvas = document.createElement('canvas');
-    starCanvas.width = 1024;
-    starCanvas.height = 1024;
-    const ctx = starCanvas.getContext('2d');
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, starCanvas.width, starCanvas.height);
-    
-    // Draw stars
-    ctx.fillStyle = 'white';
-    for (let i = 0; i < 500; i++) {
-      const size = Math.random() * 2 + 0.5;
-      const x = Math.random() * starCanvas.width;
-      const y = Math.random() * starCanvas.height;
-      ctx.globalAlpha = Math.random() * 0.8 + 0.2;
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // Create star texture from canvas
-    const starsTexture = new THREE.CanvasTexture(starCanvas);
     
     // Load the actual moon texture file
     const moonTexture = textureLoader.load('/assets/textures/moon.jpg');
     
-    // Create a simple normal map for the moon (or load one if available)
-    // We'll create a basic one based on the texture
-    const moonNormalMap = moonTexture.clone(); // Using the texture as a base for normals
-
-    // Create a star field: a very large sphere with the stars texture on the inside.
-    const starsGeometry = new THREE.SphereGeometry(10000, 64, 32);
-    const starsMaterial = new THREE.MeshBasicMaterial({
-      map: starsTexture,
-      side: THREE.BackSide,
-      transparent: true,
-      opacity: 0,  // Start hidden during daytime
-      depthWrite: false,
-      fog: false
-    });
-    this.starsMesh = new THREE.Mesh(starsGeometry, starsMaterial);
-    this.starsMesh.renderOrder = -1; // Render before other objects
-    this.scene.add(this.starsMesh);
-    
-    // Make sure stars follow the camera
-    this.starsMesh.onBeforeRender = () => {
-      if (this.engine.camera) {
-        this.starsMesh.position.copy(this.engine.camera.position);
-      }
-    };
-
     // Create a moon: a properly lit sphere with the moon texture.
     const moonGeometry = new THREE.SphereGeometry(300, 32, 32);
     
@@ -322,154 +275,6 @@ updateVolumetricClouds(delta) {
     this.moonMesh.add(this.moonLight);
   }
 
-createCloudParticle() {
-  // Create a more natural-looking cloud particle
-  const geometry = new THREE.SphereGeometry(15, 8, 8);
-  const material = new THREE.MeshStandardMaterial({
-    color: 0xffffff, 
-    transparent: true,
-    opacity: 0.7,
-    roughness: 1,
-    metalness: 0
-  });
-  
-  return new THREE.Mesh(geometry, material);
-}
-
-// Also update this method for better sky colors throughout the day
-updateSkyColors() {
-  // Update sky colors based on time of day
-  let topColor, bottomColor, fogColor, lightIntensity, lightColor;
-  
-  if (this.timeOfDay < 0.25) {
-    // Night to sunrise transition
-    const t = this.timeOfDay / 0.25;
-    topColor = new THREE.Color(0x001133).lerp(new THREE.Color(0x3388ff), t);
-    bottomColor = new THREE.Color(0x002244).lerp(new THREE.Color(0xffcc88), t);
-    fogColor = new THREE.Color(0x001133).lerp(new THREE.Color(0xffcc88), t);
-    lightIntensity = t * 0.8;
-    lightColor = new THREE.Color(0xffffdd);
-  } else if (this.timeOfDay < 0.5) {
-    // Sunrise to noon
-    const t = (this.timeOfDay - 0.25) / 0.25;
-    topColor = new THREE.Color(0x3388ff);
-    bottomColor = new THREE.Color(0xffcc88).lerp(new THREE.Color(0xaaddff), t);
-    fogColor = new THREE.Color(0xffcc88).lerp(new THREE.Color(0xaaddff), t);
-    lightIntensity = 0.8 + t * 0.2;
-    lightColor = new THREE.Color(0xffffcc).lerp(new THREE.Color(0xffffff), t);
-  } else if (this.timeOfDay < 0.75) {
-    // Noon to sunset
-    const t = (this.timeOfDay - 0.5) / 0.25;
-    topColor = new THREE.Color(0x3388ff);
-    bottomColor = new THREE.Color(0xaaddff).lerp(new THREE.Color(0xff9966), t);
-    fogColor = new THREE.Color(0xaaddff).lerp(new THREE.Color(0xff9966), t);
-    lightIntensity = 1.0;
-    lightColor = new THREE.Color(0xffffff).lerp(new THREE.Color(0xffcc99), t);
-  } else {
-    // Sunset to night
-    const t = (this.timeOfDay - 0.75) / 0.25;
-    topColor = new THREE.Color(0x3388ff).lerp(new THREE.Color(0x001133), t);
-    bottomColor = new THREE.Color(0xff9966).lerp(new THREE.Color(0x002244), t);
-    fogColor = new THREE.Color(0xff9966).lerp(new THREE.Color(0x001133), t);
-    lightIntensity = 1.0 - t * 0.8;
-    lightColor = new THREE.Color(0xffcc99).lerp(new THREE.Color(0xaaaacc), t);
-  }
-  
-  // Apply colors
-  if (this.sky) {
-    this.sky.material.uniforms.topColor.value = topColor;
-    this.sky.material.uniforms.bottomColor.value = bottomColor;
-  }
-  
-  // Update fog
-  if (this.scene.fog) {
-    this.scene.fog.color = fogColor;
-  }
-  
-  // Update sun light
-  if (this.sunLight) {
-    this.sunLight.intensity = lightIntensity;
-    this.sunLight.color = lightColor;
-    
-    // Update sun position
-    const sunAngle = this.timeOfDay * Math.PI * 2;
-    this.sunPosition.set(
-      Math.cos(sunAngle) * 500,
-      Math.sin(sunAngle) * 500,
-      0
-    );
-    
-    this.sunLight.position.copy(this.sunPosition);
-  }
-}
-  
-  createCloudParticle() {
-    // Create a simple cloud particle
-    const geometry = new THREE.SphereGeometry(15, 8, 8);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.8,
-      roughness: 1,
-      metalness: 0
-    });
-    
-    return new THREE.Mesh(geometry, material);
-  }
-  
-  createCloudGroup() {
-    // Create a cloud consisting of multiple particles
-    const cloud = new THREE.Group();
-    
-    // Number of particles in this cloud
-    const particleCount = 3 + Math.floor(Math.random() * 5);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const particle = this.createCloudParticle();
-      
-      // Random position within cloud
-      particle.position.set(
-        (Math.random() - 0.5) * 30,
-        (Math.random() - 0.5) * 15,
-        (Math.random() - 0.5) * 30
-      );
-      
-      // Random scale
-      const scale = 0.5 + Math.random() * 0.5;
-      particle.scale.set(scale, scale, scale);
-      
-      cloud.add(particle);
-    }
-    
-    // Set cloud properties
-    cloud.userData = {
-      speed: 0.2 + Math.random() * 0.3,
-      rotationSpeed: (Math.random() - 0.5) * 0.01
-    };
-    
-    return cloud;
-  }
-  
-  createClouds() {
-    // Create clouds distributed around player
-    for (let i = 0; i < this.cloudCount; i++) {
-      const cloud = this.createCloudGroup();
-      
-      // Random position in sky
-      const angle = Math.random() * Math.PI * 2;
-      const distance = Math.random() * this.cloudSpread;
-      
-      cloud.position.set(
-        Math.cos(angle) * distance,
-        this.cloudHeight + (Math.random() - 0.5) * 50,
-        Math.sin(angle) * distance
-      );
-      
-      this.clouds.push(cloud);
-      this.scene.add(cloud);
-    }
-  }
-  
   createBirdModel() {
     // Create a simple bird model
     const bird = new THREE.Group();
@@ -584,10 +389,10 @@ updateSkyColors() {
     if (this.timeOfDay < 0.25) {
       // Night to sunrise transition
       const t = this.timeOfDay / 0.25;
-      topColor = new THREE.Color(0x000022).lerp(new THREE.Color(0x0077ff), t);
-      bottomColor = new THREE.Color(0x000022).lerp(new THREE.Color(0xff9933), t);
-      fogColor = new THREE.Color(0x000022).lerp(new THREE.Color(0xff9933), t);
-      lightIntensity = t;
+      topColor = new THREE.Color(0x000005);
+      bottomColor = new THREE.Color(0x000010);
+      fogColor = new THREE.Color(0x000010);
+      lightIntensity = 0.1;
       lightColor = new THREE.Color(0xffffcc);
     } else if (this.timeOfDay < 0.5) {
       // Sunrise to noon
@@ -733,91 +538,51 @@ updateSkyColors() {
     });
   }
   
-
-  updateClouds(delta) {
-    if (!this.clouds) return;
-    // Drift speed (adjust as needed)
-    const driftSpeed = 20; // units per second
-    
-    this.clouds.forEach(cloud => {
-      // Example: move clouds slowly along the x-axis.
-      cloud.position.x += driftSpeed * delta;
-      // Wrap around so clouds stay in bounds
-      if (cloud.position.x > 5000) {
-        cloud.position.x = -5000;
+  // Calculate how much of night time we're in (0 = day, 1 = night)
+  getNightFactor() {
+    // Night is roughly between 0.75-0.25 timeOfDay (sunset to sunrise)
+    if (this.timeOfDay > 0.75 || this.timeOfDay < 0.25) {
+      // Calculate how deep into night we are
+      if (this.timeOfDay > 0.75) {
+        // After sunset, approaching midnight
+        return (this.timeOfDay - 0.75) / 0.25;
+      } else {
+        // After midnight, approaching sunrise
+        return 1.0 - (this.timeOfDay / 0.25);
       }
-      
-      // Optionally add a very slight drift along the z-axis
-      cloud.position.z += driftSpeed * 0.1 * delta;
-      if (cloud.position.z > 5000) {
-        cloud.position.z = -5000;
-      }
-    });
-  }
-
-  reateVolumetricClouds() {
-    const textureLoader = new THREE.TextureLoader();
-    // Use a noise texture that gives a soft, irregular cloud pattern.
-    // Replace the path with your actual cloud noise texture, e.g., '/textures/cloudNoise.png'
-    const cloudNoiseTexture = textureLoader.load('/textures/cloudNoise.png');
-    cloudNoiseTexture.wrapS = cloudNoiseTexture.wrapT = THREE.RepeatWrapping;
-    
-    this.cloudLayers = [];
-    const cloudLayerCount = 3; // Increase for more depth
-    for (let i = 0; i < cloudLayerCount; i++) {
-      // Create a large plane geometry for each cloud layer
-      const geometry = new THREE.PlaneGeometry(10000, 10000);
-      const material = new THREE.ShaderMaterial({
-        uniforms: { 
-          time: { value: 0 },
-          cloudNoise: { value: cloudNoiseTexture },
-          layerOffset: { value: i * 0.2 }
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform float time;
-          uniform sampler2D cloudNoise;
-          uniform float layerOffset;
-          varying vec2 vUv;
-          
-          void main() {
-            // Animate UV coordinates to simulate drifting clouds
-            vec2 uv = vUv + vec2(time * 0.005 + layerOffset, time * 0.003 + layerOffset);
-            // Sample the noise texture
-            float noise = texture2D(cloudNoise, uv * 2.0).r;
-            // Create soft edges
-            float alpha = smoothstep(0.55, 0.65, noise);
-            gl_FragColor = vec4(vec3(1.0), alpha);
-          }
-        `,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-      
-      const cloudMesh = new THREE.Mesh(geometry, material);
-      cloudMesh.rotation.x = -Math.PI / 2;
-      // Position each layer at a different height (adjust these values as needed)
-      cloudMesh.position.y = 1500 + (i * 200);
-      this.scene.add(cloudMesh);
-      this.cloudLayers.push(cloudMesh);
     }
+    return 0; // Daytime
   }
   
-  updateVolumetricClouds(delta) {
-    if (!this.cloudLayers) return;
-    // Update each cloud layer's time uniform so that the clouds drift
-    this.cloudLayers.forEach(layer => {
-      if (layer.material && layer.material.uniforms.time) {
-        layer.material.uniforms.time.value += delta;
+  // Update stars visibility based on time of day
+  updateStarsVisibility(nightFactor) {
+    if (!this.starSystem) return;
+    
+    // Access star fields
+    const starField = this.starSystem.starField;
+    const kissStarField = this.starSystem.kissStarField;
+    
+    if (starField) {
+      // Adjust regular stars visibility
+      starField.visible = nightFactor > 0.1; // Only visible when somewhat dark
+      
+      // Adjust opacity based on how dark it is
+      if (starField.material) {
+        starField.material.opacity = 0.5 + (nightFactor * 0.5);
       }
-    });
+    }
+    
+    if (kissStarField) {
+      // KISS stars are always visible at night
+      kissStarField.visible = nightFactor > 0.05;
+      
+      // Make KISS stars more prominent
+      if (kissStarField.material) {
+        kissStarField.material.opacity = Math.min(1.0, 0.7 + (nightFactor * 0.3));
+        // Increase star size during deep night
+        kissStarField.material.size = 5 + (nightFactor * 3);
+      }
+    }
   }
 
   update(delta, elapsed) {
@@ -831,6 +596,9 @@ updateSkyColors() {
     // Update sky colors
     this.updateSkyColors();
     
+    // Calculate night time factor (0 during day, 1 during night)
+    const nightTimeFactor = this.getNightFactor();
+    
     // Make sure sky follows camera
     if (this.sky && this.engine.camera) {
       this.sky.position.copy(this.engine.camera.position);
@@ -838,33 +606,18 @@ updateSkyColors() {
     
     // Update the basic clouds (if still used)
     this.updateClouds(delta);
+    
     // Update the volumetric clouds
     this.updateVolumetricClouds(delta);
     
     // Update birds
     this.updateBirds(delta);
     
-    // Update night sky elements (stars/moon)
-    let nightOpacity = 0;
-    if (this.timeOfDay < 0.25) {
-      // From midnight to 6am - gradually decrease visibility
-      nightOpacity = 1 - (this.timeOfDay / 0.25);
-    } else if (this.timeOfDay > 0.75) {
-      // From 6pm to midnight - gradually increase visibility
-      nightOpacity = (this.timeOfDay - 0.75) / 0.25;
-    }
+    // Update the particle stars system
+    this.starSystem.update();
     
-    // FORCE FULL OPACITY FOR TESTING
-    nightOpacity = 1.0; // Always show night sky elements at full opacity for testing
-    
-    // Debug - log night opacity for troubleshooting
-    if (this.elapsed % 30 < 1) { // Log approximately twice per minute
-      console.log(`Time of day: ${this.timeOfDay.toFixed(2)}, Night opacity: ${nightOpacity.toFixed(2)}`);
-    }
-    
-    if (this.starsMesh && this.starsMesh.material) {
-      this.starsMesh.material.opacity = nightOpacity;
-    }
+    // Update stars visibility based on time of day
+    this.updateStarsVisibility(nightTimeFactor);
     
     // Update moon position and visibility
     if (this.moonMesh) {
@@ -902,8 +655,7 @@ updateSkyColors() {
       // Log moon information
       if (this.elapsed % 10 < 1) { // Log frequently for debugging
         console.log(`Moon: visible=${this.moonMesh.visible}, position=(${this.moonMesh.position.x.toFixed(0)},${this.moonMesh.position.y.toFixed(0)},${this.moonMesh.position.z.toFixed(0)})`);
-        console.log(`Moon material type: ${this.moonMesh.material.type}`);
       }
     }
   }
-    }
+}

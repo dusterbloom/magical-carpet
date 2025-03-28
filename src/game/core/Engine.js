@@ -99,7 +99,7 @@ export class Engine {
       "ui", // UI needs player for HUD elements
       "carpetTrail", // Trail system needs player
       "landmarks",   // Landmarks need world and player
-      "minimap",    // Minimap needs world and player info
+      "minimap"    // Minimap needs world and player info
     ];
 
     // Initialize systems in order
@@ -147,7 +147,7 @@ export class Engine {
       "carpetTrail", // Update trail after player movement
       "landmarks",   // Update landmarks
       "ui",
-      "minimap",    // Update minimap last to capture all world changes
+      "minimap"    // Update minimap last to capture all world changes
     ];
 
     // Update systems

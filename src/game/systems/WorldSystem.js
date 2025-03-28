@@ -762,9 +762,8 @@ export class WorldSystem {
     this.materials.terrain.polygonOffsetFactor = 1;
     this.materials.terrain.polygonOffsetUnits = 1;
     
-   this.scene.add(mesh);
-            
-            this.scene.add(mesh);
+    // Add to scene only once
+    this.scene.add(mesh);
             this.currentChunks.set(key, mesh);
           } catch (error) {
             console.error("Error creating chunk:", error);
