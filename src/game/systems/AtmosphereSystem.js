@@ -211,7 +211,7 @@ export class AtmosphereSystem {
   createClouds() {
     const textureLoader = new THREE.TextureLoader();
     // Make sure to use a good quality cloud texture asset
-    const cloudTexture = textureLoader.load('/textures/cloud.png');
+    const cloudTexture = textureLoader.load('/textures/particles.png');
     
     // Create an array to hold individual cloud sprites
     this.clouds = [];
