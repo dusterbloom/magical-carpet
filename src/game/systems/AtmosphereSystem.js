@@ -560,7 +560,6 @@ export class AtmosphereSystem {
     
     // Access star fields
     const starField = this.starSystem.starField;
-    const kissStarField = this.starSystem.kissStarField;
     const horizonStarField = this.starSystem.horizonStarField;
     
     if (starField) {
@@ -570,18 +569,6 @@ export class AtmosphereSystem {
       // Adjust opacity based on how dark it is
       if (starField.material) {
         starField.material.opacity = 0.5 + (nightFactor * 0.5);
-      }
-    }
-    
-    if (kissStarField) {
-      // KISS stars are always visible at night
-      kissStarField.visible = nightFactor > 0.05;
-      
-      // Make KISS stars more prominent
-      if (kissStarField.material) {
-        kissStarField.material.opacity = Math.min(1.0, 0.7 + (nightFactor * 0.3));
-        // Increase star size during deep night
-        kissStarField.material.size = 5 + (nightFactor * 3);
       }
     }
     
