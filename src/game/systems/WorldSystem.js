@@ -274,7 +274,7 @@ export class WorldSystem {
     });
 
     // Main directional light (sun)
-    const sunLight = new THREE.DirectionalLight(0xffffeb, 0.8);
+    const sunLight = new THREE.DirectionalLight(0xffffeb, 1.5);
     sunLight.position.set(300, 400, 200);
     
     // Improved shadow settings
@@ -296,12 +296,12 @@ export class WorldSystem {
     this.scene.add(sunLight);
     
     // Secondary directional light for softer shadows on other side
-    const secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.3);
+    const secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.7);
     secondaryLight.position.set(-200, 300, -100);
     this.scene.add(secondaryLight);
 
     // Stronger ambient light to fill shadows
-    const ambientLight = new THREE.AmbientLight(0x445566, 0.7);
+    const ambientLight = new THREE.AmbientLight(0x445566, 1.2);
     this.scene.add(ambientLight);
     
     // Add a subtle hemispheric light
