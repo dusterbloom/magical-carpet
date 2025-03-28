@@ -561,6 +561,7 @@ export class AtmosphereSystem {
     // Access star fields
     const starField = this.starSystem.starField;
     const kissStarField = this.starSystem.kissStarField;
+    const horizonStarField = this.starSystem.horizonStarField;
     
     if (starField) {
       // Adjust regular stars visibility
@@ -581,6 +582,17 @@ export class AtmosphereSystem {
         kissStarField.material.opacity = Math.min(1.0, 0.7 + (nightFactor * 0.3));
         // Increase star size during deep night
         kissStarField.material.size = 5 + (nightFactor * 3);
+      }
+    }
+    
+    if (horizonStarField) {
+      // Horizon stars are visible slightly before other stars
+      horizonStarField.visible = nightFactor > 0.08;
+      
+      // Adjust horizon stars opacity
+      if (horizonStarField.material) {
+        // Horizon stars should be slightly more visible
+        horizonStarField.material.opacity = Math.min(1.0, 0.6 + (nightFactor * 0.4));
       }
     }
   }
