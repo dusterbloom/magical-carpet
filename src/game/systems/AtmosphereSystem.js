@@ -66,7 +66,7 @@ export class AtmosphereSystem {
   
   createSunLight() {
     // Create a directional sunlight for the scene
-    this.sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    this.sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
     this.sunLight.position.set(0, 1000, 0);
     this.sunLight.castShadow = true;
     
@@ -82,7 +82,7 @@ export class AtmosphereSystem {
     this.sunLight.shadow.bias = -0.0005;
     
     // Add a subtle ambient light
-    this.ambientLight = new THREE.AmbientLight(0x404060, 0.3);
+    this.ambientLight = new THREE.AmbientLight(0x404060, 0.7);
     
     this.scene.add(this.sunLight);
     this.scene.add(this.ambientLight);
