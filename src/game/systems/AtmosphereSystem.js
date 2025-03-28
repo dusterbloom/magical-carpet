@@ -30,12 +30,10 @@ export class AtmosphereSystem {
     // DEBUGGING: Force to night time
     // Keep this forced value for testing night sky stars
     const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    
-    // For testing - force to night time
-    this.timeOfDay = 0.95; // Very late night (just before midnight) for testing
-    console.log("FORCED TIME OF DAY FOR TESTING:", this.timeOfDay);
+    const secondsInDay = 86400;
+    const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    this.timeOfDay = currentSeconds / secondsInDay;
+    console.log("Synced Time of Day:", this.timeOfDay);
     
     this.sunPosition = new THREE.Vector3();
     this.sunLight = null;
