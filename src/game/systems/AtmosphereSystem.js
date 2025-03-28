@@ -651,8 +651,8 @@ export class AtmosphereSystem {
         this.moonLight.intensity = 0.3; // Force intensity for testing
       }
       
-      // Log moon information
-      if (this.elapsed % 10 < 1) { // Log frequently for debugging
+      // Log moon information for debugging
+      if (this.elapsed % 10 < 1) { 
         console.log(`Moon: visible=${this.moonMesh.visible}, position=(${this.moonMesh.position.x.toFixed(0)},${this.moonMesh.position.y.toFixed(0)},${this.moonMesh.position.z.toFixed(0)})`);
       }
     }
