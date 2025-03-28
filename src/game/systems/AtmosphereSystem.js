@@ -618,12 +618,8 @@ export class AtmosphereSystem {
     
     // Update moon position and visibility
     if (this.moonMesh) {
-      // Fixed position for testing - remove this for normal movement
-      this.moonMesh.position.set(5000, 3000, 0);
-      this.moonMesh.visible = true; // Force visibility for testing
       
-      // Uncomment these for normal movement
-      /*
+      
       // Calculate moon angle (opposite to sun)
       const moonAngle = (this.timeOfDay + 0.5) % 1.0 * Math.PI * 2; // Offset by 0.5 to be opposite the sun
       
@@ -634,10 +630,10 @@ export class AtmosphereSystem {
         6000 * Math.sin(moonAngle * 0.5)
       );
       
-      // Make the moon only visible at night
-      this.moonMesh.visible = nightOpacity > 0.05;
-      */
-      
+    // Use the night factor to decide visibility:
+    const nightFactor = this.getNightFactor();
+    this.moonMesh.visible = nightFactor > 0.05;
+            
       // Always face camera
       if (this.engine.camera) {
         const cameraPosition = this.engine.camera.position.clone();
