@@ -446,7 +446,7 @@ export class AtmosphereSystem {
       
       // Debug sun position
       if (this.elapsed % 60 < 1) { 
-        console.log(`Sun position: x=${this.sunPosition.x.toFixed(0)}, y=${this.sunPosition.y.toFixed(0)}`);
+        // console.log(`Sun position: x=${this.sunPosition.x.toFixed(0)}, y=${this.sunPosition.y.toFixed(0)}`);
       }
     }
   }
@@ -647,7 +647,7 @@ export class AtmosphereSystem {
       
       // Log moon information for debugging
       if (this.elapsed % 10 < 1) { 
-        console.log(`Moon: visible=${this.moonMesh.visible}, position=(${this.moonMesh.position.x.toFixed(0)},${this.moonMesh.position.y.toFixed(0)},${this.moonMesh.position.z.toFixed(0)})`);
+        // console.log(`Moon: visible=${this.moonMesh.visible}, position=(${this.moonMesh.position.x.toFixed(0)},${this.moonMesh.position.y.toFixed(0)},${this.moonMesh.position.z.toFixed(0)})`);
       }
     }
   }

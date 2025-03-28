@@ -1,4 +1,4 @@
-import { Vector2, Vector3 } from 'three';
+import { PlaneGeometry, Vector2, Vector3 } from 'three';
 import { useEffect, useMemo } from 'react';
 import { extend, useThree } from '@react-three/fiber';
 import { Water } from 'three/examples/jsm/objects/Water2';
@@ -25,7 +25,7 @@ export function WaterSurfaceComplex({
   position = [0, 0, 0],
   width = 1000,
   length = 1000,
-  color = 0x001e0f,
+  color = 0x3399ff,
   scale = 3,
   flowDirection = [1, 1],
   flowSpeed = 0.15,
