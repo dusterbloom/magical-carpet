@@ -495,12 +495,12 @@ export class WorldSystem {
     
     // DEEP VALLEYS
     if (height < this.minHeight) {
-      // Deep valley with dark earthy colors
+      // Ocean bed - should be darker
       const depth = Math.min(1, (this.minHeight - height) / 50);
       color.setRGB(
-        0.4 - depth * 0.2,
-        0.3 - depth * 0.15,
-        0.2 - depth * 0.1
+        0.25 - depth * 0.1,  // Reduced red (darker)
+        0.2 - depth * 0.1,   // Reduced green (darker)
+        0.15 - depth * 0.05  // Reduced blue (darker)
       );
     }
    // VALLEY FLOORS
@@ -510,43 +510,43 @@ export class WorldSystem {
     const maxDepth = 10;
     const depthFactor = Math.min(1.0, valleyDepth / maxDepth);
     
-    // Valley floor colors
-    const valleyFloorColor = new THREE.Color(0x665544);
-    // Transition color
-    const transitionColor = new THREE.Color(0x887755);
+    // Valley floor colors - lighter sandy beaches
+    const valleyFloorColor = new THREE.Color(0xccbb99); // Lighter sand color
+    // Transition color - softer transition
+    const transitionColor = new THREE.Color(0xddcc88); // Even lighter transition color
     
     // Blend colors based on depth
     color.copy(transitionColor).lerp(valleyFloorColor, depthFactor);
   }
   // LOWER TERRAIN - gradual transition from valley to hills
-    else if (height < this.minHeight + 25) {
+  else if (height < this.minHeight + 25) {
       // Calculate normalized position in the transition zone
       const transitionProgress = (height - this.minHeight) / 25;
       
       // Create more color zones for better transitions
       if (transitionProgress < 0.3) {
-        // Lower zone - earthy tones
+        // Lower zone - sandy transitioning to soil
         const groundFactor = transitionProgress / 0.3;
         color.setRGB(
-          0.6 + groundFactor * 0.1,
-          0.5 + groundFactor * 0.1,
-          0.4 + groundFactor * 0.05
+          0.85 - groundFactor * 0.15, // Transition from lighter sand to darker soil
+          0.8 - groundFactor * 0.2,   // Smooth transition in green channel
+          0.6 - groundFactor * 0.15   // Smooth transition in blue channel
         );
       } else if (transitionProgress < 0.7) {
-        // Middle transition zone
+        // Middle transition zone - soil to vegetation
         const t = (transitionProgress - 0.3) / 0.4;
         color.setRGB(
-          0.7 + t * 0.1,
-          0.6 + t * 0.15,
-          0.45 + t * 0.1
+          0.7 - t * 0.1,       // Continue reducing red
+          0.6 + t * 0.15,      // Increasing green for vegetation
+          0.45 - t * 0.05      // Slightly reducing blue
         );
       } else {
-        // Upper transition zone - start to add green
+        // Upper transition zone - more vegetation
         const t = (transitionProgress - 0.7) / 0.3;
         color.setRGB(
-          0.8 - t * 0.2,  // Less red as we add green
-          0.75 + t * 0.1, // More green
-          0.55 - t * 0.1  // Less blue
+          0.6 - t * 0.2,       // Less red as we add green
+          0.75 + t * 0.1,      // More green
+          0.4 - t * 0.05       // Less blue
         );
       }
       
