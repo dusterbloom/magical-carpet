@@ -40,7 +40,7 @@ export class PlayerModels {
     // Set up shadows
     this.carpetModels.forEach(model => {
       model.castShadow = true;
-      model.receiveShadow = true;
+      model.receiveShadow = false;  // Prevent self-shadowing
     });
     
     console.log(`Created ${this.carpetModels.length} carpet models`);

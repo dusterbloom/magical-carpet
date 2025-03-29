@@ -84,12 +84,12 @@ export class AtmosphereSystem {
     // Configure shadow properties
     this.sunLight.shadow.mapSize.width = 2048;
     this.sunLight.shadow.mapSize.height = 2048;
-    this.sunLight.shadow.camera.near = 500;
+    this.sunLight.shadow.camera.near = 100;
     this.sunLight.shadow.camera.far = 5000;
-    this.sunLight.shadow.camera.left = -1000;
-    this.sunLight.shadow.camera.right = 1000;
-    this.sunLight.shadow.camera.top = 1000;
-    this.sunLight.shadow.camera.bottom = -1000;
+    this.sunLight.shadow.camera.left = -100;
+    this.sunLight.shadow.camera.right = 100;
+    this.sunLight.shadow.camera.top = 100;
+    this.sunLight.shadow.camera.bottom = -100;
     this.sunLight.shadow.bias = -0.0005;
     
     // Add a subtle ambient light

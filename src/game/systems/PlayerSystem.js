@@ -79,6 +79,7 @@ export class PlayerSystem {
     
     // Add carpet model to scene
     carpetModel.position.copy(player.position);
+    carpetModel.castShadow = false; // Disable carpet shadow completely
     this.scene.add(carpetModel);
     
     // Store the player
@@ -117,6 +118,7 @@ export class PlayerSystem {
     
     // Add carpet model to scene
     carpetModel.position.copy(player.position);
+    carpetModel.castShadow = false; // Disable carpet shadow completely
     this.scene.add(carpetModel);
     
     // Store the player

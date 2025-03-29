@@ -268,12 +268,12 @@ export class WorldSystem {
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.near = 100;
     sunLight.shadow.camera.far = 1000;
-    sunLight.shadow.camera.left = -500;
-    sunLight.shadow.camera.right = 500;
-    sunLight.shadow.camera.top = 500;
-    sunLight.shadow.camera.bottom = -500;
+    sunLight.shadow.camera.left = -100;
+    sunLight.shadow.camera.right = 100;
+    sunLight.shadow.camera.top = 100;
+    sunLight.shadow.camera.bottom = -100;
     sunLight.shadow.bias = -0.0003;
     sunLight.shadow.normalBias = 0.02;
     
