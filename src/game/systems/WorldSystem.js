@@ -1366,197 +1366,218 @@ export class WorldSystem {
     // PEAKS - Snow-covered with enhanced transitions
     else {
       // Create smoother transition from mountains to peaks
-      const mountainPeakBoundary = 340;
-      const transitionWidth = 40; // Width of transition zone
+    //   const mountainPeakBoundary = 340;
+    //   const transitionWidth = 40; // Width of transition zone
       
-      // Calculate transition factor with improved smoothstep for mountain-peak boundary
-      let boundarySmoothFactor = 0;
-      if (height < mountainPeakBoundary + transitionWidth) {
-        const transitionProgress = (height - mountainPeakBoundary) / transitionWidth;
-        // Smootherstep for extra smooth transition
-        boundarySmoothFactor = 1.0 - (transitionProgress * transitionProgress * transitionProgress * (transitionProgress * (transitionProgress * 6 - 15) + 10));
-      }
+    //   // Calculate transition factor with improved smoothstep for mountain-peak boundary
+    //   let boundarySmoothFactor = 0;
+    //   if (height < mountainPeakBoundary + transitionWidth) {
+    //     const transitionProgress = (height - mountainPeakBoundary) / transitionWidth;
+    //     // Smootherstep for extra smooth transition
+    //     boundarySmoothFactor = 1.0 - (transitionProgress * transitionProgress * transitionProgress * (transitionProgress * (transitionProgress * 6 - 15) + 10));
+    //   }
       
-      // Enhanced snow color system with transition zone blending
-      // Base snow color with elevation-dependent variations
-      const snowWhite = new THREE.Color(0.92, 0.92, 0.96);
+    //   // Enhanced snow color system with transition zone blending
+    //   // Base snow color with elevation-dependent variations
+    //   const snowWhite = new THREE.Color(0.92, 0.92, 0.96);
       
-      // Higher peaks get more pronounced blue tinge with improved gradient
-      const snowBlue = new THREE.Color(0.78, 0.85, 1.0);
-      const snowHeight = (height - mountainPeakBoundary) / 200;  // Normalized height in peak zone
+    //   // Higher peaks get more pronounced blue tinge with improved gradient
+    //   const snowBlue = new THREE.Color(0.78, 0.85, 1.0);
+    //   const snowHeight = (height - mountainPeakBoundary) / 200;  // Normalized height in peak zone
       
-      // Apply elevation-based tinting with enhanced curve and spatial variation
-      // Create lateral variations in snow color for more natural appearance
-      const spatialVariation = this.fractalNoise(x * 0.001, z * 0.001, 3, 0.5, 2.0) * 0.2;
-      const blueAmount = Math.min(1, Math.pow(snowHeight + spatialVariation, 0.7)) * 0.5;
+    //   // Apply elevation-based tinting with enhanced curve and spatial variation
+    //   // Create lateral variations in snow color for more natural appearance
+    //   const spatialVariation = this.fractalNoise(x * 0.001, z * 0.001, 3, 0.5, 2.0) * 0.2;
+    //   const blueAmount = Math.min(1, Math.pow(snowHeight + spatialVariation, 0.7)) * 0.5;
       
-      // Create mountain rock color for blending at transition zone
-      let mountainColor = new THREE.Color();
-      if (boundarySmoothFactor > 0) {
-        // Get the same rock types used in mountain zone for consistent transition
-        // Create smooth transition from mountain to peak colors
-        let baseRockColor;
+    //   // Create mountain rock color for blending at transition zone
+    //   let mountainColor = new THREE.Color();
+    //   if (boundarySmoothFactor > 0) {
+    //     // Get the same rock types used in mountain zone for consistent transition
+    //     // Create smooth transition from mountain to peak colors
+    //     let baseRockColor;
         
-        // Add spatial coherence to rock types with multi-scale noise
-        const rockTypeNoise = this.fractalNoise(
-          x * 0.001 + this.seed * 63, 
-          z * 0.001 + this.seed * 67,
-          3, 0.5, 2.0
-        ) * 0.15;
+    //     // Add spatial coherence to rock types with multi-scale noise
+    //     const rockTypeNoise = this.fractalNoise(
+    //       x * 0.001 + this.seed * 63, 
+    //       z * 0.001 + this.seed * 67,
+    //       3, 0.5, 2.0
+    //     ) * 0.15;
         
-        // Use same temperature adjustments as mountain zone for consistency
-        const adjustedTemp = normalizedTemp + rockTypeNoise;
+    //     // Use same temperature adjustments as mountain zone for consistency
+    //     const adjustedTemp = normalizedTemp + rockTypeNoise;
         
-        if (adjustedTemp > 0.6) {
-          // Warm rock (more reddish variants)
-          baseRockColor = new THREE.Color(
-            0.48 + this.fractalNoise(x * 0.05, z * 0.05, 2, 0.5, 2.0) * 0.06, 
-            0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
-            0.32 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.04
-          );
-        } else if (adjustedTemp > 0.3) {
-          // Temperate rock (gray-brown)
-          baseRockColor = new THREE.Color(
-            0.42 + this.fractalNoise(x * 0.06, z * 0.06, 2, 0.5, 2.0) * 0.06, 
-            0.38 + this.fractalNoise(x * 0.08, z * 0.08, 2, 0.5, 2.0) * 0.06, 
-            0.35 + this.fractalNoise(x * 0.1, z * 0.1, 2, 0.5, 2.0) * 0.05
-          );
-        } else {
-          // Cold rock (more bluish-gray)
-          baseRockColor = new THREE.Color(
-            0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
-            0.38 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.05, 
-            0.4 + this.fractalNoise(x * 0.11, z * 0.11, 2, 0.5, 2.0) * 0.06
-          );
-        }
+    //     if (adjustedTemp > 0.6) {
+    //       // Warm rock (more reddish variants)
+    //       baseRockColor = new THREE.Color(
+    //         0.48 + this.fractalNoise(x * 0.05, z * 0.05, 2, 0.5, 2.0) * 0.06, 
+    //         0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
+    //         0.32 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.04
+    //       );
+    //     } else if (adjustedTemp > 0.3) {
+    //       // Temperate rock (gray-brown)
+    //       baseRockColor = new THREE.Color(
+    //         0.42 + this.fractalNoise(x * 0.06, z * 0.06, 2, 0.5, 2.0) * 0.06, 
+    //         0.38 + this.fractalNoise(x * 0.08, z * 0.08, 2, 0.5, 2.0) * 0.06, 
+    //         0.35 + this.fractalNoise(x * 0.1, z * 0.1, 2, 0.5, 2.0) * 0.05
+    //       );
+    //     } else {
+    //       // Cold rock (more bluish-gray)
+    //       baseRockColor = new THREE.Color(
+    //         0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
+    //         0.38 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.05, 
+    //         0.4 + this.fractalNoise(x * 0.11, z * 0.11, 2, 0.5, 2.0) * 0.06
+    //       );
+    //     }
         
-        // Create dark rock variant with height-based variation just like mountain zone
-        const darkRock = new THREE.Color(0.28, 0.28, 0.3);
-        const mountainGradient = 0.7; // Match the mountain gradient at boundary
+    //     // Create dark rock variant with height-based variation just like mountain zone
+    //     const darkRock = new THREE.Color(0.28, 0.28, 0.3);
+    //     const mountainGradient = 0.7; // Match the mountain gradient at boundary
         
-        mountainColor.copy(baseRockColor).lerp(darkRock, mountainGradient);
+    //     mountainColor.copy(baseRockColor).lerp(darkRock, mountainGradient);
         
-        // Add mountain snow patches for consistent transition
-        // Use same noise patterns as mountain zone near boundary
-        const largeSnowNoise = this.fractalNoise(x * 0.04 + this.seed * 17, z * 0.04 + this.seed * 18, 3, 0.5, 2.0);
-        const mediumSnowNoise = this.fractalNoise(x * 0.1 + this.seed * 25, z * 0.1 + this.seed * 26, 2, 0.5, 2.0);
-        const combinedSnowNoise = largeSnowNoise * 0.6 + mediumSnowNoise * 0.4;
+    //     // Add mountain snow patches for consistent transition
+    //     // Use same noise patterns as mountain zone near boundary
+    //     const largeSnowNoise = this.fractalNoise(x * 0.04 + this.seed * 17, z * 0.04 + this.seed * 18, 3, 0.5, 2.0);
+    //     const mediumSnowNoise = this.fractalNoise(x * 0.1 + this.seed * 25, z * 0.1 + this.seed * 26, 2, 0.5, 2.0);
+    //     const combinedSnowNoise = largeSnowNoise * 0.6 + mediumSnowNoise * 0.4;
         
-        // High snow amount at the boundary with mountains
-        const highSnowColor = new THREE.Color(0.92, 0.92, 0.97);
-        mountainColor.lerp(highSnowColor, 0.8 + combinedSnowNoise * 0.2);
-      }
+    //     // High snow amount at the boundary with mountains
+    //     const highSnowColor = new THREE.Color(0.92, 0.92, 0.97);
+    //     mountainColor.lerp(highSnowColor, 0.8 + combinedSnowNoise * 0.2);
+    //   }
       
-      // Apply peak snow color with boundary blending
-      if (boundarySmoothFactor > 0) {
-        // Multi-step snow color blending at transition zone
-        const peakSnowColor = new THREE.Color().copy(snowWhite).lerp(snowBlue, blueAmount);
-        color.copy(mountainColor).lerp(peakSnowColor, 1.0 - boundarySmoothFactor);
-      } else {
-        // Regular peak snow color
-        color.copy(snowWhite).lerp(snowBlue, blueAmount);
-      }
+    //   // Apply peak snow color with boundary blending
+    //   if (boundarySmoothFactor > 0) {
+    //     // Multi-step snow color blending at transition zone
+    //     const peakSnowColor = new THREE.Color().copy(snowWhite).lerp(snowBlue, blueAmount);
+    //     color.copy(mountainColor).lerp(peakSnowColor, 1.0 - boundarySmoothFactor);
+    //   } else {
+    //     // Regular peak snow color
+    //     color.copy(snowWhite).lerp(snowBlue, blueAmount);
+    //   }
       
-      // Add enhanced snow texture with multiple noise scales and better coherence
-      const largeSnowTexture = this.fractalNoise(x * 0.04 + this.seed * 19, z * 0.04 + this.seed * 20, 3, 0.5, 2.0);
-      const mediumSnowTexture = this.fractalNoise(x * 0.12 + this.seed * 27, z * 0.12 + this.seed * 28, 2, 0.5, 2.0);
-      const smallSnowTexture = this.fractalNoise(x * 0.3 + this.seed * 33, z * 0.3 + this.seed * 34, 1, 0.5, 2.0);
+    //   // Add enhanced snow texture with multiple noise scales and better coherence
+    //   const largeSnowTexture = this.fractalNoise(x * 0.04 + this.seed * 19, z * 0.04 + this.seed * 20, 3, 0.5, 2.0);
+    //   const mediumSnowTexture = this.fractalNoise(x * 0.12 + this.seed * 27, z * 0.12 + this.seed * 28, 2, 0.5, 2.0);
+    //   const smallSnowTexture = this.fractalNoise(x * 0.3 + this.seed * 33, z * 0.3 + this.seed * 34, 1, 0.5, 2.0);
       
-      // Enhanced texture blending with improved height-dependent weighting
-      // Progressive transition from larger to smaller details with elevation
-      const normalizedHeight = Math.min(1.0, (height - mountainPeakBoundary) / 200);
-      const heightCurve = Math.pow(normalizedHeight, 0.6); // Softer curve
+    //   // Enhanced texture blending with improved height-dependent weighting
+    //   // Progressive transition from larger to smaller details with elevation
+    //   const normalizedHeight = Math.min(1.0, (height - mountainPeakBoundary) / 200);
+    //   const heightCurve = Math.pow(normalizedHeight, 0.6); // Softer curve
       
-      // Scale weights evolve gradually with elevation
-      const largeWeight = 0.7 - heightCurve * 0.4;
-      const mediumWeight = 0.2 + heightCurve * 0.2;
-      const smallWeight = 0.1 + heightCurve * 0.2;
+    //   // Scale weights evolve gradually with elevation
+    //   const largeWeight = 0.7 - heightCurve * 0.4;
+    //   const mediumWeight = 0.2 + heightCurve * 0.2;
+    //   const smallWeight = 0.1 + heightCurve * 0.2;
       
-      // Combine with improved weights and scale awareness
-      const snowTexture = 
-        largeSnowTexture * largeWeight + 
-        mediumSnowTexture * mediumWeight + 
-        smallSnowTexture * smallWeight;
+    //   // Combine with improved weights and scale awareness
+    //   const snowTexture = 
+    //     largeSnowTexture * largeWeight + 
+    //     mediumSnowTexture * mediumWeight + 
+    //     smallSnowTexture * smallWeight;
       
-      // Apply variation with height-dependent intensity
-      const textureIntensity = 0.06 + heightCurve * 0.02; // Stronger texture at higher elevations
-      const variation = snowTexture * textureIntensity;
+    //   // Apply variation with height-dependent intensity
+    //   const textureIntensity = 0.06 + heightCurve * 0.02; // Stronger texture at higher elevations
+    //   const variation = snowTexture * textureIntensity;
       
-      // Apply with subtle color channel differences for more natural snow
-      color.r += variation * 1.0;
-      color.g += variation * 1.0;
-      color.b += variation * 0.8; // Slightly reduced blue variation for more realistic snow
+    //   // Apply with subtle color channel differences for more natural snow
+    //   color.r += variation * 1.0;
+    //   color.g += variation * 1.0;
+    //   color.b += variation * 0.8; // Slightly reduced blue variation for more realistic snow
       
-      // Enhanced rock exposure on steep slopes with improved transitions and detection
-      if (slope > 0.6) { // Lower threshold for smoother transition
-        // Calculate slope intensity with smoother curve
-        const slopeProgress = Math.min(1.0, (slope - 0.6) / 0.6); // 0 at slope=0.6, 1 at slope=1.2
-        const slopeIntensity = slopeProgress * slopeProgress * (3 - 2 * slopeProgress); // Smoothstep
+    //   // Enhanced rock exposure on steep slopes with improved transitions and detection
+    //   if (slope > 0.6) { // Lower threshold for smoother transition
+    //     // Calculate slope intensity with smoother curve
+    //     const slopeProgress = Math.min(1.0, (slope - 0.6) / 0.6); // 0 at slope=0.6, 1 at slope=1.2
+    //     const slopeIntensity = slopeProgress * slopeProgress * (3 - 2 * slopeProgress); // Smoothstep
         
-        // Calculate rock exposure with improved noise and patterns
-        // Multi-scale noise creates more natural rock outcroppings
-        const rockExposureNoise = 
-            this.fractalNoise(x * 0.08 + this.seed * 21, z * 0.08 + this.seed * 22, 3, 0.5, 2.0) * 0.6 + 
-            this.fractalNoise(x * 0.2 + this.seed * 41, z * 0.2 + this.seed * 42, 2, 0.5, 2.0) * 0.4;
+    //     // Calculate rock exposure with improved noise and patterns
+    //     // Multi-scale noise creates more natural rock outcroppings
+    //     const rockExposureNoise = 
+    //         this.fractalNoise(x * 0.08 + this.seed * 21, z * 0.08 + this.seed * 22, 3, 0.5, 2.0) * 0.6 + 
+    //         this.fractalNoise(x * 0.2 + this.seed * 41, z * 0.2 + this.seed * 42, 2, 0.5, 2.0) * 0.4;
         
-        // Improved exposure calculation with more natural distribution
-        // Significantly reduce rock exposure at very high elevations and on shallow slopes near peaks
-        const exposureThresholdBase = 0.35;
-        const highPeakReduction = Math.min(1.0, Math.pow(normalizedHeight * 2, 2)) * 0.3; // Stronger at peak
-        const exposureThreshold = exposureThresholdBase - (heightCurve * 0.1) + highPeakReduction;
+    //     // Improved exposure calculation with more natural distribution
+    //     // Significantly reduce rock exposure at very high elevations and on shallow slopes near peaks
+    //     const exposureThresholdBase = 0.35;
+    //     const highPeakReduction = Math.min(1.0, Math.pow(normalizedHeight * 2, 2)) * 0.3; // Stronger at peak
+    //     const exposureThreshold = exposureThresholdBase - (heightCurve * 0.1) + highPeakReduction;
         
-        // Add slope factor to reduce rock exposure on shallow slopes at high elevations
-        const slopeReduction = height > 350 ? (1.0 - Math.min(1.0, slope * 2)) * 0.25 : 0;
+    //     // Add slope factor to reduce rock exposure on shallow slopes at high elevations
+    //     const slopeReduction = height > 350 ? (1.0 - Math.min(1.0, slope * 2)) * 0.25 : 0;
         
-        // Combined exposure calculation with height and slope awareness
-        const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - exposureThreshold - slopeReduction) * 1.8);
+    //     // Combined exposure calculation with height and slope awareness
+    //     const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - exposureThreshold - slopeReduction) * 1.8);
         
-        if (rockExposure > 0.05) { // Lower threshold for smoother transition
-          // Calculate rock color with improved height-dependent variation
-          // Use lighter rocks at higher elevations to avoid black appearance
-          const heightVariation = this.fractalNoise(x * 0.005, z * 0.005, 2, 0.5, 2.0) * 0.1;
-          const adjustedHeight = snowHeight + heightVariation;
+    //     if (rockExposure > 0.05) { // Lower threshold for smoother transition
+    //       // Calculate rock color with improved height-dependent variation
+    //       // Use lighter rocks at higher elevations to avoid black appearance
+    //       const heightVariation = this.fractalNoise(x * 0.005, z * 0.005, 2, 0.5, 2.0) * 0.1;
+    //       const adjustedHeight = snowHeight + heightVariation;
           
-          // Create rock color with height-dependent properties - MUCH lighter and less dark at peaks
-          const peakHeight = height > 360 ? 1.0 : Math.max(0, (height - 340) / 20);
-          const rockColor = new THREE.Color(
-            Math.max(0.5, 0.6 - adjustedHeight * 0.05), // Much lighter at peaks
-            Math.max(0.48, 0.58 - adjustedHeight * 0.05), // Much lighter at peaks
-            Math.max(0.52, 0.62 - adjustedHeight * 0.05) // Slightly bluer at higher elevations
-          );
+    //       // Create rock color with height-dependent properties - MUCH lighter and less dark at peaks
+    //       const peakHeight = height > 360 ? 1.0 : Math.max(0, (height - 340) / 20);
+    //       const rockColor = new THREE.Color(
+    //         Math.max(0.5, 0.6 - adjustedHeight * 0.05), // Much lighter at peaks
+    //         Math.max(0.48, 0.58 - adjustedHeight * 0.05), // Much lighter at peaks
+    //         Math.max(0.52, 0.62 - adjustedHeight * 0.05) // Slightly bluer at higher elevations
+    //       );
           
-          // Blend with snow color at very high elevations to avoid stark contrast
-          if (height > 360) {
-            const snowBlendAmount = Math.min(1.0, (height - 360) / 30) * 0.7;
-            const snowColor = new THREE.Color(0.92, 0.92, 0.96);
-            rockColor.lerp(snowColor, snowBlendAmount);
-          }
+    //       // Blend with snow color at very high elevations to avoid stark contrast
+    //       if (height > 360) {
+    //         const snowBlendAmount = Math.min(1.0, (height - 360) / 30) * 0.7;
+    //         const snowColor = new THREE.Color(0.92, 0.92, 0.96);
+    //         rockColor.lerp(snowColor, snowBlendAmount);
+    //       }
           
-          // Progressive multi-stage blending for smoother transitions
-          if (rockExposure < 0.2) {
-            // Very subtle rock exposure with minimal transition
-            const lightRockBlend = rockExposure * 5; // Scale up for more impact in this range
-            color.lerp(rockColor, lightRockBlend * 0.3); // Subtle blend
-          } else if (rockExposure < 0.5) {
-            // Medium rock exposure with moderate transition
-            const mediumRockBlend = (rockExposure - 0.2) / 0.3; // 0 to 1 range
-            const intermColor = new THREE.Color().copy(color).lerp(rockColor, 0.3);
-            color.copy(intermColor).lerp(rockColor, mediumRockBlend * 0.6); // Two-step blend
-          } else {
-            // Heavy rock exposure with full transition - but limit max exposure blend at high elevations
-            const maxExposureBlend = height > 360 ? 0.5 : 0.8;
-            color.lerp(rockColor, rockExposure * maxExposureBlend);
-          }
-        }
-      }
-    }
+    //       // Progressive multi-stage blending for smoother transitions
+    //       if (rockExposure < 0.2) {
+    //         // Very subtle rock exposure with minimal transition
+    //         const lightRockBlend = rockExposure * 5; // Scale up for more impact in this range
+    //         color.lerp(rockColor, lightRockBlend * 0.3); // Subtle blend
+    //       } else if (rockExposure < 0.5) {
+    //         // Medium rock exposure with moderate transition
+    //         const mediumRockBlend = (rockExposure - 0.2) / 0.3; // 0 to 1 range
+    //         const intermColor = new THREE.Color().copy(color).lerp(rockColor, 0.3);
+    //         color.copy(intermColor).lerp(rockColor, mediumRockBlend * 0.6); // Two-step blend
+    //       } else {
+    //         // Heavy rock exposure with full transition - but limit max exposure blend at high elevations
+    //         const maxExposureBlend = height > 360 ? 0.5 : 0.8;
+    //         color.lerp(rockColor, rockExposure * maxExposureBlend);
+    //       }
+    //     }
+    //   }
+    // }
     
-    // Ensure color values are valid
-    color.r = Math.max(0, Math.min(1, color.r));
-    color.g = Math.max(0, Math.min(1, color.g));
-    color.b = Math.max(0, Math.min(1, color.b));
+    // // Ensure color values are valid
+    // color.r = Math.max(0, Math.min(1, color.r));
+    // color.g = Math.max(0, Math.min(1, color.g));
+    // color.b = Math.max(0, Math.min(1, color.b));
     
-    return color;
+    // return color;
+    // ----> START TEMPORARY OVERRIDE <----
+    color.setRGB(0.6, 0.6, 0.7); // Assign a fixed mid-grey/blue color
+    // ----> END TEMPORARY OVERRIDE <----
+
+
+    /* // ----> ORIGINAL PEAK LOGIC COMMENTED OUT <----
+    const mountainPeakBoundary = 340;
+    const transitionWidth = 40;
+    // ... all the complex calculations for snow, rock, blending ...
+    // ... rock exposure calculation ...
+    // ... blending logic ...
+    */ // ----> END ORIGINAL PEAK LOGIC <----
+}
+
+// Ensure color values are valid (KEEP THIS FINAL CLAMP)
+color.r = Math.max(0, Math.min(1, color.r));
+color.g = Math.max(0, Math.min(1, color.g));
+color.b = Math.max(0, Math.min(1, color.b));
+
+return color;
+
   }
 
   createChunkGeometry(startX, startZ) {
@@ -1871,61 +1892,59 @@ export class WorldSystem {
     }
     
     // Perform additional smoothing on problematic vertices
-    for (const vertexIndex of problematicVertices) {
-      // Find neighboring vertices
-      const neighbors = new Set();
-      for (let i = 0; i < triangleCount; i++) {
-        let vA, vB, vC;
+    // for (const vertexIndex of problematicVertices) {
+    //   // Find neighboring vertices
+    //   const neighbors = new Set();
+    //   for (let i = 0; i < triangleCount; i++) {
+    //     let vA, vB, vC;
         
-        if (indices) {
-          vA = indices[i * 3];
-          vB = indices[i * 3 + 1];
-          vC = indices[i * 3 + 2];
-        } else {
-          vA = i * 3;
-          vB = i * 3 + 1;
-          vC = i * 3 + 2;
-        }
+    //     if (indices) {
+    //       vA = indices[i * 3];
+    //       vB = indices[i * 3 + 1];
+    //       vC = indices[i * 3 + 2];
+    //     } else {
+    //       vA = i * 3;
+    //       vB = i * 3 + 1;
+    //       vC = i * 3 + 2;
+    //     }
         
-        // If this vertex is part of this triangle
-        if (vA === vertexIndex || vB === vertexIndex || vC === vertexIndex) {
-          // Add all vertices from this triangle
-          neighbors.add(vA);
-          neighbors.add(vB);
-          neighbors.add(vC);
-        }
-      }
+    //     // If this vertex is part of this triangle
+    //     if (vA === vertexIndex || vB === vertexIndex || vC === vertexIndex) {
+    //       // Add all vertices from this triangle
+    //       neighbors.add(vA);
+    //       neighbors.add(vB);
+    //       neighbors.add(vC);
+    //     }
+    //   }
       
-      // Calculate smoothed normal from neighbors
-      const smoothedNormal = new THREE.Vector3(0, 0, 0);
-      for (const neighborIndex of neighbors) {
-        smoothedNormal.add(tempNormals[neighborIndex].clone());
-      }
-      smoothedNormal.normalize();
+    //   // Calculate smoothed normal from neighbors
+    //   const smoothedNormal = new THREE.Vector3(0, 0, 0);
+    //   for (const neighborIndex of neighbors) {
+    //     smoothedNormal.add(tempNormals[neighborIndex].clone());
+    //   }
+    //   smoothedNormal.normalize();
       
-      // Blend with an upward-facing normal proportional to the height
-      // Higher elevations get more upward normal blending
-      const worldY = worldCoords.get(vertexIndex).y;
-      const upNormal = new THREE.Vector3(0, 1, 0);
+    //   // Blend with an upward-facing normal proportional to the height
+    //   // Higher elevations get more upward normal blending
+    //   const worldY = worldCoords.get(vertexIndex).y;
+    //   const upNormal = new THREE.Vector3(0, 1, 0);
       
-      // Modified height factor calculation - stronger correction at higher elevation
-      const heightFactor = Math.min(1, (worldY - 200) / 200) * 0.5;
+    //   // Modified height factor calculation - stronger correction at higher elevation
+
+    //   // Apply stronger correction when we're at high elevations
+    //   const heightFactor = Math.min(1, (worldY - 200) / 200) * 0.5;
+    //   const snowFactor = worldY > 340 ? 0.3 : 0;
+    //   let blendFactor = 0.5 + heightFactor + snowFactor;
+    //   blendFactor = Math.min(blendFactor, 0.5); // Clamp below 1.0 (e.g., 0.95)
       
-      // Additional adjustment for peaks above snow line
-      const snowFactor = worldY > 340 ? 0.3 : 0;
+    //   tempNormals[vertexIndex].copy(smoothedNormal).lerp(upNormal, blendFactor).normalize();      
       
-      // Apply stronger correction when we're at high elevations
-      const blendFactor = 0.5 + heightFactor + snowFactor;
-      
-      // Apply smoothed normal with upward bias
-      tempNormals[vertexIndex].copy(smoothedNormal).lerp(upNormal, blendFactor).normalize();
-      
-      // Ensure no downward-facing normals on peaks
-      if (worldY > 340 && tempNormals[vertexIndex].y < 0.1) {
-        tempNormals[vertexIndex].y = 0.1;
-        tempNormals[vertexIndex].normalize();
-      }
-    }
+    //   // Ensure no downward-facing normals on peaks
+    //   if (worldY > 340 && tempNormals[vertexIndex].y < 0.1) {
+    //     tempNormals[vertexIndex].y = 0.1;
+    //     tempNormals[vertexIndex].normalize();
+    //   }
+    // }
     
     // Final normalization of all normals
     for (let i = 0; i < vertexCount; i++) {
