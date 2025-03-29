@@ -1500,8 +1500,16 @@ export class WorldSystem {
             this.fractalNoise(x * 0.2 + this.seed * 41, z * 0.2 + this.seed * 42, 2, 0.5, 2.0) * 0.4;
         
         // Improved exposure calculation with more natural distribution
-        const exposureThreshold = 0.35 - heightCurve * 0.15; // Less rock exposed at higher elevations
-        const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - exposureThreshold) * 1.8);
+        // Significantly reduce rock exposure at very high elevations and on shallow slopes near peaks
+        const exposureThresholdBase = 0.35;
+        const highPeakReduction = Math.min(1.0, Math.pow(normalizedHeight * 2, 2)) * 0.3; // Stronger at peak
+        const exposureThreshold = exposureThresholdBase - (heightCurve * 0.1) + highPeakReduction;
+        
+        // Add slope factor to reduce rock exposure on shallow slopes at high elevations
+        const slopeReduction = height > 350 ? (1.0 - Math.min(1.0, slope * 2)) * 0.25 : 0;
+        
+        // Combined exposure calculation with height and slope awareness
+        const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - exposureThreshold - slopeReduction) * 1.8);
         
         if (rockExposure > 0.05) { // Lower threshold for smoother transition
           // Calculate rock color with improved height-dependent variation
@@ -1509,12 +1517,20 @@ export class WorldSystem {
           const heightVariation = this.fractalNoise(x * 0.005, z * 0.005, 2, 0.5, 2.0) * 0.1;
           const adjustedHeight = snowHeight + heightVariation;
           
-          // Create rock color with height-dependent properties - avoid too dark values
+          // Create rock color with height-dependent properties - MUCH lighter and less dark at peaks
+          const peakHeight = height > 360 ? 1.0 : Math.max(0, (height - 340) / 20);
           const rockColor = new THREE.Color(
-            Math.max(0.35, 0.4 - adjustedHeight * 0.1),
-            Math.max(0.33, 0.38 - adjustedHeight * 0.1),
-            Math.max(0.36, 0.42 - adjustedHeight * 0.05) // Slightly bluer at higher elevations
+            Math.max(0.5, 0.6 - adjustedHeight * 0.05), // Much lighter at peaks
+            Math.max(0.48, 0.58 - adjustedHeight * 0.05), // Much lighter at peaks
+            Math.max(0.52, 0.62 - adjustedHeight * 0.05) // Slightly bluer at higher elevations
           );
+          
+          // Blend with snow color at very high elevations to avoid stark contrast
+          if (height > 360) {
+            const snowBlendAmount = Math.min(1.0, (height - 360) / 30) * 0.7;
+            const snowColor = new THREE.Color(0.92, 0.92, 0.96);
+            rockColor.lerp(snowColor, snowBlendAmount);
+          }
           
           // Progressive multi-stage blending for smoother transitions
           if (rockExposure < 0.2) {
@@ -1527,8 +1543,9 @@ export class WorldSystem {
             const intermColor = new THREE.Color().copy(color).lerp(rockColor, 0.3);
             color.copy(intermColor).lerp(rockColor, mediumRockBlend * 0.6); // Two-step blend
           } else {
-            // Heavy rock exposure with full transition
-            color.lerp(rockColor, rockExposure * 0.8);
+            // Heavy rock exposure with full transition - but limit max exposure blend at high elevations
+            const maxExposureBlend = height > 360 ? 0.5 : 0.8;
+            color.lerp(rockColor, rockExposure * maxExposureBlend);
           }
         }
       }
