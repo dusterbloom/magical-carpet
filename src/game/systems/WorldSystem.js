@@ -23,7 +23,7 @@ export class WorldSystem {
 
     // World configuration
     this.chunkSize = 1024;
-    this.terrainResolution = 32;
+    this.terrainResolution = 64;  // Increased from 32 for smoother terrain
     this.maxHeight = 120;  // Increased from 120
     this.minHeight = -10;  // Deeper valleys
     // Water level removed
@@ -181,14 +181,15 @@ export class WorldSystem {
       ));
       noiseValue = 1.0 - noiseValue;
       
-      // Square the value for sharper ridges
-      noiseValue *= noiseValue;
+      // Apply a much smoother curve instead of squaring (reduce sharpness)
+      // Use a very soft power value of 1.2 instead of original 2.0
+      noiseValue = Math.pow(noiseValue, 1.2);
       
       // Apply weighting to successive octaves
       noiseValue *= weight;
       
-      // Weight successive octaves by previous noise value
-      weight = noiseValue;
+      // Weight successive octaves by previous noise value (scaled to reduce sharpness)
+      weight = Math.min(1.0, noiseValue * 0.8);
       
       // Add to result
       result += noiseValue * amplitude;
@@ -702,8 +703,69 @@ export class WorldSystem {
     // Add colors to geometry
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     
-    // Update normals
+    // Update normals with improved smoothing
     geometry.computeVertexNormals();
+    
+    // Additional smoothing for normals to reduce edge artifacts
+    const normals = geometry.attributes.normal.array;
+    const positions = geometry.attributes.position.array;
+    
+    // Create a map of vertex positions to their corresponding normals
+    const positionToNormals = new Map();
+    
+    // Collect all normals for identical vertex positions
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = Math.round(positions[i] * 100) / 100;
+      const y = Math.round(positions[i + 1] * 100) / 100;
+      const z = Math.round(positions[i + 2] * 100) / 100;
+      const key = `${x},${y},${z}`;
+      
+      const nx = normals[i];
+      const ny = normals[i + 1];
+      const nz = normals[i + 2];
+      
+      if (!positionToNormals.has(key)) {
+        positionToNormals.set(key, []);
+      }
+      
+      positionToNormals.get(key).push({index: i, normal: [nx, ny, nz]});
+    }
+    
+    // Average normals for vertices at the same position
+    for (const [key, normalsList] of positionToNormals.entries()) {
+      if (normalsList.length > 1) {
+        // Average the normals
+        const avgNormal = [0, 0, 0];
+        
+        for (const item of normalsList) {
+          avgNormal[0] += item.normal[0];
+          avgNormal[1] += item.normal[1];
+          avgNormal[2] += item.normal[2];
+        }
+        
+        avgNormal[0] /= normalsList.length;
+        avgNormal[1] /= normalsList.length;
+        avgNormal[2] /= normalsList.length;
+        
+        // Normalize
+        const length = Math.sqrt(avgNormal[0] * avgNormal[0] + 
+                                avgNormal[1] * avgNormal[1] + 
+                                avgNormal[2] * avgNormal[2]);
+        
+        avgNormal[0] /= length;
+        avgNormal[1] /= length;
+        avgNormal[2] /= length;
+        
+        // Apply averaged normal to all vertices at this position
+        for (const item of normalsList) {
+          normals[item.index] = avgNormal[0];
+          normals[item.index + 1] = avgNormal[1];
+          normals[item.index + 2] = avgNormal[2];
+        }
+      }
+    }
+    
+    geometry.attributes.normal.needsUpdate = true;
     
     return geometry;
   }
