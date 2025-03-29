@@ -156,7 +156,7 @@ export class AtmosphereSystem {
       }
     };
     this.scene.add(this.sky);
-    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0003);
+    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.00003);
 
     // Create night sky components (moon)
     this.createNightSky();
