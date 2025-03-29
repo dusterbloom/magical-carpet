@@ -10,7 +10,7 @@ import { UISystem } from "../systems/UISystem";
 // Import new systems
 import { VegetationSystem } from "../systems/VegetationSystem";
 import { AtmosphereSystem } from "../systems/AtmosphereSystem";
-// WaterSystem removed
+import { WaterSystem } from "../systems/WaterSystem";
 import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
@@ -77,7 +77,7 @@ export class Engine {
     // Create systems in correct order (dependencies first)
     this.systems.network = new NetworkManager(this);
     this.systems.world = new WorldSystem(this);
-    // Water system removed
+    this.systems.water = new WaterSystem(this);
     this.systems.vegetation = new VegetationSystem(this);
     this.systems.atmosphere = new AtmosphereSystem(this);
     this.systems.player = new PlayerSystem(this);
@@ -92,7 +92,7 @@ export class Engine {
     const initOrder = [
       "network",
       "world", // Base terrain must be initialized first
-      // Water system removed
+      "water", // Water system should be initialized after terrain
       "vegetation", // Vegetation needs terrain to place trees
       "atmosphere", // Atmosphere enhances the sky and adds clouds
       "player", // Player needs terrain for physics
@@ -140,7 +140,7 @@ export class Engine {
     const updateOrder = [
       "network",
       "world",
-      // Water system removed
+      "water",
       "vegetation",
       "atmosphere",
       "player",
