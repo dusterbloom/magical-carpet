@@ -24,19 +24,19 @@ export class WorldSystem {
     // World configuration
     this.chunkSize = 1024;
     this.terrainResolution = 64;  // Increased from 32 for smoother terrain
-    this.maxHeight = 120;  // Increased from 120
-    this.minHeight = -10;  // Deeper valleys
+    this.maxHeight = 400;  // Increased significantly for dramatic mountains
+    this.minHeight = -50;  // Much deeper valleys for contrast
     // Water level removed
     this.viewDistance = 6;
     
     // Terrain parameters
     this.terrainParams = {
-      baseScale: 0.002,        // Reduced from 0.003 - larger features
-      detailScale: 0.015,        // Reduced from 0.015 - smoother details
-      mountainScale: 0.003,     // Reduced from 0.008 - larger mountains
-      baseHeight: 40,          // Increased from 40
-      mountainHeight: 80,      // Increased from 80 
-      detailHeight: 10          // Increased from 20
+      baseScale: 0.0015,       // Reduced for larger, smoother terrain features
+      detailScale: 0.01,        // Adjusted for better detail balance
+      mountainScale: 0.002,     // Reduced for larger, more sweeping mountains
+      baseHeight: 60,          // Increased for higher base terrain
+      mountainHeight: 180,     // Significantly increased for dramatic mountains
+      detailHeight: 15         // Moderate terrain details for natural appearance
     };
 
     // Initialize noise generator
@@ -138,20 +138,23 @@ export class WorldSystem {
     let total = 0;
     let maxValue = 0;
     
-    // Sum multiple layers of noise
+    // Sum multiple layers of noise with improved weighting
     for (let i = 0; i < octaves; i++) {
-      // Sample noise at current frequency
+      // Sample noise at current frequency with improved seed variation
       const noiseValue = this.noise(
-        x * frequency + this.seed * (i + 1),
-        z * frequency + this.seed * (i + 2)
+        x * frequency + this.seed * (i * 3 + 1),
+        z * frequency + this.seed * (i * 3 + 2)
       );
       
-      // Add weighted noise to total
-      total += noiseValue * amplitude;
+      // Add weighted noise to total with enhanced amplitude modulation
+      // This creates more nuanced variation in the terrain
+      const weightedNoise = noiseValue * amplitude;
+      total += weightedNoise;
       maxValue += amplitude;
       
       // Each octave has higher frequency but lower amplitude
-      amplitude *= persistence;
+      // Slightly decreased persistence for more natural terrain
+      amplitude *= persistence * (1.0 - 0.01 * i);  // Gradual reduction in influence
       frequency *= lacunarity;
     }
     
@@ -167,35 +170,39 @@ export class WorldSystem {
    * @param {number} octaves - Number of noise layers to combine
    * @returns {number} Ridged noise value in range [0, 1]
    */
-  ridgedNoise(x, z, frequency, octaves = 4) {
+  ridgedNoise(x, z, frequency, octaves = 5) {  // Increased octaves for more detail
     let result = 0;
     let amplitude = 1.0;
     let freq = frequency;
     let weight = 1.0;
     
     for (let i = 0; i < octaves; i++) {
-      // Get absolute noise value and invert it
+      // Get absolute noise value and invert it with improved seed variation
       let noiseValue = Math.abs(this.noise(
-        x * freq + this.seed * (i * 2 + 1),
-        z * freq + this.seed * (i * 2 + 2)
+        x * freq + this.seed * (i * 3.7 + 1),  // More varied seed offsets
+        z * freq + this.seed * (i * 3.7 + 2)
       ));
       noiseValue = 1.0 - noiseValue;
       
-      // Apply a much smoother curve instead of squaring (reduce sharpness)
-      // Use a very soft power value of 1.2 instead of original 2.0
-      noiseValue = Math.pow(noiseValue, 1.2);
+      // Variable power adjustment for different mountain types
+      // Lower passes (i=0,1) use higher power for sharper main ridges
+      // Higher passes use lower power for smoother details
+      const powerValue = i < 2 ? 1.5 : 1.1;  // Creates sharper main ridges but smoother details
+      noiseValue = Math.pow(noiseValue, powerValue);
       
-      // Apply weighting to successive octaves
+      // Apply weighting to successive octaves with enhanced variation
       noiseValue *= weight;
       
-      // Weight successive octaves by previous noise value (scaled to reduce sharpness)
-      weight = Math.min(1.0, noiseValue * 0.8);
+      // Weight successive octaves by previous noise value with varying scale
+      // This creates more natural ridge patterns with secondary features
+      const weightScale = 0.7 + 0.2 * Math.sin(i * 1.5);
+      weight = Math.min(1.0, noiseValue * weightScale);
       
-      // Add to result
-      result += noiseValue * amplitude;
+      // Add to result with slight variation per octave
+      result += noiseValue * amplitude * (1.0 + 0.1 * Math.sin(i * 2.7));
       
-      // Next octave
-      freq *= 2.0;
+      // Next octave with variable frequency multiplier for more natural results
+      freq *= 2.0 + 0.1 * Math.sin(i);
       amplitude *= 0.5;
     }
     
@@ -346,32 +353,36 @@ export class WorldSystem {
       // Generate continent shape using large-scale noise
       const continentShape = this.fractalNoise(
         x, z,
-        0.0001, // Even lower frequency for larger landmasses (was 0.0001)
-        4,      // Just a few octaves for smooth continent shape
-        0.5,    // Persistence
-        1.5     // Lacunarity
+        0.00007, // Even lower frequency for much larger landmasses
+        5,       // Increased octaves for more varied continent shape
+        0.45,    // Slightly reduced persistence for smoother large features
+        1.7      // Increased lacunarity for more varied scales
       );
       
-      // Apply continent mask to create oceans and landmasses
-      const continentMask = Math.max(0, (continentShape + 0.3) * 1.2);
+      // Apply continent mask to create valleys and landmasses
+      const continentMask = Math.max(0, (continentShape + 0.25) * 1.3);  // Adjusted for better distribution
       
-      // Ocean replaced with deep valleys
-      if (continentMask <= 0.1) {
-        // Deep valley depth proportional to distance from shore
-        return this.minHeight - 20 - 80 * (0.1 - continentMask);
+      // Deep valleys
+      if (continentMask <= 0.12) {  // Slightly increased threshold for wider valleys
+        // Deep valley depth with improved natural falloff
+        // Added sine variation for less uniform valley floors
+        const valleyDepth = this.minHeight - 15 - 100 * (0.12 - continentMask) * 
+                           (1.0 + 0.2 * Math.sin(x * 0.005) * Math.sin(z * 0.005));
+        return valleyDepth;
       }
       
-      // Beach transition zone converted to slopes
-      if (continentMask > 0.1 && continentMask < 0.35) {
+      // Transition zone converted to gentler slopes (Tuscan-like)
+      if (continentMask > 0.12 && continentMask < 0.38) {  // Wider transition zone
         // Calculate how far into the transition zone we are (0.0 to 1.0)
-        const slopeProgress = (continentMask - 0.1) / 0.25;
+        const slopeProgress = (continentMask - 0.12) / 0.26;
         
-        // Use smoother sigmoid function for transition with wider middle part
-        // This creates a more natural transition curve that's less sharp
-        const sigmoidCurve = 1 / (1 + Math.exp(-(slopeProgress * 12 - 6)));
+        // Enhanced sigmoid function with asymmetry for more natural transitions
+        // Creates a more gradual rise that steepens in the middle then flattens again
+        const sigmoidCurve = 1 / (1 + Math.exp(-(slopeProgress * 10 - 5)));
+        const asymmetricCurve = sigmoidCurve * (1.1 - 0.2 * sigmoidCurve);  // Slightly asymmetric
         
-        // Calculate base height using sigmoid curve instead of cubic easing
-        const baseHeight = this.minHeight + (sigmoidCurve * 22);
+        // Calculate base height with enhanced natural curve
+        const baseHeight = this.minHeight + (asymmetricCurve * 40);  // Increased height range
         
         // Modified noise system with gradient-dependent intensity for smoother transition
         const largeScale = 0.005;  // Large undulations
@@ -432,16 +443,33 @@ export class WorldSystem {
         }
       }
       
-      // Add mountains using ridged noise
-      if (continentMask > 0.8) { // Only add mountains on land, away from shores
-        const mountainNoise = this.ridgedNoise(
+      // Add mountains using enhanced ridged noise system
+      if (continentMask > 0.75) { // Slightly expanded mountain zones
+        // First pass creates the main mountain ranges with larger features
+        const mainRangeNoise = this.ridgedNoise(
           x, z,
-          this.terrainParams.mountainScale,
-          6
+          this.terrainParams.mountainScale * 0.7,  // Larger main ranges
+          5  // Increased octaves for more detailed mountain ranges
         );
         
+        // Second pass adds smaller mountain chains and foothills
+        const secondaryRangeNoise = this.ridgedNoise(
+          x, z,
+          this.terrainParams.mountainScale * 1.4,  // Smaller secondary ranges
+          4
+        );
+        
+        // Multi-scale mountains with height variation
+        // Creates primary ridges with secondary ridges following similar patterns
+        const combinedMountainNoise = (mainRangeNoise * 0.7 + secondaryRangeNoise * 0.3) * 
+                                   (1.0 + 0.3 * this.fractalNoise(x * 0.0005, z * 0.0005, 2, 0.5, 2.0));
+        
         // Apply mountains with continent mask and more dramatic scaling
-        height += mountainNoise * this.terrainParams.mountainHeight * (continentMask - 0.2) * 1;
+        // The mountain multiplier varies across space creating ranges of different heights
+        const mountainMultiplier = (continentMask - 0.2) * 
+                               (1.0 + 0.7 * this.fractalNoise(x * 0.0008, z * 0.0008, 2, 0.5, 2.0));
+        
+        height += combinedMountainNoise * this.terrainParams.mountainHeight * mountainMultiplier;
       }
       
       // Get temperature and moisture for biome-specific height adjustments
@@ -459,12 +487,41 @@ export class WorldSystem {
         height += duneNoise * 5;
       }
       
-      // Add plateaus occasionally
-      const plateauNoise = this.noise(x * 0.0004 + this.seed * 9, z * 0.0004 + this.seed * 10);
-      if (plateauNoise > 0.7 && height > 20 && height < 70) {
-        // Flatten areas with plateau noise
-        const targetHeight = Math.round(height / 40) * 40; // Round to nearest 40 units
-        const plateauWeight = (plateauNoise - 0.7) * (1 / 0.3);
+      // Add Tuscan-style plateaus and hill features with enhanced system
+      const plateauNoise = this.fractalNoise(
+        x, z,
+        0.0004,  // Scale for larger plateau features
+        2,       // Just a few octaves for smoother plateaus
+        0.5, 
+        2.0
+      );
+      
+      // Add hills in mid-altitude ranges (ideal for Tuscan landscapes)
+      if (plateauNoise > 0.5 && height > 20 && height < 100) {
+        // Several height bands for different types of terrain features
+        let targetHeight;
+        
+        // Different plateau heights based on elevation bands
+        if (height < 40) {
+          // Lower Tuscan valleys and farmland-like areas
+          targetHeight = 30 + plateauNoise * 10;
+        } else if (height < 70) {
+          // Middle level - classic Tuscan hills
+          targetHeight = 60 + plateauNoise * 15;
+        } else {
+          // Higher plateaus and mesas
+          targetHeight = 80 + plateauNoise * 20;
+        }
+        
+        // Variable plateau weight creates more natural transitions
+        // Higher values approach targetHeight more strongly
+        const baseWeight = (plateauNoise - 0.5) * (1 / 0.5);
+        
+        // Adjust weight based on noise for variety
+        const edgeNoise = this.noise(x * 0.002 + this.seed * 19, z * 0.002 + this.seed * 21);
+        const plateauWeight = baseWeight * (0.7 + 0.5 * edgeNoise);
+        
+        // Apply plateau effect with smoothing
         height = height * (1 - plateauWeight) + targetHeight * plateauWeight;
       }
       
@@ -663,97 +720,196 @@ export class WorldSystem {
       
       color.multiplyScalar(1.0 + smallNoise);
     }
-    // MID-ALTITUDE - Hills and forests
-    else if (height < 120) {  // Increased from 60
-      // Determine if this should be forest or rocky hills
-      const isForested = normalizedMoisture > 0.4 - (height - 30) / 150;
+    // MID-ALTITUDE - Hills and forests (Tuscan-style landscapes)
+    else if (height < 120) {
+      // Determine if this should be forest, grassy hills, or rocky terrain
+      // Enhanced variation for Tuscan landscape features
+      const vegetationNoise = this.fractalNoise(x, z, 0.02, 3, 0.5, 2.0);
+      const moistureEffect = normalizedMoisture + vegetationNoise * 0.3;
+      const isForested = moistureEffect > 0.5 - (height - 30) / 200;
+      const isGrassy = moistureEffect > 0.25 || !isSteep;
       
       if (isForested && !isSteep) {
-        // Forested areas
+        // Forested areas - different types based on temperature
         if (normalizedTemp > 0.7) {
-          // Warm forest
-          color.setRGB(0.2, 0.4, 0.1);
+          // Warm forest (Mediterranean)
+          color.setRGB(
+            0.2 + textureNoise * 0.1,
+            0.4 + textureNoise * 0.1,
+            0.1 + textureNoise * 0.05
+          );
         } else if (normalizedTemp > 0.4) {
-          // Temperate forest
-          color.setRGB(0.13, 0.4, 0.13);
+          // Temperate forest (typical Tuscan)
+          color.setRGB(
+            0.13 + textureNoise * 0.08,
+            0.4 + textureNoise * 0.15,
+            0.13 + textureNoise * 0.08
+          );
         } else {
           // Cold forest (coniferous)
-          color.setRGB(0.1, 0.3, 0.15);
+          color.setRGB(
+            0.1 + textureNoise * 0.05,
+            0.3 + textureNoise * 0.1,
+            0.15 + textureNoise * 0.05
+          );
         }
+      } else if (isGrassy) {
+        // Tuscan hills with varied vegetation
+        // More golden/amber tones for classic Tuscan appearance
+        const grassColor = new THREE.Color(
+          0.55 + vegetationNoise * 0.15,
+          0.55 + vegetationNoise * 0.25,
+          0.25 + vegetationNoise * 0.15
+        );
+        
+        // Adjust color based on moisture for varied appearance
+        if (normalizedMoisture > 0.6) {
+          // Greener in more moist areas
+          grassColor.g += 0.15;
+          grassColor.r -= 0.1;
+        } else if (normalizedMoisture < 0.3) {
+          // More golden/amber in drier areas
+          grassColor.r += 0.1;
+          grassColor.g -= 0.05;
+        }
+        
+        color.copy(grassColor);
       } else {
-        // Rocky hills
+        // Rocky hills - vary color based on moisture and temperature
         const rockColor = normalizedMoisture > 0.5 ?
-          new THREE.Color(0.3, 0.3, 0.25) :  // Wet rock
-          new THREE.Color(0.5, 0.45, 0.35);  // Dry rock
-          
+          new THREE.Color(0.35, 0.35, 0.3) :  // Darker wet rock
+          new THREE.Color(0.55, 0.5, 0.4);    // Lighter dry rock
+        
+        // Add temperature influence
+        if (normalizedTemp > 0.6) {
+          // Warmer rock has more red/orange tones
+          rockColor.r += 0.1;
+          rockColor.g += 0.05;
+        }
+        
         color.copy(rockColor);
       }
       
-      // Add slope-based shading
+      // Add slope-based shading for more dramatic terrain
       if (isSteep) {
-        // Darken steep slopes
-        color.multiplyScalar(0.8);
+        // Darken steep slopes more dramatically
+        const slopeFactor = Math.min(1, slope * 1.5);
+        color.multiplyScalar(0.9 - slopeFactor * 0.3);
       }
       
-      // Add texture variation
-      const variation = this.noise(x * 0.05 + this.seed * 13, z * 0.05 + this.seed * 14) * 0.08;
-      color.r += variation;
-      color.g += variation;
-      color.b += variation * 0.5;
+      // Add multi-scale texture variation
+      const largeVar = this.noise(x * 0.01 + this.seed * 13, z * 0.01 + this.seed * 14) * 0.07;
+      const medVar = this.noise(x * 0.1 + this.seed * 15, z * 0.1 + this.seed * 16) * 0.03;
+      
+      color.r += largeVar + medVar * 0.5;
+      color.g += largeVar * 0.8 + medVar * 0.7;
+      color.b += largeVar * 0.5 + medVar * 0.3;
     }
     // HIGH ALTITUDE - Mountains
-    else if (height < 250) {  // Increased from 90
-      // Base rock color varies with temperature and moisture
-      const baseRockColor = normalizedTemp > 0.5 ?
-        new THREE.Color(0.5, 0.4, 0.35) :   // Warmer rock (reddish)
-        new THREE.Color(0.4, 0.38, 0.35);   // Cooler rock (grayish)
+    else if (height < 340) {  // Increased for higher mountains
+      // Base rock color varies with temperature, moisture, and height
+      // Creates zones of different rock types for more visual variety
+      let baseRockColor;
       
-      // Darker color for higher elevations
-      const rockVariation = (height - 120) / 130;  // Adjusted for new height range
-      const darkRock = new THREE.Color(0.3, 0.3, 0.3);
+      if (normalizedTemp > 0.6) {
+        // Warm rock (more reddish variants)
+        baseRockColor = new THREE.Color(0.5 + Math.random() * 0.05, 0.38 + Math.random() * 0.04, 0.32 + Math.random() * 0.03);
+      } else if (normalizedTemp > 0.3) {
+        // Temperate rock (gray-brown)
+        baseRockColor = new THREE.Color(0.42 + Math.random() * 0.05, 0.38 + Math.random() * 0.05, 0.35 + Math.random() * 0.04);
+      } else {
+        // Cold rock (more bluish-gray)
+        baseRockColor = new THREE.Color(0.38 + Math.random() * 0.04, 0.38 + Math.random() * 0.04, 0.4 + Math.random() * 0.05);
+      }
       
-      color.copy(baseRockColor).lerp(darkRock, rockVariation * 0.6);
+      // Darker color for higher elevations with improved gradient
+      const rockVariation = Math.pow((height - 120) / 220, 0.8);  // Non-linear gradient
+      const darkRock = new THREE.Color(0.28, 0.28, 0.3);  // Slightly bluer dark rock
       
-      // Add rock striations and texture
-      const striation = Math.abs(this.noise(x * 0.05 + this.seed * 15, z * 0.05 + this.seed * 16));
+      color.copy(baseRockColor).lerp(darkRock, rockVariation * 0.7);
+      
+      // Add enhanced rock striations and texture with multiple scales
+      const largeStriation = Math.abs(this.noise(x * 0.03 + this.seed * 15, z * 0.03 + this.seed * 16));
+      const mediumStriation = Math.abs(this.noise(x * 0.08 + this.seed * 23, z * 0.08 + this.seed * 24));
+      const smallStriation = Math.abs(this.noise(x * 0.2 + this.seed * 31, z * 0.2 + this.seed * 32));
+      
+      // Combine striations with different weights for more natural rock appearance
+      const striation = largeStriation * 0.6 + mediumStriation * 0.3 + smallStriation * 0.1;
       color.r += striation * 0.15 - 0.05;
       color.g += striation * 0.15 - 0.05;
       color.b += striation * 0.15 - 0.05;
       
-      // Add snow patches near the snow line
-      if (height > 200) {  // Increased from 80
-        const snowNoise = this.noise(x * 0.08 + this.seed * 17, z * 0.08 + this.seed * 18);
-        const snowAmount = Math.max(0, (height - 200) / 30 + snowNoise * 0.3);
+      // Add snow patches with improved transition zone
+      if (height > 260) {  // Adjusted snow line for higher mountains
+        // Multiple noise scales create more natural snow patches
+        const largeSnowNoise = this.noise(x * 0.05 + this.seed * 17, z * 0.05 + this.seed * 18);
+        const detailSnowNoise = this.noise(x * 0.15 + this.seed * 25, z * 0.15 + this.seed * 26);
+        const combinedSnowNoise = largeSnowNoise * 0.7 + detailSnowNoise * 0.3;
+        
+        // Improved snow cover calculation that considers slope
+        const slopeEffect = Math.max(0, 1 - slope * 5); // Less snow on steep slopes
+        
+        // Calculate snow amount with improved transition
+        const snowAmount = Math.max(0, ((height - 260) / 60) * slopeEffect + combinedSnowNoise * 0.4);
         
         if (snowAmount > 0) {
-          // Mix in snow based on snow amount
-          const snowColor = new THREE.Color(0.9, 0.9, 0.95);
+          // Mix in snow based on snow amount with improved color
+          const snowColor = new THREE.Color(0.92, 0.92, 0.97);
           color.lerp(snowColor, Math.min(snowAmount, 1));
         }
       }
     }
     // PEAKS - Snow-covered
     else {
-      // Snow base color
-      const snowWhite = new THREE.Color(0.9, 0.9, 0.95);
+      // Enhanced snow color system for more realistic appearance
+      // Base snow color with subtle variations
+      const snowWhite = new THREE.Color(0.92, 0.92, 0.96);
       
-      // Higher peaks get blue tinge
-      const snowBlue = new THREE.Color(0.8, 0.85, 1.0);
-      const snowHeight = (height - 250) / 150;  // Adjusted for new height range
+      // Higher peaks get stronger blue tinge - expanded range
+      const snowBlue = new THREE.Color(0.78, 0.85, 1.0);
+      const snowHeight = (height - 340) / 200;  // Adjusted for much higher peaks
       
-      color.copy(snowWhite).lerp(snowBlue, Math.min(snowHeight, 1) * 0.4);
+      // Apply elevation-based tinting with enhanced curve
+      const blueAmount = Math.min(1, Math.pow(snowHeight, 0.7)) * 0.5;
+      color.copy(snowWhite).lerp(snowBlue, blueAmount);
       
-      // Add texture for snow
-      const snowTexture = this.noise(x * 0.08 + this.seed * 19, z * 0.08 + this.seed * 20);
-      const variation = snowTexture * 0.05;
+      // Add enhanced snow texture with multiple noise scales
+      const largeSnowTexture = this.noise(x * 0.04 + this.seed * 19, z * 0.04 + this.seed * 20);
+      const mediumSnowTexture = this.noise(x * 0.12 + this.seed * 27, z * 0.12 + this.seed * 28);
+      const smallSnowTexture = this.noise(x * 0.3 + this.seed * 33, z * 0.3 + this.seed * 34);
+      
+      // Combine textures with variable weights based on elevation
+      // Higher peaks have more fine detail texture
+      const largeWeight = 0.7 - snowHeight * 0.3;
+      const mediumWeight = 0.2 + snowHeight * 0.2;
+      const smallWeight = 0.1 + snowHeight * 0.1;
+      
+      const snowTexture = 
+        largeSnowTexture * largeWeight + 
+        mediumSnowTexture * mediumWeight + 
+        smallSnowTexture * smallWeight;
+      
+      const variation = snowTexture * 0.07; // Increased variation for more textured snow
       color.r += variation;
       color.g += variation;
-      color.b += variation;
+      color.b += variation * 0.8; // Reduced blue variation for more realistic snow
       
-      // Occasionally expose rock on very steep slopes
-      if (isSteep && this.noise(x * 0.1 + this.seed * 21, z * 0.1 + this.seed * 22) > 0.7) {
-        const rockColor = new THREE.Color(0.3, 0.3, 0.3);
-        color.lerp(rockColor, 0.5);
+      // Enhanced rock exposure on steep slopes with improved detection
+      if (isSteep) {
+        // Calculate rock exposure based on slope and noise
+        const rockExposureNoise = this.noise(x * 0.1 + this.seed * 21, z * 0.1 + this.seed * 22);
+        const slopeIntensity = Math.min(1, slope * 2 - 0.8); // Only very steep slopes
+        const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - 0.4) * 1.6);
+        
+        if (rockExposure > 0.2) {
+          // More varied rock colors for exposed areas
+          const rockColor = new THREE.Color(
+            0.35 - snowHeight * 0.1, 
+            0.33 - snowHeight * 0.1, 
+            0.36 - snowHeight * 0.05 // Slightly bluer at higher elevations
+          );
+          color.lerp(rockColor, rockExposure);
+        }
       }
     }
     
