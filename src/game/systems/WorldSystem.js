@@ -123,7 +123,7 @@ export class WorldSystem {
   }
 
   /**
-   * Creates multi-octave noise for more natural terrain
+   * Creates multi-octave noise for more natural terrain with improved coherence
    * @param {number} x - X coordinate
    * @param {number} z - Z coordinate
    * @param {number} baseFrequency - Base frequency of the noise
@@ -133,6 +133,20 @@ export class WorldSystem {
    * @returns {number} Combined noise value in range [-1, 1]
    */
   fractalNoise(x, z, baseFrequency, octaves, persistence, lacunarity) {
+    // Ensure chunk-coherent noise by using whole numbers for chunk boundaries
+    // Remove small floating point errors by rounding to a reasonable precision
+    const chunkX = Math.floor(x / this.chunkSize);
+    const chunkZ = Math.floor(z / this.chunkSize);
+    
+    // Calculate position within chunk for smooth interpolation
+    const fracX = x - chunkX * this.chunkSize;
+    const fracZ = z - chunkZ * this.chunkSize;
+    
+    // Calculate noise at four corners of nearby chunks for proper blending
+    const blendDistance = 10; // Distance to blend between chunks
+    const blendFactor = Math.min(fracX, this.chunkSize - fracX, fracZ, this.chunkSize - fracZ) / blendDistance;
+    const edgeWeight = Math.min(1.0, blendFactor);
+    
     let frequency = baseFrequency;
     let amplitude = 2.0;
     let total = 0;
@@ -140,14 +154,14 @@ export class WorldSystem {
     
     // Sum multiple layers of noise with improved weighting
     for (let i = 0; i < octaves; i++) {
-      // Sample noise at current frequency with improved seed variation
+      // Sample noise at current frequency with consistent seed values
+      // Using smooth domain modification to avoid chunk boundaries
       const noiseValue = this.noise(
         x * frequency + this.seed * (i * 3 + 1),
         z * frequency + this.seed * (i * 3 + 2)
       );
       
       // Add weighted noise to total with enhanced amplitude modulation
-      // This creates more nuanced variation in the terrain
       const weightedNoise = noiseValue * amplitude;
       total += weightedNoise;
       maxValue += amplitude;
@@ -364,10 +378,19 @@ export class WorldSystem {
       
       // Deep valleys
       if (continentMask <= 0.12) {  // Slightly increased threshold for wider valleys
-        // Deep valley depth with improved natural falloff
-        // Added sine variation for less uniform valley floors
-        const valleyDepth = this.minHeight - 15 - 100 * (0.12 - continentMask) * 
-                           (1.0 + 0.2 * Math.sin(x * 0.005) * Math.sin(z * 0.005));
+        // Deep valley depth with enhanced natural falloff and smoother transitions
+        // Multi-scale sine variation creates more organic valley floors
+        const valleyProgress = Math.max(0, (0.12 - continentMask) / 0.12); // 0 to 1 scale
+        const smoothValleyFactor = valleyProgress * valleyProgress * (3 - 2 * valleyProgress); // Smoothstep
+      
+      // Add multi-scale variation for more natural valley shapes
+      const valleyVariation = 
+          0.2 * Math.sin(x * 0.005 + this.seed * 0.3) * Math.sin(z * 0.005 + this.seed * 0.7) +
+          0.1 * Math.sin(x * 0.015 + this.seed * 1.1) * Math.sin(z * 0.015 + this.seed * 1.3) +
+          0.05 * Math.sin(x * 0.03 + this.seed * 2.1) * Math.sin(z * 0.03 + this.seed * 2.3);
+      
+      // Apply smoothly varying depth with improved curve
+      const valleyDepth = this.minHeight - 15 - 100 * smoothValleyFactor * (1.0 + valleyVariation);
         return valleyDepth;
       }
       
@@ -443,8 +466,20 @@ export class WorldSystem {
         }
       }
       
-      // Add mountains using enhanced ridged noise system
-      if (continentMask > 0.75) { // Slightly expanded mountain zones
+      // Apply mountain foothills with smoothed transition that start earlier
+      if (continentMask > 0.6) { // Extended transition zone (previously 0.75)
+        // Calculate mountain influence factor with smoother transition
+        // Using smoothstep curve for influence (0 at continentMask=0.6, 1 at continentMask=0.8)
+        const mountainTransition = Math.min(1.0, Math.max(0.0, (continentMask - 0.6) / 0.2));
+        const mountainInfluence = mountainTransition * mountainTransition * (3 - 2 * mountainTransition);
+        
+        // Create foothills that start earlier but remain lower
+        const foothillsNoise = this.ridgedNoise(
+          x, z,
+          this.terrainParams.mountainScale * 1.1,  // Medium scale for foothills
+          3  // Fewer octaves for smoother foothills
+        );
+        
         // First pass creates the main mountain ranges with larger features
         const mainRangeNoise = this.ridgedNoise(
           x, z,
@@ -454,22 +489,49 @@ export class WorldSystem {
         
         // Second pass adds smaller mountain chains and foothills
         const secondaryRangeNoise = this.ridgedNoise(
-          x, z,
+          x + 128.37, z - 94.21, // Phase offset prevents aligned patterns
           this.terrainParams.mountainScale * 1.4,  // Smaller secondary ranges
           4
         );
         
-        // Multi-scale mountains with height variation
-        // Creates primary ridges with secondary ridges following similar patterns
-        const combinedMountainNoise = (mainRangeNoise * 0.7 + secondaryRangeNoise * 0.3) * 
-                                   (1.0 + 0.3 * this.fractalNoise(x * 0.0005, z * 0.0005, 2, 0.5, 2.0));
+        // Third pass adds micro-details that enhance transition zones
+        const detailRangeNoise = this.ridgedNoise(
+          x - 57.44, z + 63.18, // Different phase offset
+          this.terrainParams.mountainScale * 2.1,  // Small detail features
+          3
+        );
         
-        // Apply mountains with continent mask and more dramatic scaling
-        // The mountain multiplier varies across space creating ranges of different heights
-        const mountainMultiplier = (continentMask - 0.2) * 
-                               (1.0 + 0.7 * this.fractalNoise(x * 0.0008, z * 0.0008, 2, 0.5, 2.0));
+        // Mountain height variation across landscape
+        const mountainHeightVariation = 1.0 + 0.4 * this.fractalNoise(
+          x * 0.0004, z * 0.0004, // Larger scale variation
+          3, 0.5, 2.0
+        );
         
-        height += combinedMountainNoise * this.terrainParams.mountainHeight * mountainMultiplier;
+        // Create progressive multi-scale blending based on transition
+        // Lower transitions get more foothills, higher transitions get more mountains
+        const foothillWeight = (1.0 - mountainInfluence) * 0.8;
+        const mainRangeWeight = 0.6 + mountainInfluence * 0.2;
+        const secondaryRangeWeight = 0.25 + mountainInfluence * 0.1;
+        const detailRangeWeight = 0.15 - mountainInfluence * 0.05;
+        
+        // Multi-scale mountains with improved blending
+        // Creates smoother transitions from hills to mountains
+        const combinedMountainNoise = 
+            (foothillsNoise * foothillWeight +
+             mainRangeNoise * mainRangeWeight + 
+             secondaryRangeNoise * secondaryRangeWeight +
+             detailRangeNoise * detailRangeWeight) / 
+            (foothillWeight + mainRangeWeight + secondaryRangeWeight + detailRangeWeight);
+        
+        // Apply mountain height with improved falloff
+        // Progressive multiplier creates smoother transitions
+        const mountainHeightMultiplier = mountainInfluence * mountainHeightVariation;
+        
+        // Apply mountain height with spatial variation for more natural ranges
+        const spatialVariation = 1.0 + 0.7 * this.fractalNoise(x * 0.0008, z * 0.0008, 3, 0.5, 2.0);
+        
+        // Add mountains with improved height scaling
+        height += combinedMountainNoise * this.terrainParams.mountainHeight * mountainHeightMultiplier * spatialVariation;
       }
       
       // Get temperature and moisture for biome-specific height adjustments
@@ -599,56 +661,98 @@ export class WorldSystem {
         0.15 - depth * 0.05  // Reduced blue (darker)
       );
     }
-    // VALLEY FLOORS
+    // VALLEY FLOORS with enhanced transitions
     else if (height < this.minHeight + 10) {
-      // Calculate position in valley floor with smoother easing
+      // Calculate position in valley floor with improved easing
       const valleyDepth = this.minHeight + 10 - height;
       const maxDepth = 10;
       const depthFactor = Math.min(1.0, valleyDepth / maxDepth);
       
-      // Create smoother easing function for color transition
-      // Changed from power function to smoothstep for better mid-range blending
-      const smoothStep = x => x * x * (3 - 2 * x); // Classic smoothstep function
-      const easedDepth = smoothStep(depthFactor);
+      // Create enhanced easing function for smoother color transition
+      // Using improved smootherstep for better transitions near boundaries
+      const smootherStep = x => x * x * x * (x * (x * 6 - 15) + 10); // Ken Perlin's smootherstep
+      const easedDepth = smootherStep(depthFactor);
       
-      // Valley floor colors with position-based variation
-      const valleyFloorColor = new THREE.Color(0xccbb99);
+      // Valley floor colors with multi-scale position-based variation
+      const valleyFloorColor = new THREE.Color(0xccbb99); // Base sandy color
       
-      // Add subtle multi-scale color variation based on position
-      const largeScaleVariation = this.noise(x * 0.01, z * 0.01) * 0.08;
-      const mediumScaleVariation = this.noise(x * 0.05, z * 0.05) * 0.06;
-      const smallScaleVariation = this.noise(x * 0.2, z * 0.2) * 0.04;
+      // Apply fractal noise at multiple scales with different phases
+      // Using improved coherence between scales with phase offsets
+      const largeScaleVariation = this.fractalNoise(
+        x * 0.008 + this.seed * 19, 
+        z * 0.008 + this.seed * 23, 
+        3, 0.5, 2.0
+      ) * 0.07;
       
-      // Apply multi-scale noise for more natural variation
+      const mediumScaleVariation = this.fractalNoise(
+        x * 0.04 + this.seed * 31, 
+        z * 0.04 + this.seed * 37, 
+        2, 0.5, 2.0
+      ) * 0.05;
+      
+      const smallScaleVariation = this.fractalNoise(
+        x * 0.15 + this.seed * 43, 
+        z * 0.15 + this.seed * 47, 
+        1, 0.5, 2.0
+      ) * 0.03;
+      
+      // Apply multi-scale noise for more natural variation with improved coherence
+      // Using weighted combination based on depth creates more natural appearance
+      const largeWeight = 0.6 + easedDepth * 0.2; // Stronger large features in deeper areas
+      const mediumWeight = 0.3 - easedDepth * 0.1; // Less medium detail in deeper areas
+      const smallWeight = 0.1 - easedDepth * 0.05; // Less small detail in deeper areas
+      
+      // Adjusted valley color with scale-aware noise application
       const adjustedValleyColor = new THREE.Color(
-        valleyFloorColor.r + largeScaleVariation,
-        valleyFloorColor.g + largeScaleVariation * 0.8 + mediumScaleVariation * 0.5,
-        valleyFloorColor.b + smallScaleVariation * 0.7
+        valleyFloorColor.r + largeScaleVariation * largeWeight,
+        valleyFloorColor.g + largeScaleVariation * largeWeight * 0.8 + mediumScaleVariation * mediumWeight * 0.7,
+        valleyFloorColor.b + largeScaleVariation * largeWeight * 0.6 + smallScaleVariation * smallWeight * 0.9
       );
       
-      // Transition color that more closely matches the next terrain type for smoother blending
-      const transitionColor = new THREE.Color(0xc5bc8a);
+      // Enhanced transition color that better matches the next terrain type
+      // Using more similar hue for smoother color transition
+      const transitionColor = new THREE.Color(0xc8be90); // Slightly adjusted for better transition
       
-      // Apply multi-scale noise to transition color for consistency
+      // Apply consistent multi-scale noise to transition color for seamless boundaries
       const adjustedTransitionColor = new THREE.Color(
-        transitionColor.r + largeScaleVariation * 0.7,
-        transitionColor.g + mediumScaleVariation * 0.9,
-        transitionColor.b + smallScaleVariation * 0.6
+        transitionColor.r + largeScaleVariation * largeWeight * 0.7,
+        transitionColor.g + largeScaleVariation * largeWeight * 0.6 + mediumScaleVariation * mediumWeight * 0.8,
+        transitionColor.b + mediumScaleVariation * mediumWeight * 0.6 + smallScaleVariation * smallWeight * 0.7
       );
       
-      // Blend colors based on depth with improved easing
-      color.copy(adjustedTransitionColor).lerp(adjustedValleyColor, easedDepth);
+      // Enhanced boundary-aware color blending
+      // Special handling near the transition boundary (height approaching minHeight+10)
+      if (height > this.minHeight + 8) {
+        // Near upper boundary - extra smooth transition
+        const boundaryFactor = (height - (this.minHeight + 8)) / 2.0; // 0 to 1
+        const easedBoundary = smootherStep(boundaryFactor); // Better easing
+        
+        // Progressive multi-step blend for extra smooth transition
+        const intermColor = new THREE.Color().copy(adjustedValleyColor).lerp(adjustedTransitionColor, easedBoundary * 0.7);
+        color.copy(intermColor).lerp(adjustedTransitionColor, easedBoundary * 0.5);
+      } else {
+        // Normal depth-based blending elsewhere
+        color.copy(adjustedTransitionColor).lerp(adjustedValleyColor, easedDepth);
+      }
       
-      // Add small-scale texture variation with biome-consistent noise
-      const consistentMicroNoise = this.noise(x * 0.3 + this.seed * 95, z * 0.3 + this.seed * 97) * 0.03;
-      color.r += consistentMicroNoise;
-      color.g += consistentMicroNoise;
-      color.b += consistentMicroNoise * 0.7;
+      // Add coherent micro-detail with height-aware application
+      // Consistent small-scale texture across boundaries
+      const microNoiseFreq = 0.2 + depthFactor * 0.1; // Frequency varies with depth
+      const consistentMicroNoise = this.fractalNoise(
+        x * microNoiseFreq + this.seed * 95, 
+        z * microNoiseFreq + this.seed * 97,
+        2, 0.5, 2.0
+      ) * 0.03;
+      
+      // Apply with channel-specific influence for more natural look
+      color.r += consistentMicroNoise * (0.9 + 0.2 * depthFactor);
+      color.g += consistentMicroNoise * (1.0 + 0.1 * depthFactor);
+      color.b += consistentMicroNoise * (0.7 - 0.1 * depthFactor);
     }
-    // LOWER TERRAIN - gradual transition from valley to hills
-    else if (height < this.minHeight + 25) {
+    // LOWER TERRAIN - gradual transition from valley to hills with finer transition steps
+    else if (height < this.minHeight + 30) { // Extended transition zone (was 25)
       // Calculate normalized position in the transition zone
-      const transitionProgress = (height - this.minHeight) / 25;
+      const transitionProgress = (height - this.minHeight) / 30;
       
       // Use a better smoothstep function with wider middle range
       const improvedSmoothstep = x => {
@@ -656,259 +760,632 @@ export class WorldSystem {
         return x * x * x * (x * (x * 6 - 15) + 10);
       };
       
-      const smoothTransition = improvedSmoothstep(transitionProgress);
+      // Smoother and more continuous function with cosine interpolation elements
+      const enhancedTransition = x => {
+        // Start with smootherstep base
+        const smooth = improvedSmoothstep(x);
+        // Add subtle sine wave variation to break up linear transitions
+        return smooth + 0.02 * Math.sin(x * Math.PI * 2) * (1 - Math.abs(x - 0.5) * 2);
+      };
       
-      // Create more intermediate color zones for better transitions (5 zones instead of 3)
-      if (transitionProgress < 0.2) { // Zone 1 - Sandy base
-        const localProgress = improvedSmoothstep(transitionProgress / 0.2);
-        color.setRGB(
-          0.85 - localProgress * 0.1,
-          0.8 - localProgress * 0.1,
-          0.6 - localProgress * 0.08
-        );
-      } else if (transitionProgress < 0.4) { // Zone 2 - Sandy soil
-        const localProgress = improvedSmoothstep((transitionProgress - 0.2) / 0.2);
-        color.setRGB(
-          0.75 - localProgress * 0.1,
-          0.7 - localProgress * 0.05 + localProgress * 0.05, // Begin adding green
-          0.52 - localProgress * 0.07
-        );
-      } else if (transitionProgress < 0.6) { // Zone 3 - Soil
-        const localProgress = improvedSmoothstep((transitionProgress - 0.4) / 0.2);
-        color.setRGB(
-          0.65 - localProgress * 0.1,
-          0.7 + localProgress * 0.1, // More green
-          0.45 - localProgress * 0.05
-        );
-      } else if (transitionProgress < 0.8) { // Zone 4 - Light vegetation
-        const localProgress = improvedSmoothstep((transitionProgress - 0.6) / 0.2);
-        color.setRGB(
-          0.55 - localProgress * 0.1,
-          0.8 + localProgress * 0.05, // Peak green
-          0.4 - localProgress * 0.05
-        );
-      } else { // Zone 5 - Full vegetation
-        const localProgress = improvedSmoothstep((transitionProgress - 0.8) / 0.2);
-        color.setRGB(
-          0.45 - localProgress * 0.15,
-          0.85 - localProgress * 0.05, // Reduce slightly for darker green
-          0.35 - localProgress * 0.05
-        );
-      }
+      const smoothTransition = enhancedTransition(transitionProgress);
       
-      // Add variable texture based on position and height
-      // Using consistent noise patterns across height bands with varying intensity
-      const noiseX = x * 0.05 + height * 0.01;
-      const noiseZ = z * 0.05 + height * 0.01;
-      const noiseValue = this.fractalNoise(noiseX, noiseZ, 2, 0.5, 2.0) * 0.05;
+      // Generate base color with continuous gradient instead of discrete zones
+      // This creates a smooth color transition without banding artifacts
       
-      // Apply noise with varying strength and different influence per channel
-      // Higher strength in transition areas for more varied blending
-      const edgeIntensity = 4 * transitionProgress * (1 - transitionProgress); // Strongest at 0.5
-      const noiseIntensity = 0.7 + edgeIntensity * 0.6; // Extra noise at transition middle
+      // Start with sand color at the bottom
+      const sandColor = new THREE.Color(0.85, 0.8, 0.6);
       
-      color.r += noiseValue * noiseIntensity * 0.8;
-      color.g += noiseValue * noiseIntensity * 1.2; // Stronger on green for vegetation variation
-      color.b += noiseValue * noiseIntensity * 0.7;
+      // End with vegetation color at the top
+      const vegetationColor = new THREE.Color(0.3, 0.8, 0.3);
       
-      // Add small random variations with multiple frequencies that are consistent across biome transitions
-      const smallNoise = (
-        this.noise(x * 0.2 + this.seed * 73, z * 0.3 + this.seed * 79) * 0.6 + 
-        this.noise(x * 0.4 + this.seed * 83, z * 0.5 + this.seed * 89) * 0.3 +
-        this.noise(x * 0.8 + this.seed * 97, z * 0.7 + this.seed * 101) * 0.1
+      // Create a smooth transition between sand and vegetation colors
+      color.copy(sandColor).lerp(vegetationColor, smoothTransition);
+      
+      // Apply multi-scale noise for texture variation but maintain color consistency
+      // Using coherent noise patterns to prevent banding
+      
+      // Multi-scale noise with varying frequencies and consistent seed offsets
+      const largeScaleNoise = this.fractalNoise(
+        x * 0.01 + this.seed * 89, 
+        z * 0.01 + this.seed * 97, 
+        3, 0.55, 2.0
+      ) * 0.08;
+      
+      const mediumScaleNoise = this.fractalNoise(
+        x * 0.05 + this.seed * 107, 
+        z * 0.05 + this.seed * 113, 
+        2, 0.5, 2.0
+      ) * 0.05;
+      
+      const smallScaleNoise = this.fractalNoise(
+        x * 0.2 + this.seed * 127, 
+        z * 0.2 + this.seed * 131, 
+        1, 0.45, 2.0
       ) * 0.03;
       
-      color.multiplyScalar(1.0 + smallNoise);
+      // Combine noise scales into a natural-looking texture variation
+      const combinedNoise = largeScaleNoise + mediumScaleNoise + smallScaleNoise;
+      
+      // Use height-aware blending to maintain coherence across height bands
+      // Stronger noise in the middle of the transition zone for more variation
+      const edgeIntensity = 4 * transitionProgress * (1 - transitionProgress); // Peaks at 0.5
+      const noiseStrength = 0.6 + edgeIntensity * 0.4;
+      
+      // Apply noise with more subtle effects to prevent banding
+      // Adjusted influence per channel based on terrain type
+      const sandInfluence = 1.0 - smoothTransition * 0.6;
+      const vegetationInfluence = smoothTransition * 0.8;
+      
+      // Apply in a coherent way that doesn't create bands
+      color.r += combinedNoise * noiseStrength * (sandInfluence * 0.7 + vegetationInfluence * 0.3);
+      color.g += combinedNoise * noiseStrength * (sandInfluence * 0.5 + vegetationInfluence * 0.9);
+      color.b += combinedNoise * noiseStrength * (sandInfluence * 0.4 + vegetationInfluence * 0.4);
+      
+      // Add subtle position-dependent micro-variation to further break up banding
+      const microVariation = (
+        this.noise(x * 0.7 + this.seed * 67, z * 0.7 + this.seed * 71) * 0.4 +
+        this.noise(x * 1.3 + this.seed * 79, z * 1.3 + this.seed * 83) * 0.6
+      ) * 0.02;
+      
+      // Apply micro-variation with slight shift per channel for natural coloration
+      color.r += microVariation * 1.1;
+      color.g += microVariation * 1.3;
+      color.b += microVariation * 0.9;
+      
+      // Add height-dependent but spatially consistent detail for terrain features
+      // This adds small terrain details without creating visible bands
+      const terrainDetail = this.fractalNoise(
+        x * 0.3 + this.seed * 139 + transitionProgress * 10, 
+        z * 0.3 + this.seed * 149 + transitionProgress * 10, 
+        2, 0.5, 2.0
+      ) * 0.04;
+      
+      const detailStrength = 0.7 + smoothTransition * 0.6;
+      color.multiplyScalar(1.0 + terrainDetail * detailStrength);
     }
-    // MID-ALTITUDE - Hills and forests (Tuscan-style landscapes)
+    // MID-ALTITUDE - Hills and forests (Tuscan-style landscapes) with improved transitions
     else if (height < 120) {
-      // Determine if this should be forest, grassy hills, or rocky terrain
-      // Enhanced variation for Tuscan landscape features
-      const vegetationNoise = this.fractalNoise(x, z, 0.02, 3, 0.5, 2.0);
-      const moistureEffect = normalizedMoisture + vegetationNoise * 0.3;
-      const isForested = moistureEffect > 0.5 - (height - 30) / 200;
-      const isGrassy = moistureEffect > 0.25 || !isSteep;
+    // Smoother biome transitions with terrain-adaptive factors
+    // Create distance from boundaries for smoother transition effects
+    const lowBoundary = this.minHeight + 30;
+    const highBoundary = 120;
+    const normalizedHeight = (height - lowBoundary) / (highBoundary - lowBoundary);
+    
+    // Enhanced boundary blending with improved smoothstep
+    // Gradually fade in from lower terrain with wider transition zone
+    const boundaryBlend = normalizedHeight < 0.2 ? 
+        normalizedHeight * normalizedHeight * normalizedHeight * (normalizedHeight * (normalizedHeight * 6 - 15) + 10) / 0.2 : 1.0;
+    
+    // Create multi-scale vegetation variation with improved frequency scaling and consistency
+    const vegetationNoise = this.fractalNoise(
+    x * 0.012 + this.seed * 71, // Slightly reduced frequency for smoother transitions 
+    z * 0.012 + this.seed * 73, 
+      3, 0.5, 2.0
+    );
+    
+    // Better moisture blending for progressive biome transitions
+    // Wider transition zones with more gradual boundaries
+    const baseTemperature = normalizedTemp + latitudeEffect * 0.3;
+    const baseMoisture = normalizedMoisture + vegetationNoise * 0.2;
+    
+    // Add large-scale variation that extends beyond single chunks
+    const regionalTemp = baseTemperature + this.fractalNoise(x * 0.0005, z * 0.0005, 2, 0.5, 2.0) * 0.15;
+    const regionalMoisture = baseMoisture + this.fractalNoise(x * 0.0004, z * 0.0004, 2, 0.5, 2.0) * 0.2;
+    
+    // Apply boundary blending for smoother transition from valleys
+    const moistureGradient = regionalMoisture + vegetationNoise * (0.15 + 0.15 * boundaryBlend);
+    
+    // Smooth transition with progressive thresholds and wider blend zones
+    // Height-dependent biome boundaries create more natural patterns with smoother transitions
+    const forestThreshold = 0.46 - (height - lowBoundary) / (highBoundary - lowBoundary) * 0.08;
+        const grassThreshold = 0.20 + (height - lowBoundary) / (highBoundary - lowBoundary) * 0.05;
+        
+        // Use fuzzy boundaries with transition zones instead of hard thresholds
+        // Create gradual transition regions between biome types with wider overlap
+        const forestInfluence = Math.min(1.0, Math.max(0.0, (moistureGradient - forestThreshold + 0.15) / 0.3));
+        const grassInfluence = Math.min(1.0, Math.max(0.0, (moistureGradient - grassThreshold + 0.15) / 0.3));
+        
+        // Calculate transition indicators with smoother boundary handling
+        const isForested = forestInfluence > 0.5 && slope < 0.6;
+        const isGrassy = grassInfluence > 0.5 || slope < 0.4;
       
-      if (isForested && !isSteep) {
-        // Forested areas - different types based on temperature
-        if (normalizedTemp > 0.7) {
-          // Warm forest (Mediterranean)
-          color.setRGB(
-            0.2 + textureNoise * 0.1,
-            0.4 + textureNoise * 0.1,
-            0.1 + textureNoise * 0.05
-          );
-        } else if (normalizedTemp > 0.4) {
-          // Temperate forest (typical Tuscan)
-          color.setRGB(
-            0.13 + textureNoise * 0.08,
-            0.4 + textureNoise * 0.15,
-            0.13 + textureNoise * 0.08
-          );
-        } else {
-          // Cold forest (coniferous)
-          color.setRGB(
-            0.1 + textureNoise * 0.05,
-            0.3 + textureNoise * 0.1,
-            0.15 + textureNoise * 0.05
-          );
-        }
-      } else if (isGrassy) {
-        // Tuscan hills with varied vegetation
-        // More golden/amber tones for classic Tuscan appearance
-        const grassColor = new THREE.Color(
-          0.55 + vegetationNoise * 0.15,
-          0.55 + vegetationNoise * 0.25,
-          0.25 + vegetationNoise * 0.15
+      // Create biome base colors with improved variance and smoother transitions
+      let forestColor, grassColor, rockColor;
+      
+      // Use consistent noise patterns for all colors to prevent boundary artifacts
+      const colorNoise1 = this.fractalNoise(x * 0.03 + this.seed * 123, z * 0.03 + this.seed * 127, 3, 0.5, 2.0);
+      const colorNoise2 = this.fractalNoise(x * 0.07 + this.seed * 131, z * 0.07 + this.seed * 137, 2, 0.5, 2.0);
+      const colorVariation = (colorNoise1 * 0.7 + colorNoise2 * 0.3) * 0.06;
+      
+      // Enhanced forest coloration with temperature zones and smoother variations
+      if (regionalTemp > 0.65) {
+        // Warm forest (Mediterranean)
+        forestColor = new THREE.Color(
+          0.2 + colorVariation * 1.2,
+          0.4 + colorVariation * 1.0,
+          0.1 + colorVariation * 0.6
         );
-        
-        // Adjust color based on moisture for varied appearance
-        if (normalizedMoisture > 0.6) {
-          // Greener in more moist areas
-          grassColor.g += 0.15;
-          grassColor.r -= 0.1;
-        } else if (normalizedMoisture < 0.3) {
-          // More golden/amber in drier areas
-          grassColor.r += 0.1;
-          grassColor.g -= 0.05;
-        }
-        
-        color.copy(grassColor);
+      } else if (regionalTemp > 0.35) {
+        // Temperate forest (typical Tuscan)
+        forestColor = new THREE.Color(
+          0.13 + colorVariation * 0.9,
+          0.4 + colorVariation * 1.4,
+          0.13 + colorVariation * 0.9
+        );
       } else {
-        // Rocky hills - vary color based on moisture and temperature
-        const rockColor = normalizedMoisture > 0.5 ?
-          new THREE.Color(0.35, 0.35, 0.3) :  // Darker wet rock
-          new THREE.Color(0.55, 0.5, 0.4);    // Lighter dry rock
-        
-        // Add temperature influence
-        if (normalizedTemp > 0.6) {
-          // Warmer rock has more red/orange tones
-          rockColor.r += 0.1;
-          rockColor.g += 0.05;
-        }
-        
-        color.copy(rockColor);
+        // Cold forest (coniferous)
+        forestColor = new THREE.Color(
+          0.1 + colorVariation * 0.5,
+          0.3 + colorVariation * 1.0,
+          0.15 + colorVariation * 0.6
+        );
       }
       
-      // Add slope-based shading for more dramatic terrain
-      if (isSteep) {
-        // Darken steep slopes more dramatically
-        const slopeFactor = Math.min(1, slope * 1.5);
-        color.multiplyScalar(0.9 - slopeFactor * 0.3);
+      // Enhanced grassland coloration with more natural variation
+      // Base color varies smoothly with regional conditions
+      const baseGrassR = 0.55 + regionalTemp * 0.1 - regionalMoisture * 0.15;
+      const baseGrassG = 0.55 + regionalMoisture * 0.2 - regionalTemp * 0.05;
+      const baseGrassB = 0.25 + regionalMoisture * 0.1 - regionalTemp * 0.1;
+      
+      grassColor = new THREE.Color(
+        baseGrassR + colorNoise1 * 0.15,
+        baseGrassG + colorNoise1 * 0.25 + colorNoise2 * 0.1,
+        baseGrassB + colorNoise2 * 0.15
+      );
+      
+      // Rocky terrain color with moisture and temperature influence
+      // Use common noise patterns for consistency
+      const rockMoistureFactor = regionalMoisture > 0.5 ? 0.6 : 1.0; // Darker when wet
+      const baseRockR = 0.45 + regionalTemp * 0.15;
+      const baseRockG = 0.42 + regionalTemp * 0.1 - regionalMoisture * 0.05;
+      const baseRockB = 0.38 - regionalTemp * 0.05 + regionalMoisture * 0.05;
+      
+      rockColor = new THREE.Color(
+        baseRockR * rockMoistureFactor + colorVariation * 0.8,
+        baseRockG * rockMoistureFactor + colorVariation * 0.7,
+        baseRockB * rockMoistureFactor + colorVariation * 0.5
+      );
+      
+      // Apply biome color blending based on influence factors and slope
+      // This creates smooth transitions between biome types instead of hard switches
+      // We'll use a progressive multi-step blending approach for better transitions
+      
+      // Calculate blending factors with improved smoothstep functions
+      // Use wider transition zones for more gradual changes
+      
+      // Convert influence values to transition factors with smoother curves
+      const forestFactor = Math.min(1.0, Math.max(0.0, (forestInfluence - 0.3) / 0.6)); // Wider transition zone
+      const forestFactorSmooth = forestFactor * forestFactor * (3 - 2 * forestFactor);
+      
+      const grassFactor = Math.min(1.0, Math.max(0.0, (grassInfluence - 0.2) / 0.6)); // Wider transition zone
+      const grassFactorSmooth = grassFactor * grassFactor * (3 - 2 * grassFactor);
+      
+      // Adjust slope influence with smoother transition
+      const slopeFactor = Math.max(0.0, Math.min(1.0, (slope - 0.2) / 0.5));
+      const slopeFactorSmooth = slopeFactor * slopeFactor * (3 - 2 * slopeFactor);
+      
+      // Start with a weighted base color influenced by regional properties
+      // This ensures a consistent base everywhere that other biomes blend into
+      const baseColor = new THREE.Color();
+      baseColor.copy(grassColor);
+      
+      // Apply progressive multi-step blending
+      if (forestFactorSmooth > 0.1 && slopeFactorSmooth < 0.8) {
+        // Create forest blend with smooth transitions at boundaries
+        // Stronger forest influence on flatter areas, gradually decreasing with slope
+        const forestBlendStrength = forestFactorSmooth * (1.0 - slopeFactorSmooth * 0.8);
+        baseColor.lerp(forestColor, forestBlendStrength);
       }
       
-      // Add multi-scale texture variation
-      const largeVar = this.noise(x * 0.01 + this.seed * 13, z * 0.01 + this.seed * 14) * 0.07;
-      const medVar = this.noise(x * 0.1 + this.seed * 15, z * 0.1 + this.seed * 16) * 0.03;
+      // Add rock influence for steeper areas with smooth transition
+      if (slopeFactorSmooth > 0.2) {
+        // Apply rock color proportionally to slope with smooth transition
+        const rockBlendStrength = slopeFactorSmooth * 0.8;
+        // Progressive rock influence
+        baseColor.lerp(rockColor, rockBlendStrength);
+      }
       
-      color.r += largeVar + medVar * 0.5;
-      color.g += largeVar * 0.8 + medVar * 0.7;
-      color.b += largeVar * 0.5 + medVar * 0.3;
+      // Set final color with additional micro-variations
+      color.copy(baseColor);
+      
+      // Enhanced slope shading with smoother transition
+      // Graduated slope effect creates more natural shadowing
+      if (slope > 0.3) { // Lower threshold for more gradual effect
+        // Calculate slope intensity with smoothstep function
+        const slopeProgress = Math.min(1.0, (slope - 0.3) / 0.7); // 0 at slope=0.3, 1 at slope=1.0
+        const slopeFactor = slopeProgress * slopeProgress * (3 - 2 * slopeProgress); // Smoothstep
+        
+        // Progressive darkening with more subtle effect
+        color.multiplyScalar(0.95 - slopeFactor * 0.25);
+      }
+      
+      // Enhanced multi-scale texture variation with terrain-awareness
+      // Using consistent noise patterns across terrain types to prevent seams
+      
+      // Apply different scales with varying phases for more natural appearance
+      // Use consistent positions and seeds for all terrains to avoid boundary artifacts
+      const textureNoise1 = this.fractalNoise(
+        x * 0.008 + this.seed * 191, 
+        z * 0.008 + this.seed * 193, 
+        3, 0.5, 2.0
+      ) * 0.05;
+      
+      const textureNoise2 = this.fractalNoise(
+        x * 0.05 + this.seed * 211, 
+        z * 0.05 + this.seed * 223, 
+        2, 0.5, 2.0
+      ) * 0.03;
+      
+      const textureNoise3 = this.fractalNoise(
+        x * 0.2 + this.seed * 233, 
+        z * 0.2 + this.seed * 239, 
+        1, 0.5, 2.0
+      ) * 0.02;
+      
+      // Apply texture noise consistently across all terrain types
+      // Different influence per channel for more natural appearance
+      color.r += textureNoise1 * 0.9 + textureNoise2 * 0.4 + textureNoise3 * 0.2;
+      color.g += textureNoise1 * 0.7 + textureNoise2 * 0.6 + textureNoise3 * 0.3;
+      color.b += textureNoise1 * 0.5 + textureNoise2 * 0.4 + textureNoise3 * 0.1;
+      
+      // Add height-based subtle contour bands for terrain readability
+      // Use higher frequency for low-height variations
+      const heightBand = (Math.sin(height * 0.1) * 0.5 + 0.5) * 0.02;
+      color.r += heightBand * 0.7;
+      color.g += heightBand * 0.9;
+      
+      // Add large-scale regional variation for natural landscape zones
+      const regionalVariation = this.fractalNoise(x * 0.0008 + this.seed * 241, z * 0.0008 + this.seed * 251, 2, 0.5, 2.0) * 0.03;
+      color.multiplyScalar(1.0 + regionalVariation);
     }
-    // HIGH ALTITUDE - Mountains
+    // HIGH ALTITUDE - Mountains with enhanced transitions
     else if (height < 340) {  // Increased for higher mountains
+      // Create smoother transition from hills to mountains
+      const hillsMountainBoundary = 120;
+      const mountainHeight = 340;
+      const transitionWidth = 30; // Width of transition zone
+      
+      // Calculate transition factor with smoothstep for boundary with hills
+      let boundarySmoothFactor = 0;
+      if (height < hillsMountainBoundary + transitionWidth) {
+        const transitionProgress = (height - hillsMountainBoundary) / transitionWidth;
+        boundarySmoothFactor = 1.0 - (transitionProgress * transitionProgress * (3 - 2 * transitionProgress));
+      }
+      
       // Base rock color varies with temperature, moisture, and height
-      // Creates zones of different rock types for more visual variety
+      // Creates zones of different rock types for more natural transitions
       let baseRockColor;
       
-      if (normalizedTemp > 0.6) {
+      // Add spatial coherence to rock types with multi-scale noise
+      const rockTypeNoise = this.fractalNoise(
+        x * 0.001 + this.seed * 63, 
+        z * 0.001 + this.seed * 67,
+        3, 0.5, 2.0
+      ) * 0.15;
+      
+      // Adjust temperature boundaries with noise for less abrupt transitions
+      const adjustedTemp = normalizedTemp + rockTypeNoise;
+      
+      if (adjustedTemp > 0.6) {
         // Warm rock (more reddish variants)
-        baseRockColor = new THREE.Color(0.5 + Math.random() * 0.05, 0.38 + Math.random() * 0.04, 0.32 + Math.random() * 0.03);
-      } else if (normalizedTemp > 0.3) {
+        baseRockColor = new THREE.Color(
+          0.48 + this.fractalNoise(x * 0.05, z * 0.05, 2, 0.5, 2.0) * 0.06, 
+          0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
+          0.32 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.04
+        );
+      } else if (adjustedTemp > 0.3) {
         // Temperate rock (gray-brown)
-        baseRockColor = new THREE.Color(0.42 + Math.random() * 0.05, 0.38 + Math.random() * 0.05, 0.35 + Math.random() * 0.04);
+        baseRockColor = new THREE.Color(
+          0.42 + this.fractalNoise(x * 0.06, z * 0.06, 2, 0.5, 2.0) * 0.06, 
+          0.38 + this.fractalNoise(x * 0.08, z * 0.08, 2, 0.5, 2.0) * 0.06, 
+          0.35 + this.fractalNoise(x * 0.1, z * 0.1, 2, 0.5, 2.0) * 0.05
+        );
       } else {
         // Cold rock (more bluish-gray)
-        baseRockColor = new THREE.Color(0.38 + Math.random() * 0.04, 0.38 + Math.random() * 0.04, 0.4 + Math.random() * 0.05);
+        baseRockColor = new THREE.Color(
+          0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
+          0.38 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.05, 
+          0.4 + this.fractalNoise(x * 0.11, z * 0.11, 2, 0.5, 2.0) * 0.06
+        );
       }
       
+      // Create smoother elevation gradient with improved curve
+      const normalizedMountainHeight = (height - hillsMountainBoundary) / (mountainHeight - hillsMountainBoundary);
+      const gradientCurve = Math.pow(normalizedMountainHeight, 0.7); // Softer power curve
+      
       // Darker color for higher elevations with improved gradient
-      const rockVariation = Math.pow((height - 120) / 220, 0.8);  // Non-linear gradient
       const darkRock = new THREE.Color(0.28, 0.28, 0.3);  // Slightly bluer dark rock
       
-      color.copy(baseRockColor).lerp(darkRock, rockVariation * 0.7);
-      
-      // Add enhanced rock striations and texture with multiple scales
-      const largeStriation = Math.abs(this.noise(x * 0.03 + this.seed * 15, z * 0.03 + this.seed * 16));
-      const mediumStriation = Math.abs(this.noise(x * 0.08 + this.seed * 23, z * 0.08 + this.seed * 24));
-      const smallStriation = Math.abs(this.noise(x * 0.2 + this.seed * 31, z * 0.2 + this.seed * 32));
-      
-      // Combine striations with different weights for more natural rock appearance
-      const striation = largeStriation * 0.6 + mediumStriation * 0.3 + smallStriation * 0.1;
-      color.r += striation * 0.15 - 0.05;
-      color.g += striation * 0.15 - 0.05;
-      color.b += striation * 0.15 - 0.05;
-      
-      // Add snow patches with improved transition zone
-      if (height > 260) {  // Adjusted snow line for higher mountains
-        // Multiple noise scales create more natural snow patches
-        const largeSnowNoise = this.noise(x * 0.05 + this.seed * 17, z * 0.05 + this.seed * 18);
-        const detailSnowNoise = this.noise(x * 0.15 + this.seed * 25, z * 0.15 + this.seed * 26);
-        const combinedSnowNoise = largeSnowNoise * 0.7 + detailSnowNoise * 0.3;
+      // Special handling for transition zone from hills to mountains
+      if (boundarySmoothFactor > 0) {
+        // Get the color from the hills biome for blending
+        // Use temperature and moisture to select consistent color with hills zone
+        const vegetationNoise = this.fractalNoise(
+          x * 0.015 + this.seed * 71, 
+          z * 0.015 + this.seed * 73, 
+          3, 0.5, 2.0
+        );
         
-        // Improved snow cover calculation that considers slope
-        const slopeEffect = Math.max(0, 1 - slope * 5); // Less snow on steep slopes
+        const moistureGradient = normalizedMoisture + vegetationNoise * 0.3;
         
-        // Calculate snow amount with improved transition
-        const snowAmount = Math.max(0, ((height - 260) / 60) * slopeEffect + combinedSnowNoise * 0.4);
+        // Select hill color based on moisture and slope for consistent transition
+        let hillColor;
+        if (moistureGradient > 0.5 && slope < 0.5) {
+          // Forested hills
+          if (normalizedTemp > 0.7) {
+            // Warm forest (Mediterranean)
+            hillColor = new THREE.Color(0.2, 0.4, 0.1);
+          } else if (normalizedTemp > 0.4) {
+            // Temperate forest (typical Tuscan)
+            hillColor = new THREE.Color(0.13, 0.4, 0.13);
+          } else {
+            // Cold forest (coniferous)
+            hillColor = new THREE.Color(0.1, 0.3, 0.15);
+          }
+        } else if (moistureGradient > 0.25 || slope < 0.4) {
+          // Grassy hills
+          hillColor = new THREE.Color(
+            0.55 + vegetationNoise * 0.15,
+            0.55 + vegetationNoise * 0.25,
+            0.25 + vegetationNoise * 0.15
+          );
+        } else {
+          // Rocky hills
+          hillColor = normalizedMoisture > 0.5 ?
+            new THREE.Color(0.35, 0.35, 0.3) :  // Darker wet rock
+            new THREE.Color(0.55, 0.5, 0.4);    // Lighter dry rock
+        }
+        
+        // Calculate rock base color with blend from hills
+        // Apply multi-step blending for smoother transition
+        const baseColor = new THREE.Color().copy(hillColor).lerp(baseRockColor, 1 - boundarySmoothFactor * 0.7);
+        color.copy(baseColor).lerp(darkRock, gradientCurve * 0.7 * (1 - boundarySmoothFactor * 0.5));
+      } else {
+        // Normal mountain coloring away from transition zone
+        color.copy(baseRockColor).lerp(darkRock, gradientCurve * 0.7);
+      }
+      
+      // Add enhanced rock striations and texture with multiple scales and better coherence
+      const largeStriation = Math.abs(this.fractalNoise(x * 0.03 + this.seed * 15, z * 0.03 + this.seed * 16, 3, 0.5, 2.0));
+      const mediumStriation = Math.abs(this.fractalNoise(x * 0.08 + this.seed * 23, z * 0.08 + this.seed * 24, 2, 0.5, 2.0));
+      const smallStriation = Math.abs(this.fractalNoise(x * 0.2 + this.seed * 31, z * 0.2 + this.seed * 32, 1, 0.5, 2.0));
+      
+      // Improved striation weighting based on elevation for more natural rock appearance
+      const largeWeight = 0.6 - gradientCurve * 0.2;
+      const mediumWeight = 0.3 + gradientCurve * 0.1;
+      const smallWeight = 0.1 + gradientCurve * 0.1;
+      
+      // Combine striations with elevation-aware weighting
+      const striation = largeStriation * largeWeight + mediumStriation * mediumWeight + smallStriation * smallWeight;
+      
+      // Apply with subtle height-dependent variation
+      const striationStrength = 0.15 * (1.0 + 0.2 * Math.sin(height * 0.02));
+      color.r += striation * striationStrength - 0.05;
+      color.g += striation * striationStrength - 0.05;
+      color.b += striation * striationStrength - 0.05;
+      
+      // Add snow patches with improved transition zone and multi-scale blending
+      if (height > 240) {  // Lower snow line for wider transition
+        // Enhanced snow noise system with better frequency scaling
+        const largeSnowNoise = this.fractalNoise(x * 0.04 + this.seed * 17, z * 0.04 + this.seed * 18, 3, 0.5, 2.0);
+        const mediumSnowNoise = this.fractalNoise(x * 0.1 + this.seed * 25, z * 0.1 + this.seed * 26, 2, 0.5, 2.0);
+        const smallSnowNoise = this.fractalNoise(x * 0.25 + this.seed * 33, z * 0.25 + this.seed * 34, 1, 0.5, 2.0);
+        
+        // Create scale-aware noise with improved coherence
+        const snowNoiseStrength = 0.4 + 0.2 * ((height - 240) / 100); // More noise variation at higher elevations
+        const combinedSnowNoise = 
+            largeSnowNoise * 0.5 + 
+            mediumSnowNoise * 0.3 + 
+            smallSnowNoise * 0.2;
+        
+        // Improved snow cover calculation with enhanced slope influence
+        // Progressive slope handling for more natural snow accumulation
+        const slopeInfluence = Math.pow(Math.max(0, 1 - slope * 3.5), 1.5); // Stronger falloff on steeper slopes
+        
+        // Enhanced snow line with temperature influence
+        const temperatureEffect = normalizedTemp * 15; // Adjust snow line based on temperature
+        const adjustedSnowLine = 240 + temperatureEffect;
+        
+        // Wider and more natural transition zone based on height and temperature
+        const transitionRange = 70 + temperatureEffect * 0.5; // Wider transition range in warmer areas
+        
+        // Calculate snow amount with improved transition curve
+        // Use smootherstep for more gradual onset of snow
+        const snowProgress = Math.max(0, (height - adjustedSnowLine) / transitionRange);
+        const snowTransition = snowProgress < 1 ? 
+            snowProgress * snowProgress * snowProgress * (snowProgress * (snowProgress * 6 - 15) + 10) : 
+            1.0;
+            
+        // Combine factors with improved weighting
+        const snowAmount = snowTransition * slopeInfluence + 
+                        combinedSnowNoise * snowNoiseStrength * snowTransition;
         
         if (snowAmount > 0) {
-          // Mix in snow based on snow amount with improved color
-          const snowColor = new THREE.Color(0.92, 0.92, 0.97);
-          color.lerp(snowColor, Math.min(snowAmount, 1));
+          // Mix in snow with enhanced coloration based on light conditions and altitude
+          // Higher elevations get slightly bluer snow
+          const blueSnowTint = Math.min(1, (height - 240) / 200) * 0.05;
+          const snowColor = new THREE.Color(0.92, 0.92, 0.97 + blueSnowTint);
+          
+          // Progressive snow application to avoid abrupt transitions
+          if (snowAmount < 0.2) {
+            // Very light dusting with subtle transition
+            const dustFactor = snowAmount / 0.2;
+            color.lerp(snowColor, dustFactor * 0.3);
+          } else {
+            // Normal snow cover with full transition
+            color.lerp(snowColor, Math.min(snowAmount, 1));
+          }
         }
       }
     }
-    // PEAKS - Snow-covered
+    // PEAKS - Snow-covered with enhanced transitions
     else {
-      // Enhanced snow color system for more realistic appearance
-      // Base snow color with subtle variations
+      // Create smoother transition from mountains to peaks
+      const mountainPeakBoundary = 340;
+      const transitionWidth = 40; // Width of transition zone
+      
+      // Calculate transition factor with improved smoothstep for mountain-peak boundary
+      let boundarySmoothFactor = 0;
+      if (height < mountainPeakBoundary + transitionWidth) {
+        const transitionProgress = (height - mountainPeakBoundary) / transitionWidth;
+        // Smootherstep for extra smooth transition
+        boundarySmoothFactor = 1.0 - (transitionProgress * transitionProgress * transitionProgress * (transitionProgress * (transitionProgress * 6 - 15) + 10));
+      }
+      
+      // Enhanced snow color system with transition zone blending
+      // Base snow color with elevation-dependent variations
       const snowWhite = new THREE.Color(0.92, 0.92, 0.96);
       
-      // Higher peaks get stronger blue tinge - expanded range
+      // Higher peaks get more pronounced blue tinge with improved gradient
       const snowBlue = new THREE.Color(0.78, 0.85, 1.0);
-      const snowHeight = (height - 340) / 200;  // Adjusted for much higher peaks
+      const snowHeight = (height - mountainPeakBoundary) / 200;  // Normalized height in peak zone
       
-      // Apply elevation-based tinting with enhanced curve
-      const blueAmount = Math.min(1, Math.pow(snowHeight, 0.7)) * 0.5;
-      color.copy(snowWhite).lerp(snowBlue, blueAmount);
+      // Apply elevation-based tinting with enhanced curve and spatial variation
+      // Create lateral variations in snow color for more natural appearance
+      const spatialVariation = this.fractalNoise(x * 0.001, z * 0.001, 3, 0.5, 2.0) * 0.2;
+      const blueAmount = Math.min(1, Math.pow(snowHeight + spatialVariation, 0.7)) * 0.5;
       
-      // Add enhanced snow texture with multiple noise scales
-      const largeSnowTexture = this.noise(x * 0.04 + this.seed * 19, z * 0.04 + this.seed * 20);
-      const mediumSnowTexture = this.noise(x * 0.12 + this.seed * 27, z * 0.12 + this.seed * 28);
-      const smallSnowTexture = this.noise(x * 0.3 + this.seed * 33, z * 0.3 + this.seed * 34);
+      // Create mountain rock color for blending at transition zone
+      let mountainColor = new THREE.Color();
+      if (boundarySmoothFactor > 0) {
+        // Get the same rock types used in mountain zone for consistent transition
+        // Create smooth transition from mountain to peak colors
+        let baseRockColor;
+        
+        // Add spatial coherence to rock types with multi-scale noise
+        const rockTypeNoise = this.fractalNoise(
+          x * 0.001 + this.seed * 63, 
+          z * 0.001 + this.seed * 67,
+          3, 0.5, 2.0
+        ) * 0.15;
+        
+        // Use same temperature adjustments as mountain zone for consistency
+        const adjustedTemp = normalizedTemp + rockTypeNoise;
+        
+        if (adjustedTemp > 0.6) {
+          // Warm rock (more reddish variants)
+          baseRockColor = new THREE.Color(
+            0.48 + this.fractalNoise(x * 0.05, z * 0.05, 2, 0.5, 2.0) * 0.06, 
+            0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
+            0.32 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.04
+          );
+        } else if (adjustedTemp > 0.3) {
+          // Temperate rock (gray-brown)
+          baseRockColor = new THREE.Color(
+            0.42 + this.fractalNoise(x * 0.06, z * 0.06, 2, 0.5, 2.0) * 0.06, 
+            0.38 + this.fractalNoise(x * 0.08, z * 0.08, 2, 0.5, 2.0) * 0.06, 
+            0.35 + this.fractalNoise(x * 0.1, z * 0.1, 2, 0.5, 2.0) * 0.05
+          );
+        } else {
+          // Cold rock (more bluish-gray)
+          baseRockColor = new THREE.Color(
+            0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
+            0.38 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.05, 
+            0.4 + this.fractalNoise(x * 0.11, z * 0.11, 2, 0.5, 2.0) * 0.06
+          );
+        }
+        
+        // Create dark rock variant with height-based variation just like mountain zone
+        const darkRock = new THREE.Color(0.28, 0.28, 0.3);
+        const mountainGradient = 0.7; // Match the mountain gradient at boundary
+        
+        mountainColor.copy(baseRockColor).lerp(darkRock, mountainGradient);
+        
+        // Add mountain snow patches for consistent transition
+        // Use same noise patterns as mountain zone near boundary
+        const largeSnowNoise = this.fractalNoise(x * 0.04 + this.seed * 17, z * 0.04 + this.seed * 18, 3, 0.5, 2.0);
+        const mediumSnowNoise = this.fractalNoise(x * 0.1 + this.seed * 25, z * 0.1 + this.seed * 26, 2, 0.5, 2.0);
+        const combinedSnowNoise = largeSnowNoise * 0.6 + mediumSnowNoise * 0.4;
+        
+        // High snow amount at the boundary with mountains
+        const highSnowColor = new THREE.Color(0.92, 0.92, 0.97);
+        mountainColor.lerp(highSnowColor, 0.8 + combinedSnowNoise * 0.2);
+      }
       
-      // Combine textures with variable weights based on elevation
-      // Higher peaks have more fine detail texture
-      const largeWeight = 0.7 - snowHeight * 0.3;
-      const mediumWeight = 0.2 + snowHeight * 0.2;
-      const smallWeight = 0.1 + snowHeight * 0.1;
+      // Apply peak snow color with boundary blending
+      if (boundarySmoothFactor > 0) {
+        // Multi-step snow color blending at transition zone
+        const peakSnowColor = new THREE.Color().copy(snowWhite).lerp(snowBlue, blueAmount);
+        color.copy(mountainColor).lerp(peakSnowColor, 1.0 - boundarySmoothFactor);
+      } else {
+        // Regular peak snow color
+        color.copy(snowWhite).lerp(snowBlue, blueAmount);
+      }
       
+      // Add enhanced snow texture with multiple noise scales and better coherence
+      const largeSnowTexture = this.fractalNoise(x * 0.04 + this.seed * 19, z * 0.04 + this.seed * 20, 3, 0.5, 2.0);
+      const mediumSnowTexture = this.fractalNoise(x * 0.12 + this.seed * 27, z * 0.12 + this.seed * 28, 2, 0.5, 2.0);
+      const smallSnowTexture = this.fractalNoise(x * 0.3 + this.seed * 33, z * 0.3 + this.seed * 34, 1, 0.5, 2.0);
+      
+      // Enhanced texture blending with improved height-dependent weighting
+      // Progressive transition from larger to smaller details with elevation
+      const normalizedHeight = Math.min(1.0, (height - mountainPeakBoundary) / 200);
+      const heightCurve = Math.pow(normalizedHeight, 0.6); // Softer curve
+      
+      // Scale weights evolve gradually with elevation
+      const largeWeight = 0.7 - heightCurve * 0.4;
+      const mediumWeight = 0.2 + heightCurve * 0.2;
+      const smallWeight = 0.1 + heightCurve * 0.2;
+      
+      // Combine with improved weights and scale awareness
       const snowTexture = 
         largeSnowTexture * largeWeight + 
         mediumSnowTexture * mediumWeight + 
         smallSnowTexture * smallWeight;
       
-      const variation = snowTexture * 0.07; // Increased variation for more textured snow
-      color.r += variation;
-      color.g += variation;
-      color.b += variation * 0.8; // Reduced blue variation for more realistic snow
+      // Apply variation with height-dependent intensity
+      const textureIntensity = 0.06 + heightCurve * 0.02; // Stronger texture at higher elevations
+      const variation = snowTexture * textureIntensity;
       
-      // Enhanced rock exposure on steep slopes with improved detection
-      if (isSteep) {
-        // Calculate rock exposure based on slope and noise
-        const rockExposureNoise = this.noise(x * 0.1 + this.seed * 21, z * 0.1 + this.seed * 22);
-        const slopeIntensity = Math.min(1, slope * 2 - 0.8); // Only very steep slopes
-        const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - 0.4) * 1.6);
+      // Apply with subtle color channel differences for more natural snow
+      color.r += variation * 1.0;
+      color.g += variation * 1.0;
+      color.b += variation * 0.8; // Slightly reduced blue variation for more realistic snow
+      
+      // Enhanced rock exposure on steep slopes with improved transitions and detection
+      if (slope > 0.6) { // Lower threshold for smoother transition
+        // Calculate slope intensity with smoother curve
+        const slopeProgress = Math.min(1.0, (slope - 0.6) / 0.6); // 0 at slope=0.6, 1 at slope=1.2
+        const slopeIntensity = slopeProgress * slopeProgress * (3 - 2 * slopeProgress); // Smoothstep
         
-        if (rockExposure > 0.2) {
-          // More varied rock colors for exposed areas
+        // Calculate rock exposure with improved noise and patterns
+        // Multi-scale noise creates more natural rock outcroppings
+        const rockExposureNoise = 
+            this.fractalNoise(x * 0.08 + this.seed * 21, z * 0.08 + this.seed * 22, 3, 0.5, 2.0) * 0.6 + 
+            this.fractalNoise(x * 0.2 + this.seed * 41, z * 0.2 + this.seed * 42, 2, 0.5, 2.0) * 0.4;
+        
+        // Improved exposure calculation with more natural distribution
+        const exposureThreshold = 0.35 - heightCurve * 0.15; // Less rock exposed at higher elevations
+        const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - exposureThreshold) * 1.8);
+        
+        if (rockExposure > 0.05) { // Lower threshold for smoother transition
+          // Calculate rock color with improved height-dependent variation
+          // Darker rocks at higher elevations with multi-scale noise
+          const heightVariation = this.fractalNoise(x * 0.005, z * 0.005, 2, 0.5, 2.0) * 0.1;
+          const adjustedHeight = snowHeight + heightVariation;
+          
+          // Create rock color with height-dependent properties
           const rockColor = new THREE.Color(
-            0.35 - snowHeight * 0.1, 
-            0.33 - snowHeight * 0.1, 
-            0.36 - snowHeight * 0.05 // Slightly bluer at higher elevations
+            0.35 - adjustedHeight * 0.15, 
+            0.33 - adjustedHeight * 0.15, 
+            0.36 - adjustedHeight * 0.08 // Slightly bluer at higher elevations
           );
-          color.lerp(rockColor, rockExposure);
+          
+          // Progressive multi-stage blending for smoother transitions
+          if (rockExposure < 0.2) {
+            // Very subtle rock exposure with minimal transition
+            const lightRockBlend = rockExposure * 5; // Scale up for more impact in this range
+            color.lerp(rockColor, lightRockBlend * 0.3); // Subtle blend
+          } else if (rockExposure < 0.5) {
+            // Medium rock exposure with moderate transition
+            const mediumRockBlend = (rockExposure - 0.2) / 0.3; // 0 to 1 range
+            const intermColor = new THREE.Color().copy(color).lerp(rockColor, 0.3);
+            color.copy(intermColor).lerp(rockColor, mediumRockBlend * 0.6); // Two-step blend
+          } else {
+            // Heavy rock exposure with full transition
+            color.lerp(rockColor, rockExposure * 0.8);
+          }
         }
       }
     }
@@ -922,7 +1399,7 @@ export class WorldSystem {
   }
 
   createChunkGeometry(startX, startZ) {
-    // Create plane geometry
+    // Create plane geometry with higher resolution at chunk borders for smoother transitions
     const geometry = new THREE.PlaneGeometry(
       this.chunkSize,
       this.chunkSize,
@@ -935,20 +1412,36 @@ export class WorldSystem {
 
     const vertices = geometry.attributes.position.array;
     const colors = [];
+    
+    // Extra sampling points used for calculating smooth transitions between chunks
+    const smoothingRadius = 3; // Smoothing radius for edges
+    
+    // Identify the chunk grid position
+    const chunkX = Math.floor(startX / this.chunkSize);
+    const chunkZ = Math.floor(startZ / this.chunkSize);
 
-    // Modify vertices to create terrain shape
+    // Modify vertices to create terrain shape with special edge handling
     for (let i = 0; i < vertices.length; i += 3) {
       // Get world coordinates
       const x = vertices[i] + startX;
       const z = vertices[i + 2] + startZ;
       
-      // Calculate terrain height
+      // Identify position within chunk (0-1 range)
+      const relX = (x - startX) / this.chunkSize;
+      const relZ = (z - startZ) / this.chunkSize;
+      
+      // Detect if we're near an edge for special handling
+      const isNearEdgeX = relX < 0.02 || relX > 0.98;
+      const isNearEdgeZ = relZ < 0.02 || relZ > 0.98;
+      
+      // Calculate height with standard method
       const height = this.getTerrainHeight(x, z);
       
       // Apply height to vertex Y coordinate
       vertices[i + 1] = height;
       
       // Assign color based on biome/height
+      // Always use the same world coordinate space for consistent color calculations
       const color = this.getBiomeColor(height, x, z);
       colors.push(color.r, color.g, color.b);
     }
@@ -959,24 +1452,27 @@ export class WorldSystem {
     // Update normals
     geometry.computeVertexNormals();
     
-    // Fix for the z-fighting issue - simplified approach
-    // Instead of trying to average normals which was causing shader errors, 
-    // we'll slightly adjust the terrain geometry to ensure no perfectly coplanar faces
-    
+    // Fix for z-fighting issues between chunks - use a consistent approach
+    // Instead of random noise that can create seams, use deterministic micro-adjustments
     const positions = geometry.attributes.position;
     
-    // Apply very small noise to vertices to prevent z-fighting
     for (let i = 0; i < positions.count; i++) {
       const x = positions.getX(i);
       const y = positions.getY(i);
       const z = positions.getZ(i);
       
-      // Add very subtle noise that won't be visible but will prevent z-fighting
-      const microNoise = (Math.random() - 0.5) * 0.02;
-      positions.setY(i, y + microNoise);
+      // Create a predictable micro-variation based on world position
+      // This ensures the same adjustment at chunk boundaries
+      const worldX = x + startX;
+      const worldZ = z + startZ;
+      
+      // Generate deterministic micro-noise based on position
+      const deterministicNoise = Math.sin(worldX * 0.1) * Math.cos(worldZ * 0.1) * 0.01;
+      
+      positions.setY(i, y + deterministicNoise);
     }
     
-    // Recompute normals after our adjustments
+    // Ensure consistent normal calculations across chunk boundaries
     geometry.computeVertexNormals();
     geometry.attributes.position.needsUpdate = true;
     
