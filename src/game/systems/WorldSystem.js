@@ -394,45 +394,74 @@ export class WorldSystem {
         return valleyDepth;
       }
       
-      // Transition zone converted to gentler slopes (Tuscan-like)
-      if (continentMask > 0.12 && continentMask < 0.38) {  // Wider transition zone
+      // Transition zone converted to much gentler slopes (Tuscan-like)
+      if (continentMask > 0.10 && continentMask < 0.48) {  // Much wider transition zone
         // Calculate how far into the transition zone we are (0.0 to 1.0)
-        const slopeProgress = (continentMask - 0.12) / 0.26;
+        const slopeProgress = (continentMask - 0.10) / 0.38;
         
-        // Enhanced sigmoid function with asymmetry for more natural transitions
-        // Creates a more gradual rise that steepens in the middle then flattens again
-        const sigmoidCurve = 1 / (1 + Math.exp(-(slopeProgress * 10 - 5)));
-        const asymmetricCurve = sigmoidCurve * (1.1 - 0.2 * sigmoidCurve);  // Slightly asymmetric
+        // Multi-stage blending for ultra-smooth transitions
+        // Use double-sigmoid for even smoother S-curve with extended middle section
+        const sigmoidBase = 1 / (1 + Math.exp(-(slopeProgress * 8 - 4)));
+        const secondSigmoid = 1 / (1 + Math.exp(-((slopeProgress - 0.5) * 6)));
+        const blendedSigmoid = sigmoidBase * (1 - slopeProgress * 0.4) + secondSigmoid * (slopeProgress * 0.4);
         
-        // Calculate base height with enhanced natural curve
-        const baseHeight = this.minHeight + (asymmetricCurve * 40);  // Increased height range
+        // Apply polynomial smoothing for extra gradual transition
+        const asymmetricCurve = blendedSigmoid * (1.15 - 0.3 * blendedSigmoid);  // More asymmetric
         
-        // Modified noise system with gradient-dependent intensity for smoother transition
-        const largeScale = 0.005;  // Large undulations
+        // Calculate base height with much more gradual curve
+        const baseHeight = this.minHeight + (asymmetricCurve * 65);  // Significantly increased height range
+        
+        // Modified noise system with more complex gradient-dependent intensity
+        const largeScale = 0.004;  // Even larger undulations
         const mediumScale = 0.02;  // Medium details
-        const smallScale = 0.1;    // Small details
+        const smallScale = 0.09;   // Small details
+        const microScale = 0.3;    // Micro details specifically for transition points
         
-        // Apply stronger noise at the higher end of the transition
-        const highEndIntensity = Math.pow(slopeProgress, 1.5);
-        // Apply stronger noise at the lower end of the transition
-        const lowEndIntensity = Math.pow(1 - slopeProgress, 1.5);
-        // Strongest in the middle for varied transition zone
-        const midIntensity = 4 * slopeProgress * (1 - slopeProgress);
+        // Create multi-peak intensity curve for transition-focused noise
+        // This creates stronger noise at both transition edges and in the middle
+        const edgeFactor1 = Math.pow(1 - Math.min(1, slopeProgress / 0.2), 2); // Strong at start (0-20%)
+        const edgeFactor2 = Math.pow(Math.max(0, Math.min(1, (slopeProgress - 0.8) / 0.2)), 2); // Strong at end (80-100%)
+        const midFactor = 4 * Math.pow(slopeProgress * (1 - slopeProgress), 1.5); // Strong in middle, cubic shape
         
-        // Combine different noise scales with position-adaptive influence
-        const largeNoise = this.fractalNoise(x, z, largeScale, 2, 0.5, 2.0) * 
-                         (3 + lowEndIntensity * 2);
+        // Create specialized noise for transition boundaries
+        const boundaryScale = 0.015;
+        const boundaryNoise = this.fractalNoise(
+          x * boundaryScale + this.seed * 53, 
+          z * boundaryScale + this.seed * 59, 
+          4, 0.6, 2.0
+        ) * 12.0 * (edgeFactor1 * 0.8 + edgeFactor2 * 0.8);
         
-        const mediumNoise = this.fractalNoise(x, z, mediumScale, 2, 0.5, 2.0) * 
-                          (1.5 + midIntensity * 1.5);
+        // Combine different noise scales with enhanced position-adaptive influence
+        const largeNoise = this.fractalNoise(x, z, largeScale, 4, 0.5, 2.0) * 
+                         (4 + edgeFactor1 * 3.5 + edgeFactor2 * 3.0);  // Much stronger terrain variation
         
-        const smallNoise = this.fractalNoise(x, z, smallScale, 1, 0.5, 2.0) * 
-                         (0.5 + highEndIntensity * 1.0);
+        const mediumNoise = this.fractalNoise(x, z, mediumScale, 3, 0.5, 2.0) * 
+                          (2.5 + midFactor * 2.8);  // Enhanced mid-scale detail
+        
+        const smallNoise = this.fractalNoise(x, z, smallScale, 2, 0.5, 2.0) * 
+                         (1.2 + edgeFactor1 * 1.0 + midFactor * 1.5);  // Stronger small detail
+                         
+        const microNoise = this.fractalNoise(x, z, microScale, 2, 0.5, 2.0) * 
+                         (0.8 + edgeFactor1 * 1.2 + edgeFactor2 * 1.2);  // Micro-detail for transition boundaries
+        
+        // Directional warping to create more organic transitions
+        // Creates subtle noise-based directionality paralleling the beach
+        const beachDirection = Math.sin(x * 0.001 + z * 0.002 + this.seed * 0.3) * 0.5 + 0.5;
+        const directionalFactor = Math.pow(beachDirection, 1.5) * 3.0 * Math.max(edgeFactor1, edgeFactor2);
+        
+        // Apply directional warping to all noise types
+        // This creates uneven transition boundaries that break up any straight lines
+        const warpedLargeNoise = largeNoise * (1.0 + directionalFactor * 0.3);
+        const warpedMediumNoise = mediumNoise * (1.0 + directionalFactor * 0.2);
         
         // Noise intensity increases gradually and smoothly across transition
-        const combinedNoise = largeNoise * (0.4 + 0.6 * slopeProgress) + 
-                           mediumNoise * (0.2 + 0.8 * midIntensity) + 
-                           smallNoise * highEndIntensity;
+        // Enhanced blending with specialized weighting for transition points
+        const combinedNoise = 
+            warpedLargeNoise * (0.4 + 0.6 * asymmetricCurve) + 
+            warpedMediumNoise * (0.3 + 0.7 * midFactor) + 
+            smallNoise * (0.2 + 0.8 * Math.min(edgeFactor1, midFactor, edgeFactor2)) +
+            microNoise * (0.1 + 0.9 * Math.max(edgeFactor1, edgeFactor2)) +
+            boundaryNoise; // Additional focused noise just for transition boundaries
         
         return baseHeight + combinedNoise;
       }
@@ -661,11 +690,11 @@ export class WorldSystem {
         0.15 - depth * 0.05  // Reduced blue (darker)
       );
     }
-    // VALLEY FLOORS with enhanced transitions
-    else if (height < this.minHeight + 10) {
+    // VALLEY FLOORS with ultra-enhanced transitions
+    else if (height < this.minHeight + 18) {  // Much wider transition zone
       // Calculate position in valley floor with improved easing
-      const valleyDepth = this.minHeight + 10 - height;
-      const maxDepth = 10;
+      const valleyDepth = this.minHeight + 18 - height;
+      const maxDepth = 18;  // Extended significantly
       const depthFactor = Math.min(1.0, valleyDepth / maxDepth);
       
       // Create enhanced easing function for smoother color transition
@@ -673,34 +702,34 @@ export class WorldSystem {
       const smootherStep = x => x * x * x * (x * (x * 6 - 15) + 10); // Ken Perlin's smootherstep
       const easedDepth = smootherStep(depthFactor);
       
-      // Valley floor colors with multi-scale position-based variation
-      const valleyFloorColor = new THREE.Color(0xccbb99); // Base sandy color
+      // Valley floor colors with enhanced multi-scale position-based variation
+      const valleyFloorColor = new THREE.Color(0xd5c7a8); // Lighter sandy color for better distant view
       
       // Apply fractal noise at multiple scales with different phases
       // Using improved coherence between scales with phase offsets
       const largeScaleVariation = this.fractalNoise(
-        x * 0.008 + this.seed * 19, 
-        z * 0.008 + this.seed * 23, 
-        3, 0.5, 2.0
-      ) * 0.07;
+        x * 0.007 + this.seed * 19, 
+        z * 0.007 + this.seed * 23, 
+        4, 0.5, 2.0  // More octaves for better detail
+      ) * 0.09;  // Stronger variation
       
       const mediumScaleVariation = this.fractalNoise(
-        x * 0.04 + this.seed * 31, 
-        z * 0.04 + this.seed * 37, 
-        2, 0.5, 2.0
-      ) * 0.05;
+        x * 0.035 + this.seed * 31, 
+        z * 0.035 + this.seed * 37, 
+        3, 0.5, 2.0  // More octaves
+      ) * 0.07;  // Stronger variation
       
       const smallScaleVariation = this.fractalNoise(
-        x * 0.15 + this.seed * 43, 
-        z * 0.15 + this.seed * 47, 
-        1, 0.5, 2.0
-      ) * 0.03;
+        x * 0.12 + this.seed * 43, 
+        z * 0.12 + this.seed * 47, 
+        2, 0.5, 2.0  // More octaves
+      ) * 0.05;  // Stronger variation
       
       // Apply multi-scale noise for more natural variation with improved coherence
       // Using weighted combination based on depth creates more natural appearance
-      const largeWeight = 0.6 + easedDepth * 0.2; // Stronger large features in deeper areas
-      const mediumWeight = 0.3 - easedDepth * 0.1; // Less medium detail in deeper areas
-      const smallWeight = 0.1 - easedDepth * 0.05; // Less small detail in deeper areas
+      const largeWeight = 0.5 + easedDepth * 0.3; // Stronger large features in deeper areas
+      const mediumWeight = 0.35 - easedDepth * 0.1; // Less medium detail in deeper areas
+      const smallWeight = 0.15 - easedDepth * 0.05; // Less small detail in deeper areas
       
       // Adjusted valley color with scale-aware noise application
       const adjustedValleyColor = new THREE.Color(
@@ -709,140 +738,255 @@ export class WorldSystem {
         valleyFloorColor.b + largeScaleVariation * largeWeight * 0.6 + smallScaleVariation * smallWeight * 0.9
       );
       
-      // Enhanced transition color that better matches the next terrain type
-      // Using more similar hue for smoother color transition
-      const transitionColor = new THREE.Color(0xc8be90); // Slightly adjusted for better transition
+      // Enhanced transition colors with multiple intermediate steps
+      // Using more similar hues for smoother color transitions
+      const transColor1 = new THREE.Color(0xd2caa0); // First transition color (still mostly sand)
+      const transColor2 = new THREE.Color(0xbfc291); // Second transition color (sand-grass mix)
+      const transColor3 = new THREE.Color(0x9dbc88); // Third transition color (mostly grass)
       
-      // Apply consistent multi-scale noise to transition color for seamless boundaries
-      const adjustedTransitionColor = new THREE.Color(
-        transitionColor.r + largeScaleVariation * largeWeight * 0.7,
-        transitionColor.g + largeScaleVariation * largeWeight * 0.6 + mediumScaleVariation * mediumWeight * 0.8,
-        transitionColor.b + mediumScaleVariation * mediumWeight * 0.6 + smallScaleVariation * smallWeight * 0.7
+      // Apply consistent multi-scale noise to transition colors for seamless boundaries
+      const adjustedTransColor1 = new THREE.Color(
+        transColor1.r + largeScaleVariation * largeWeight * 0.7,
+        transColor1.g + largeScaleVariation * largeWeight * 0.6 + mediumScaleVariation * mediumWeight * 0.8,
+        transColor1.b + mediumScaleVariation * mediumWeight * 0.6 + smallScaleVariation * smallWeight * 0.7
       );
       
-      // Enhanced boundary-aware color blending
-      // Special handling near the transition boundary (height approaching minHeight+10)
-      if (height > this.minHeight + 8) {
-        // Near upper boundary - extra smooth transition
-        const boundaryFactor = (height - (this.minHeight + 8)) / 2.0; // 0 to 1
-        const easedBoundary = smootherStep(boundaryFactor); // Better easing
-        
-        // Progressive multi-step blend for extra smooth transition
-        const intermColor = new THREE.Color().copy(adjustedValleyColor).lerp(adjustedTransitionColor, easedBoundary * 0.7);
-        color.copy(intermColor).lerp(adjustedTransitionColor, easedBoundary * 0.5);
-      } else {
-        // Normal depth-based blending elsewhere
-        color.copy(adjustedTransitionColor).lerp(adjustedValleyColor, easedDepth);
+      const adjustedTransColor2 = new THREE.Color(
+        transColor2.r + largeScaleVariation * largeWeight * 0.6,
+        transColor2.g + largeScaleVariation * largeWeight * 0.7 + mediumScaleVariation * mediumWeight * 0.9,
+        transColor2.b + mediumScaleVariation * mediumWeight * 0.7 + smallScaleVariation * smallWeight * 0.8
+      );
+      
+      const adjustedTransColor3 = new THREE.Color(
+        transColor3.r + largeScaleVariation * largeWeight * 0.5,
+        transColor3.g + largeScaleVariation * largeWeight * 0.8 + mediumScaleVariation * mediumWeight * 0.9,
+        transColor3.b + mediumScaleVariation * mediumWeight * 0.8 + smallScaleVariation * smallWeight * 0.9
+      );
+      
+      // Enhanced boundary-aware color blending with multi-stage transitions
+      // Special handling divided into 6 distinct transition zones
+      if (height > this.minHeight + 15) { // Zone 6 - Final transition
+        const factor = (height - (this.minHeight + 15)) / 3.0;
+        const eased = smootherStep(factor);
+        color.copy(adjustedTransColor3);
+      } else if (height > this.minHeight + 12) { // Zone 5
+        const factor = (height - (this.minHeight + 12)) / 3.0;
+        const eased = smootherStep(factor);
+        color.copy(adjustedTransColor2).lerp(adjustedTransColor3, eased);
+      } else if (height > this.minHeight + 9) { // Zone 4
+        const factor = (height - (this.minHeight + 9)) / 3.0;
+        const eased = smootherStep(factor);
+        color.copy(adjustedTransColor1).lerp(adjustedTransColor2, eased);
+      } else if (height > this.minHeight + 6) { // Zone 3
+        const factor = (height - (this.minHeight + 6)) / 3.0;
+        const eased = smootherStep(factor);
+        // Additional intermediate blend for even smoother transition
+        const interBlend = new THREE.Color().copy(adjustedValleyColor).lerp(adjustedTransColor1, 0.5);
+        color.copy(interBlend).lerp(adjustedTransColor1, eased);
+      } else if (height > this.minHeight + 3) { // Zone 2
+        const factor = (height - (this.minHeight + 3)) / 3.0;
+        const eased = smootherStep(factor);
+        color.copy(adjustedValleyColor).lerp(adjustedValleyColor.clone().lerp(adjustedTransColor1, 0.3), eased);
+      } else { // Zone 1 - Pure valley floor
+        color.copy(adjustedValleyColor);
       }
       
-      // Add coherent micro-detail with height-aware application
-      // Consistent small-scale texture across boundaries
-      const microNoiseFreq = 0.2 + depthFactor * 0.1; // Frequency varies with depth
-      const consistentMicroNoise = this.fractalNoise(
-        x * microNoiseFreq + this.seed * 95, 
-        z * microNoiseFreq + this.seed * 97,
+      // Position-based direction vector (parallel to shore) for texture alignment
+      const coastDir = Math.sin(x * 0.0008 + z * 0.0015) * 0.5 + 0.5;
+      
+      // Add coherent micro-detail with height-aware and direction-aware application
+      // Specialized high-frequency noise along beach boundaries
+      const microNoiseFreq1 = 0.2 + depthFactor * 0.1 + coastDir * 0.1; // Direction+depth-dependent
+      const microNoiseFreq2 = 0.4 + (1.0 - depthFactor) * 0.3; // More detail near transition
+      
+      const edgeNoise1 = this.fractalNoise(
+        x * microNoiseFreq1 + this.seed * 95, 
+        z * microNoiseFreq1 + this.seed * 97,
+        3, 0.6, 2.0
+      ) * 0.04;
+      
+      const edgeNoise2 = this.fractalNoise(
+        x * microNoiseFreq2 + this.seed * 123, 
+        z * microNoiseFreq2 + this.seed * 129,
         2, 0.5, 2.0
       ) * 0.03;
       
+      // Distance from transition boundary for edge-focused application
+      const edgeFactor = Math.pow(Math.sin(Math.PI * depthFactor), 2);
+      
       // Apply with channel-specific influence for more natural look
-      color.r += consistentMicroNoise * (0.9 + 0.2 * depthFactor);
-      color.g += consistentMicroNoise * (1.0 + 0.1 * depthFactor);
-      color.b += consistentMicroNoise * (0.7 - 0.1 * depthFactor);
+      color.r += edgeNoise1 * (0.9 + 0.2 * depthFactor) + edgeNoise2 * edgeFactor * 0.7;
+      color.g += edgeNoise1 * (1.0 + 0.1 * depthFactor) + edgeNoise2 * edgeFactor * 1.2;
+      color.b += edgeNoise1 * (0.7 - 0.1 * depthFactor) + edgeNoise2 * edgeFactor * 0.8;
+      
+      // Apply subtle directional streaking parallel to the shore
+      // This creates texture that appears to follow the beach orientation
+      const streakNoise = this.fractalNoise(
+        x * 0.03 * (1.0 + coastDir * 0.5) + this.seed * 159, 
+        z * 0.03 * (1.0 - coastDir * 0.4) + this.seed * 167,
+        2, 0.7, 1.8
+      ) * 0.03;
+      
+      // Apply streaking only near transition boundaries
+      if (height > this.minHeight + 6) {
+        const streakFactor = (height - (this.minHeight + 6)) / 12.0;
+        color.lerp(new THREE.Color(
+          color.r + streakNoise * 0.4,
+          color.g + streakNoise * 0.7,
+          color.b + streakNoise * 0.3
+        ), streakFactor * 0.5);
+      }
     }
     // LOWER TERRAIN - gradual transition from valley to hills with finer transition steps
-    else if (height < this.minHeight + 30) { // Extended transition zone (was 25)
+    else if (height < this.minHeight + 50) { // Much wider transition zone
       // Calculate normalized position in the transition zone
-      const transitionProgress = (height - this.minHeight) / 30;
+      const transitionProgress = (height - this.minHeight - 18) / 32;  // Adjusted for new boundaries
       
-      // Use a better smoothstep function with wider middle range
-      const improvedSmoothstep = x => {
-        // Smootherstep function (Ken Perlin's improvement on smoothstep)
-        return x * x * x * (x * (x * 6 - 15) + 10);
+      // Multi-stage easing with blended approaches
+      // Combines smootherstep with logistic curve for extra smooth transition
+      const smootherStep = x => {
+        const clamped = Math.max(0, Math.min(1, x));
+        return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
       };
       
-      // Smoother and more continuous function with cosine interpolation elements
-      const enhancedTransition = x => {
-        // Start with smootherstep base
-        const smooth = improvedSmoothstep(x);
-        // Add subtle sine wave variation to break up linear transitions
-        return smooth + 0.02 * Math.sin(x * Math.PI * 2) * (1 - Math.abs(x - 0.5) * 2);
+      const logisticCurve = x => {
+        const clamped = Math.max(0, Math.min(1, x));
+        return 1.0 / (1.0 + Math.exp(-10 * (clamped - 0.5)));
       };
       
-      const smoothTransition = enhancedTransition(transitionProgress);
+      // Blend between two easing functions for more organic transition
+      const blendFactor = Math.sin(transitionProgress * Math.PI) * 0.5 + 0.5; // 0-1-0 curve
+      const easing1 = smootherStep(transitionProgress);
+      const easing2 = logisticCurve(transitionProgress);
+      const blendedEasing = easing1 * (1.0 - blendFactor * 0.5) + easing2 * (blendFactor * 0.5);
       
-      // Generate base color with continuous gradient instead of discrete zones
-      // This creates a smooth color transition without banding artifacts
+      // Add subtle wobble to break up any linear patterns
+      const enhancedTransition = blendedEasing + 
+        0.04 * Math.sin(transitionProgress * Math.PI * 3) * (1 - Math.abs(transitionProgress - 0.5) * 2);
       
-      // Start with sand color at the bottom
-      const sandColor = new THREE.Color(0.85, 0.8, 0.6);
+      const smoothTransition = Math.max(0, Math.min(1, enhancedTransition));
       
-      // End with vegetation color at the top
-      const vegetationColor = new THREE.Color(0.3, 0.8, 0.3);
+      // Generate base color with 5-stage gradient instead of continuous
+      // This creates a more controlled color transition with multiple intermediate steps
+      let baseColor;
       
-      // Create a smooth transition between sand and vegetation colors
-      color.copy(sandColor).lerp(vegetationColor, smoothTransition);
+      // 5-zone color system with smoothed transitions between zones
+      if (smoothTransition < 0.2) { // Zone 1 - Sandy soil (continuing from beach transition)
+        const zoneProgress = smoothTransition / 0.2;
+        const sandyColor = new THREE.Color(0x9dbc88); // Match the final beach transition color
+        const sandySoilColor = new THREE.Color(0x8eb87d); // Slightly more vegetation
+        baseColor = new THREE.Color().copy(sandyColor).lerp(sandySoilColor, smootherStep(zoneProgress));
+      } else if (smoothTransition < 0.4) { // Zone 2 - Beginning vegetation
+        const zoneProgress = (smoothTransition - 0.2) / 0.2;
+        const sandySoilColor = new THREE.Color(0x8eb87d);
+        const lightVegColor = new THREE.Color(0x7eb377); // Light vegetation
+        baseColor = new THREE.Color().copy(sandySoilColor).lerp(lightVegColor, smootherStep(zoneProgress));
+      } else if (smoothTransition < 0.6) { // Zone 3 - Medium vegetation
+        const zoneProgress = (smoothTransition - 0.4) / 0.2;
+        const lightVegColor = new THREE.Color(0x7eb377);
+        const mediumVegColor = new THREE.Color(0x67aa6b); // Medium vegetation
+        baseColor = new THREE.Color().copy(lightVegColor).lerp(mediumVegColor, smootherStep(zoneProgress));
+      } else if (smoothTransition < 0.8) { // Zone 4 - Full vegetation
+        const zoneProgress = (smoothTransition - 0.6) / 0.2;
+        const mediumVegColor = new THREE.Color(0x67aa6b);
+        const fullVegColor = new THREE.Color(0x4ea25f); // Full vegetation
+        baseColor = new THREE.Color().copy(mediumVegColor).lerp(fullVegColor, smootherStep(zoneProgress));
+      } else { // Zone 5 - Rich vegetation (transition to hills)
+        const zoneProgress = (smoothTransition - 0.8) / 0.2;
+        const fullVegColor = new THREE.Color(0x4ea25f);
+        const richVegColor = new THREE.Color(0x389552); // Rich vegetation 
+        baseColor = new THREE.Color().copy(fullVegColor).lerp(richVegColor, smootherStep(zoneProgress));
+      }
       
-      // Apply multi-scale noise for texture variation but maintain color consistency
-      // Using coherent noise patterns to prevent banding
+      // Apply base color
+      color.copy(baseColor);
+      
+      // Apply multi-scale noise for texture variation with boundary coherence
+      // Using hierarchical noise with consistent offsets that continue from beach
+      
+      // Direction-based modulation to align with beach boundaries
+      const coastDir = Math.sin(x * 0.0008 + z * 0.0015) * 0.5 + 0.5;
+      const perpFactor = Math.cos(x * 0.0012 + z * 0.0007) * 0.5 + 0.5;
       
       // Multi-scale noise with varying frequencies and consistent seed offsets
       const largeScaleNoise = this.fractalNoise(
-        x * 0.01 + this.seed * 89, 
-        z * 0.01 + this.seed * 97, 
-        3, 0.55, 2.0
-      ) * 0.08;
+        x * (0.008 + perpFactor * 0.003) + this.seed * 89, 
+        z * (0.008 + coastDir * 0.003) + this.seed * 97, 
+        4, 0.55, 2.0
+      ) * 0.1;
       
       const mediumScaleNoise = this.fractalNoise(
-        x * 0.05 + this.seed * 107, 
-        z * 0.05 + this.seed * 113, 
-        2, 0.5, 2.0
-      ) * 0.05;
+        x * (0.04 + coastDir * 0.01) + this.seed * 107, 
+        z * (0.04 + perpFactor * 0.01) + this.seed * 113, 
+        3, 0.5, 2.0
+      ) * 0.07;
       
       const smallScaleNoise = this.fractalNoise(
-        x * 0.2 + this.seed * 127, 
-        z * 0.2 + this.seed * 131, 
-        1, 0.45, 2.0
+        x * 0.15 + this.seed * 127, 
+        z * 0.15 + this.seed * 131, 
+        2, 0.45, 2.0
+      ) * 0.05;
+      
+      // Edge-focused noise for transitions between color zones
+      // Strongest at the 0.2, 0.4, 0.6, 0.8 boundaries
+      const edgeFactor = 4.0 * Math.pow(
+        Math.min(
+          Math.abs(smoothTransition - 0.2),
+          Math.abs(smoothTransition - 0.4),
+          Math.abs(smoothTransition - 0.6),
+          Math.abs(smoothTransition - 0.8)
+        ), 2); // Strong at zone boundaries, weak elsewhere
+      
+      // Special boundary noise that gets stronger at zone transitions
+      const boundaryNoise = this.fractalNoise(
+        x * 0.06 + this.seed * 151, 
+        z * 0.06 + this.seed * 157, 
+        3, 0.6, 2.0
+      ) * 0.08 * edgeFactor;
+      
+      // Combine noise with position-dependent weighting
+      // Each noise has different influence based on terrain type
+      const vegetationFactor = Math.pow(smoothTransition, 1.2); // Stronger at higher elevations
+      const sandFactor = Math.pow(1.0 - smoothTransition, 1.2); // Stronger at lower elevations
+      
+      // Apply boundary-aware and zone-aware noise
+      color.r += largeScaleNoise * (sandFactor * 0.8 + vegetationFactor * 0.3) + boundaryNoise * 0.4;
+      color.g += largeScaleNoise * (sandFactor * 0.6 + vegetationFactor * 0.9) + 
+                mediumScaleNoise * (sandFactor * 0.4 + vegetationFactor * 0.8) + 
+                boundaryNoise * 0.8;
+      color.b += largeScaleNoise * (sandFactor * 0.4 + vegetationFactor * 0.5) + 
+                smallScaleNoise * (sandFactor * 0.3 + vegetationFactor * 0.4) + 
+                boundaryNoise * 0.5;
+      
+      // Add subtle position-dependent micro-variation to further break up zoning
+      const microVariation = (
+        this.noise(x * 0.5 + this.seed * 67, z * 0.5 + this.seed * 71) * 0.5 +
+        this.noise(x * 1.0 + this.seed * 79, z * 1.0 + this.seed * 83) * 0.5
       ) * 0.03;
       
-      // Combine noise scales into a natural-looking texture variation
-      const combinedNoise = largeScaleNoise + mediumScaleNoise + smallScaleNoise;
+      // Apply with slight randomization to prevent visible patterns
+      const randomShift = this.noise(x * 0.02 + this.seed * 173, z * 0.02 + this.seed * 179) * 0.01;
+      color.r += microVariation * 1.2 + randomShift;
+      color.g += microVariation * 1.5 + randomShift * 0.8;
+      color.b += microVariation * 0.8 + randomShift * 0.6;
       
-      // Use height-aware blending to maintain coherence across height bands
-      // Stronger noise in the middle of the transition zone for more variation
-      const edgeIntensity = 4 * transitionProgress * (1 - transitionProgress); // Peaks at 0.5
-      const noiseStrength = 0.6 + edgeIntensity * 0.4;
-      
-      // Apply noise with more subtle effects to prevent banding
-      // Adjusted influence per channel based on terrain type
-      const sandInfluence = 1.0 - smoothTransition * 0.6;
-      const vegetationInfluence = smoothTransition * 0.8;
-      
-      // Apply in a coherent way that doesn't create bands
-      color.r += combinedNoise * noiseStrength * (sandInfluence * 0.7 + vegetationInfluence * 0.3);
-      color.g += combinedNoise * noiseStrength * (sandInfluence * 0.5 + vegetationInfluence * 0.9);
-      color.b += combinedNoise * noiseStrength * (sandInfluence * 0.4 + vegetationInfluence * 0.4);
-      
-      // Add subtle position-dependent micro-variation to further break up banding
-      const microVariation = (
-        this.noise(x * 0.7 + this.seed * 67, z * 0.7 + this.seed * 71) * 0.4 +
-        this.noise(x * 1.3 + this.seed * 79, z * 1.3 + this.seed * 83) * 0.6
-      ) * 0.02;
-      
-      // Apply micro-variation with slight shift per channel for natural coloration
-      color.r += microVariation * 1.1;
-      color.g += microVariation * 1.3;
-      color.b += microVariation * 0.9;
-      
-      // Add height-dependent but spatially consistent detail for terrain features
-      // This adds small terrain details without creating visible bands
-      const terrainDetail = this.fractalNoise(
-        x * 0.3 + this.seed * 139 + transitionProgress * 10, 
-        z * 0.3 + this.seed * 149 + transitionProgress * 10, 
-        2, 0.5, 2.0
-      ) * 0.04;
-      
-      const detailStrength = 0.7 + smoothTransition * 0.6;
-      color.multiplyScalar(1.0 + terrainDetail * detailStrength);
+      // Add vegetation-specific texturing (small patches and variation)
+      if (smoothTransition > 0.3) { // Only in vegetated areas
+        const vegTexture = this.fractalNoise(
+          x * 0.2 + this.seed * 191, 
+          z * 0.2 + this.seed * 197, 
+          3, 0.6, 2.0
+        ) * 0.06 * Math.min(1.0, (smoothTransition - 0.3) / 0.3);
+        
+        // Directional vegetation patterns (like wind-blown grass)
+        const windDir = Math.sin(x * 0.003 + z * 0.001) * 0.5 + 0.5;
+        const windStrength = Math.pow(windDir, 1.5) * vegTexture;
+        
+        // Apply vegetation texture primarily to green channel
+        color.r -= windStrength * 0.3;
+        color.g += windStrength * 0.7;
+        color.b -= windStrength * 0.1;
+      }
     }
     // MID-ALTITUDE - Hills and forests (Tuscan-style landscapes) with improved transitions
     else if (height < 120) {
