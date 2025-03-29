@@ -29,7 +29,7 @@ export class WaterSystem {
     if (this.engine.systems.world) {
       // Critical: Set water level significantly below terrain minimum
       // This fixes the flickering by ensuring no z-fighting at shoreline
-      this.waterLevel = this.engine.systems.world.minHeight - 0.1;
+      this.waterLevel = this.engine.systems.world.minHeight - 10;
       console.log(`Setting water level to ${this.waterLevel} based on terrain`);
     }
     
