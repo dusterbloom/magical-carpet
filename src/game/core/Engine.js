@@ -10,11 +10,11 @@ import { UISystem } from "../systems/UISystem";
 // Import new systems
 import { VegetationSystem } from "../systems/VegetationSystem";
 import { AtmosphereSystem } from "../systems/AtmosphereSystem";
-import { WaterSystem } from "../systems/WaterSystem";
+// WaterSystem removed
 import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
-import { ShorelineEffect } from "./ShorelineEffect";
+// ShorelineEffect removed
 
 
 export class Engine {
@@ -77,7 +77,7 @@ export class Engine {
     // Create systems in correct order (dependencies first)
     this.systems.network = new NetworkManager(this);
     this.systems.world = new WorldSystem(this);
-    this.systems.water = new WaterSystem(this);
+    // Water system removed
     this.systems.vegetation = new VegetationSystem(this);
     this.systems.atmosphere = new AtmosphereSystem(this);
     this.systems.player = new PlayerSystem(this);
@@ -85,14 +85,14 @@ export class Engine {
     this.systems.carpetTrail = new CarpetTrailSystem(this);
     this.systems.landmarks = new LandmarkSystem(this);
     this.systems.minimap = new MinimapSystem(this);
-    // this.shorelineEffect = new ShorelineEffect(this);
+    // ShorelineEffect removed
 
 
     // Define initialization order (some systems depend on others)
     const initOrder = [
       "network",
       "world", // Base terrain must be initialized first
-      "water", // Water depends on world terrain
+      // Water system removed
       "vegetation", // Vegetation needs terrain to place trees
       "atmosphere", // Atmosphere enhances the sky and adds clouds
       "player", // Player needs terrain for physics
@@ -140,7 +140,7 @@ export class Engine {
     const updateOrder = [
       "network",
       "world",
-      "water",
+      // Water system removed
       "vegetation",
       "atmosphere",
       "player",
@@ -158,13 +158,8 @@ export class Engine {
       }
     }
 
-  // Render scene using ShorelineEffect
-  if (this.shorelineEffect) {
-    this.shorelineEffect.render(this.renderer, this.scene, this.camera);
-  } else {
-    // Fallback to standard rendering if effect isn't available
-    this.renderer.render(this.scene, this.camera);
-  }
+  // Standard rendering - ShorelineEffect removed
+  this.renderer.render(this.scene, this.camera);
 
   // Update stats if available
   if (this.stats) this.stats.update();
@@ -179,10 +174,7 @@ onResize() {
   // Update renderer
   this.renderer.setSize(window.innerWidth, window.innerHeight);
   
-  // Update the shoreline effect if it exists
-  if (this.shorelineEffect && typeof this.shorelineEffect.setSize === 'function') {
-    this.shorelineEffect.setSize(window.innerWidth, window.innerHeight);
-  }
+  // ShorelineEffect removed
 }
   
   onVisibilityChange() {

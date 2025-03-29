@@ -1,0 +1,90 @@
+
+  /**
+   * Creates a small grove landmark (replacement for oasis)
+   * @param {THREE.Group} group - Parent group
+   * @param {number} size - Size of the landmark
+   */
+  createOasis(group, size) {
+    // Create central clearing
+    const clearingRadius = size * 0.4;
+    const clearingGeometry = new THREE.CircleGeometry(clearingRadius, 24);
+    clearingGeometry.rotateX(-Math.PI / 2);
+    const clearingMaterial = new THREE.MeshStandardMaterial({
+      color: 0x88aa66,
+      roughness: 0.9
+    });
+    const clearing = new THREE.Mesh(clearingGeometry, clearingMaterial);
+    clearing.position.y = 0.01; // Slightly above ground
+    clearing.receiveShadow = true;
+    group.add(clearing);
+    
+    // Create palm trees (now regular trees)
+    const treeCount = Math.floor(Math.random() * 3) + 3;
+    for (let i = 0; i < treeCount; i++) {
+      this.createPalmTree(
+        group,
+        size * 0.15,
+        Math.random() * Math.PI * 2,
+        clearingRadius * (0.9 + Math.random() * 0.3)
+      );
+    }
+    
+    // Add rocks around the grove
+    const rockCount = Math.floor(Math.random() * 5) + 3;
+    for (let i = 0; i < rockCount; i++) {
+      const rockSize = size * (0.03 + Math.random() * 0.05);
+      const rockGeometry = new THREE.DodecahedronGeometry(rockSize, 0);
+      const rockMaterial = new THREE.MeshStandardMaterial({
+        color: 0x888888,
+        roughness: 0.9
+      });
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      
+      // Position around the clearing
+      const angle = Math.random() * Math.PI * 2;
+      const distance = clearingRadius * (1 + Math.random() * 0.2);
+      rock.position.set(
+        Math.cos(angle) * distance,
+        rockSize * 0.3,
+        Math.sin(angle) * distance
+      );
+      
+      // Random rotation
+      rock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      group.add(rock);
+    }
+    
+    // Add some vegetation
+    const grassCount = 20;
+    for (let i = 0; i < grassCount; i++) {
+      const grassSize = size * 0.02;
+      const grassGeometry = new THREE.PlaneGeometry(grassSize, grassSize * 3);
+      const grassMaterial = new THREE.MeshBasicMaterial({
+        color: 0x55aa44,
+        side: THREE.DoubleSide,
+        transparent: true
+      });
+      const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+      
+      // Position around the clearing
+      const angle = Math.random() * Math.PI * 2;
+      const distance = clearingRadius * (0.8 + Math.random() * 0.5);
+      grass.position.set(
+        Math.cos(angle) * distance,
+        grassSize * 1.5,
+        Math.sin(angle) * distance
+      );
+      
+      // Random rotation around Y-axis
+      grass.rotation.y = Math.random() * Math.PI;
+      
+      group.add(grass);
+    }
+  }

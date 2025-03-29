@@ -6,7 +6,6 @@ export class WorldSystem {
     this.engine = engine;
     this.scene = engine.scene;
     
-
     if (engine.renderer) {
       // Improve shadow mapping
       engine.renderer.shadowMap.enabled = true;
@@ -27,7 +26,7 @@ export class WorldSystem {
     this.terrainResolution = 32;
     this.maxHeight = 120;  // Increased from 120
     this.minHeight = -10;  // Deeper valleys
-    this.waterLevel = -20;
+    // Water level removed
     this.viewDistance = 6;
     
     // Terrain parameters
@@ -118,7 +117,7 @@ export class WorldSystem {
         maxSlope: 0.15,
         frequency: 0.00001,
         size: { min: 15, max: 35 },
-        requiresWater: true   // Must be near water
+        requiresWater: false  // Water requirement removed (was true)
       }
     ];
   }
@@ -216,7 +215,7 @@ export class WorldSystem {
     
     // Generate initial world
     this.createInitialTerrain();
-    this.createWater();
+    // Water creation removed
     this.createManaNodes();
 
     if (this.engine.camera) {
@@ -249,20 +248,7 @@ export class WorldSystem {
       envMapIntensity: 0.3,
     });
     
-    // Create water material
-    this.materials.water = new THREE.MeshPhysicalMaterial({
-      color: 0x0099ee,
-      transparent: true,
-      opacity: 0.80,
-      roughness: 0.1,
-      metalness: 0.1,
-      transmission: 0.5,
-      thickness: 1.0,
-      side: THREE.DoubleSide,
-      envMapIntensity: 1.0,
-      clearcoat: 0.5,
-      clearcoatRoughness: 0.2
-    });
+    // Water material removed
   }
 
   createLights() {
@@ -358,25 +344,24 @@ export class WorldSystem {
       // Apply continent mask to create oceans and landmasses
       const continentMask = Math.max(0, (continentShape + 0.3) * 1.2);
       
-      // If in ocean, set to ocean depth
+      // Ocean replaced with deep valleys
       if (continentMask <= 0.1) {
-        // Deep ocean depth proportional to distance from shore
-        return this.waterLevel - 20 - 80 * (0.1 - continentMask);
+        // Deep valley depth proportional to distance from shore
+        return this.minHeight - 20 - 80 * (0.1 - continentMask);
       }
       
-      // Add beach transition zone
+      // Beach transition zone converted to slopes
       if (continentMask > 0.1 && continentMask < 0.35) {
-        // Calculate how far into the beach zone we are (0.0 to 1.0)
-        const beachProgress = (continentMask - 0.1) / 0.15;
+        // Calculate how far into the transition zone we are (0.0 to 1.0)
+        const slopeProgress = (continentMask - 0.1) / 0.15;
         
-        // Create smooth beach slopes that rise more gently from water
-        // Ensure beach begins slightly higher than water level
-        const beachHeight = this.waterLevel + (beachProgress * beachProgress * 22);
+        // Create smooth slopes that rise gradually from valleys
+        const baseHeight = this.minHeight + (slopeProgress * slopeProgress * 22);
         
-        // Add some small dunes and texture to beaches
-        const beachNoiseScale = 0.01;
-        const beachNoise = this.fractalNoise(x, z, beachNoiseScale, 2, 0.5, 2.0);
-        return beachHeight + beachNoise * 2 * beachProgress;
+        // Add some small texture variations
+        const noiseScale = 0.01;
+        const noise = this.fractalNoise(x, z, noiseScale, 2, 0.5, 2.0);
+        return baseHeight + noise * 2 * slopeProgress;
       }
       
       // Generate base terrain with multiple noise octaves
@@ -508,88 +493,74 @@ export class WorldSystem {
     
     let color = new THREE.Color();
     
-    // DEEP WATER
-    if (height < this.waterLevel - 10) {
-      // Deep water with subtle variation
-      const depth = Math.min(1, (this.waterLevel - height) / 50);
+    // DEEP VALLEYS
+    if (height < this.minHeight) {
+      // Deep valley with dark earthy colors
+      const depth = Math.min(1, (this.minHeight - height) / 50);
       color.setRGB(
-        0.1 - depth * 0.05,
-        0.15 + depth * 0.05,
-        0.4 + depth * 0.1
+        0.4 - depth * 0.2,
+        0.3 - depth * 0.15,
+        0.2 - depth * 0.1
       );
     }
-   // SHALLOW WATER
-  else if (height < this.waterLevel) {
-    // Calculate how deep the water is - this will be visible at the bottom of water
-    const waterDepth = this.waterLevel - height;
-    const maxDepth = 20; // Reduced for more visible sand under water
-    const depthFactor = Math.min(1.0, waterDepth / maxDepth);
+   // VALLEY FLOORS
+  else if (height < this.minHeight + 10) {
+    // Calculate position in valley floor
+    const valleyDepth = this.minHeight + 10 - height;
+    const maxDepth = 10;
+    const depthFactor = Math.min(1.0, valleyDepth / maxDepth);
     
-    // Underwater sand color - more visible through water
-    const underwaterSandColor = new THREE.Color(0xffffff);
-    // Shallow water is almost transparent, showing sand below
-    const shallowColor = new THREE.Color(0x3399ff);
-    // Deep water is darker blue
-    const deepColor = new THREE.Color(0x3399ff);
+    // Valley floor colors
+    const valleyFloorColor = new THREE.Color(0x665544);
+    // Transition color
+    const transitionColor = new THREE.Color(0x887755);
     
-    if (waterDepth < 1.5) {
-      // Very shallow - mostly sand with blue tint
-      const t = waterDepth / 1.5;
-      color.copy(underwaterSandColor).lerp(shallowColor, t * 1.4);
-    } else if (waterDepth < 5) {
-      // Shallow - transition from sandy bottom to blue
-      const t = (waterDepth - 1.5) / 3.5;
-      color.copy(underwaterSandColor).lerp(shallowColor, 0.4 + t * 0.6);
-    } else {
-      // Deeper water - blue gradient
-      const t = Math.min(1.0, (waterDepth - 5) / 15);
-      color.copy(shallowColor).lerp(deepColor, t);
-    }
+    // Blend colors based on depth
+    color.copy(transitionColor).lerp(valleyFloorColor, depthFactor);
   }
-  // BEACHES AND SHORELINES
-    // BEACHES AND SHORELINES - make this transition much more gradual
-    else if (height < this.waterLevel + 15) {
-      // Calculate normalized position in the beach zone
-      const beachProgress = (height - this.waterLevel) / 15;
+  // LOWER TERRAIN - gradual transition from valley to hills
+    else if (height < this.minHeight + 25) {
+      // Calculate normalized position in the transition zone
+      const transitionProgress = (height - this.minHeight) / 25;
       
       // Create more color zones for better transitions
-      if (beachProgress < 0.2) {
-        // Wet sand zone - darker, slightly blue tint
-        const wetness = 1.0 - beachProgress / 0.2;
+      if (transitionProgress < 0.3) {
+        // Lower zone - earthy tones
+        const groundFactor = transitionProgress / 0.3;
         color.setRGB(
-          0.76 - wetness * 0.2,
-          0.7 - wetness * 0.15,
-          0.6 - wetness * 0.05 + wetness * 0.1 // Add slight blue tint when wet
+          0.6 + groundFactor * 0.1,
+          0.5 + groundFactor * 0.1,
+          0.4 + groundFactor * 0.05
         );
-      } else if (beachProgress < 0.6) {
-        // Damp sand zone - transitional
-        const t = (beachProgress - 0.2) / 0.4;
+      } else if (transitionProgress < 0.7) {
+        // Middle transition zone
+        const t = (transitionProgress - 0.3) / 0.4;
         color.setRGB(
-          0.76 + t * 0.12,  // Getting lighter
           0.7 + t * 0.1,
-          0.6 + t * 0.05
+          0.6 + t * 0.15,
+          0.45 + t * 0.1
         );
       } else {
-        // Dry sand zone - lightest
-        const t = (beachProgress - 0.6) / 0.4;
+        // Upper transition zone - start to add green
+        const t = (transitionProgress - 0.7) / 0.3;
         color.setRGB(
-          0.88 - t * 0.05,  // Slight darkening as we transition to grass
-          0.8 - t * 0.1,
-          0.65 - t * 0.05
+          0.8 - t * 0.2,  // Less red as we add green
+          0.75 + t * 0.1, // More green
+          0.55 - t * 0.1  // Less blue
         );
       }
       
-      // Add beach texture variation - more prominent in dry areas
+      // Add texture variation to break up monotony
       const noiseScale = 0.05;
       const noiseValue = Math.sin(x * noiseScale) * Math.cos(z * noiseScale) * 0.05;
       
-      // Apply noise more strongly to drier areas
-      const noiseStrength = Math.min(1.0, beachProgress + 0.3);
+      // Apply noise with varying strength
+      const noiseStrength = Math.min(1.0, transitionProgress + 0.3);
       color.r += noiseValue * noiseStrength;
-      color.g += noiseValue * noiseStrength;
+      color.g += noiseValue * noiseStrength * 1.2;
       color.b += noiseValue * noiseStrength * 0.7;
       
-      // Add small random dips/bumps to break up uniformity
+      // Add small random variations to break up uniformity
       const smallNoise = (Math.sin(x * 0.2) * Math.cos(z * 0.3) * 
                          Math.sin(x * 0.1 + z * 0.5)) * 0.03;
       color.multiplyScalar(1.0 + smallNoise);
@@ -756,14 +727,14 @@ export class WorldSystem {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
 
-            // Ensure terrain renders beneath water/shores:
-    mesh.renderOrder = 0;
-    this.materials.terrain.polygonOffset = true;
-    this.materials.terrain.polygonOffsetFactor = 1;
-    this.materials.terrain.polygonOffsetUnits = 1;
-    
-    // Add to scene only once
-    this.scene.add(mesh);
+            // Ensure terrain renders properly
+            mesh.renderOrder = 0;
+            this.materials.terrain.polygonOffset = true;
+            this.materials.terrain.polygonOffsetFactor = 1;
+            this.materials.terrain.polygonOffsetUnits = 1;
+            
+            // Add to scene only once
+            this.scene.add(mesh);
             this.currentChunks.set(key, mesh);
           } catch (error) {
             console.error("Error creating chunk:", error);
@@ -773,12 +744,7 @@ export class WorldSystem {
     }
   }
 
-  // NOTE: We don't need this second water mesh as it's handled by the WaterSystem
-  // This method is kept for compatibility but doesn't create anything
-  createWater() {
-    console.log("Water creation is handled by WaterSystem");
-    // Not creating a duplicate water mesh since WaterSystem handles this
-  }
+  // Water creation method removed completely
 
   createManaNodes() {
     // Clear existing mana nodes
@@ -806,8 +772,8 @@ export class WorldSystem {
       // Get height at position
       const terrainHeight = this.getTerrainHeight(x, z);
       
-      // Place node above terrain
-      const y = Math.max(terrainHeight + 10, this.waterLevel + 10);
+      // Place node above terrain (10 units above terrain)
+      const y = terrainHeight + 10;
       
       // Create mana node
       const nodeMesh = new THREE.Mesh(
@@ -879,27 +845,10 @@ export class WorldSystem {
       }
     }
     
-    // Check water requirement
+    // Water requirement check removed since there's no water
     if (landmarkType.requiresWater) {
-      let hasWaterNearby = false;
-      
-      // Sample several points around the position looking for water
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const checkDist = 50; // Check 50 units away
-        const checkX = x + Math.cos(angle) * checkDist;
-        const checkZ = z + Math.sin(angle) * checkDist;
-        const checkHeight = this.getTerrainHeight(checkX, checkZ);
-        
-        if (checkHeight < this.waterLevel) {
-          hasWaterNearby = true;
-          break;
-        }
-      }
-      
-      if (!hasWaterNearby) {
-        return false;
-      }
+      // Always return false for landmarks that required water
+      return false;
     }
     
     return true;
@@ -1663,63 +1612,36 @@ export class WorldSystem {
   }
 
   /**
-   * Creates an oasis landmark with palm trees
+   * Creates a small grove landmark (replacement for oasis)
    * @param {THREE.Group} group - Parent group
    * @param {number} size - Size of the landmark
    */
   createOasis(group, size) {
-    // Create water pool
-    const waterRadius = size * 0.4;
-    const waterDepth = size * 0.1;
-    const waterGeometry = new THREE.CylinderGeometry(
-      waterRadius,
-      waterRadius * 0.8,
-      waterDepth,
-      24
-    );
-    const waterMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x0077ff,
-      transparent: true,
-      opacity: 0.8,
-      roughness: 0.1,
-      metalness: 0.1,
-      transmission: 0.5,
-      ior: 1.4
+    // Create central clearing
+    const clearingRadius = size * 0.4;
+    const clearingGeometry = new THREE.CircleGeometry(clearingRadius, 24);
+    clearingGeometry.rotateX(-Math.PI / 2);
+    const clearingMaterial = new THREE.MeshStandardMaterial({
+      color: 0x88aa66,
+      roughness: 0.9
     });
-    const water = new THREE.Mesh(waterGeometry, waterMaterial);
-    water.position.y = -waterDepth * 0.5;
-    group.add(water);
+    const clearing = new THREE.Mesh(clearingGeometry, clearingMaterial);
+    clearing.position.y = 0.01; // Slightly above ground
+    clearing.receiveShadow = true;
+    group.add(clearing);
     
-    // Create shoreline
-    const shoreRadius = waterRadius * 1.2;
-    const shoreGeometry = new THREE.RingGeometry(
-      waterRadius,
-      shoreRadius,
-      24,
-      1
-    );
-    shoreGeometry.rotateX(-Math.PI / 2);
-    const shoreMaterial = new THREE.MeshStandardMaterial({
-      color: 0xddcc99,
-      roughness: 1.0
-    });
-    const shore = new THREE.Mesh(shoreGeometry, shoreMaterial);
-    shore.position.y = 0.01; // Slightly above ground
-    shore.receiveShadow = true;
-    group.add(shore);
-    
-    // Create palm trees
-    const palmCount = Math.floor(Math.random() * 3) + 3;
-    for (let i = 0; i < palmCount; i++) {
+    // Create palm trees (now regular trees)
+    const treeCount = Math.floor(Math.random() * 3) + 3;
+    for (let i = 0; i < treeCount; i++) {
       this.createPalmTree(
         group,
         size * 0.15,
         Math.random() * Math.PI * 2,
-        waterRadius * (0.9 + Math.random() * 0.3)
+        clearingRadius * (0.9 + Math.random() * 0.3)
       );
     }
     
-    // Add rocks around the oasis
+    // Add rocks around the grove
     const rockCount = Math.floor(Math.random() * 5) + 3;
     for (let i = 0; i < rockCount; i++) {
       const rockSize = size * (0.03 + Math.random() * 0.05);
@@ -1730,9 +1652,9 @@ export class WorldSystem {
       });
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
       
-      // Position around the oasis
+      // Position around the clearing
       const angle = Math.random() * Math.PI * 2;
-      const distance = shoreRadius * (1 + Math.random() * 0.2);
+      const distance = clearingRadius * (1 + Math.random() * 0.2);
       rock.position.set(
         Math.cos(angle) * distance,
         rockSize * 0.3,
@@ -1763,9 +1685,9 @@ export class WorldSystem {
       });
       const grass = new THREE.Mesh(grassGeometry, grassMaterial);
       
-      // Position around the oasis
+      // Position around the clearing
       const angle = Math.random() * Math.PI * 2;
-      const distance = waterRadius * (0.8 + Math.random() * 0.5);
+      const distance = clearingRadius * (0.8 + Math.random() * 0.5);
       grass.position.set(
         Math.cos(angle) * distance,
         grassSize * 1.5,
@@ -2077,8 +1999,6 @@ export class WorldSystem {
   update(delta, elapsed) {
     const player = this.engine.systems.player?.localPlayer;
     if (!player) return;
-
-    // Water is now fully handled by WaterSystem
 
     // Check if we need more mana nodes
     if (this.manaNodes.filter(node => !node.userData.collected).length < 10) {
