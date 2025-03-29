@@ -26,8 +26,9 @@ export class WaterSystem {
     
     // Get the minimum height from world system if available
     if (this.engine.systems.world) {
-      // Set water level slightly above the minHeight from WorldSystem
-      this.waterLevel = this.engine.systems.world.minHeight + 2;
+      // Critical: Set water level significantly below terrain minimum
+      // This fixes the flickering by ensuring no z-fighting at shoreline
+      this.waterLevel = this.engine.systems.world.minHeight - 10;
       console.log(`Setting water level to ${this.waterLevel} based on terrain`);
     }
     
@@ -43,26 +44,48 @@ export class WaterSystem {
   createWater() {
     // Create a basic water plane that covers the entire world
     const worldSize = this.engine.systems.world?.chunkSize || 1024;
-    const waterSize = worldSize * 20; // Large enough to cover visible area
+    const waterSize = worldSize * 25; // Extra large to avoid edge visibility
     
     const waterGeometry = new THREE.PlaneGeometry(waterSize, waterSize);
     
-    // Create a simple blue material with transparency
-    const waterMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0099cc,
-      transparent: true,
-      opacity: 0.8,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    });
-    
-    this.water = new THREE.Mesh(waterGeometry, waterMaterial);
-    this.water.rotation.x = -Math.PI / 2;
-    this.water.position.y = this.waterLevel;
-    this.water.renderOrder = 1;
-    
-    // Add water to the scene
-    this.scene.add(this.water);
+    try {
+      // Create a simple, flat blue material with no lighting effects
+      const waterMaterial = new THREE.MeshBasicMaterial({
+        color: 0x0066aa,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.FrontSide,
+        depthWrite: false
+      });
+      
+      this.water = new THREE.Mesh(waterGeometry, waterMaterial);
+      this.water.rotation.x = -Math.PI / 2;
+      this.water.position.y = this.waterLevel;
+      
+      // Position water far below terrain, no polygon offset or render order needed
+      // Set a large negative y position to eliminate z-fighting
+      
+      // Add water to the scene
+      this.scene.add(this.water);
+    } catch (error) {
+      console.warn("Error creating water material:", error);
+      
+      // Fallback to even simpler material
+      const fallbackMaterial = new THREE.MeshBasicMaterial({
+        color: 0x0066aa,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.FrontSide,
+        depthWrite: false
+      });
+      
+      this.water = new THREE.Mesh(waterGeometry, fallbackMaterial);
+      this.water.rotation.x = -Math.PI / 2;
+      this.water.position.y = this.waterLevel;
+      
+      // Add water to the scene
+      this.scene.add(this.water);
+    }
     
     console.log(`Water plane created at height ${this.waterLevel}`);
   }
@@ -76,8 +99,18 @@ export class WaterSystem {
     
     // Keep water following camera position on XZ plane
     if (this.engine.camera) {
-      this.water.position.x = this.engine.camera.position.x;
-      this.water.position.z = this.engine.camera.position.z;
+      // Snap directly to camera position, rounding to avoid sub-pixel issues
+      this.water.position.x = Math.round(this.engine.camera.position.x);
+      this.water.position.z = Math.round(this.engine.camera.position.z);
+      
+      // Leave Y position fixed at the extreme low position
+      
+      // If camera is underwater, reduce opacity
+      if (this.engine.camera.position.y < this.waterLevel) {
+        this.water.material.opacity = 0.4;
+      } else {
+        this.water.material.opacity = 0.7;
+      }
     }
     
     // Print debug info once
