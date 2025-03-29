@@ -354,15 +354,33 @@ export class WorldSystem {
       // Beach transition zone converted to slopes
       if (continentMask > 0.1 && continentMask < 0.35) {
         // Calculate how far into the transition zone we are (0.0 to 1.0)
-        const slopeProgress = (continentMask - 0.1) / 0.15;
+        const slopeProgress = (continentMask - 0.1) / 0.25;
         
-        // Create smooth slopes that rise gradually from valleys
-        const baseHeight = this.minHeight + (slopeProgress * slopeProgress * 22);
+        // Create smoother slopes using cubic easing instead of quadratic
+        // This creates a more natural S-curve for the transition
+        const easeInOutCubic = slopeProgress < 0.5
+          ? 4 * slopeProgress * slopeProgress * slopeProgress
+          : 1 - Math.pow(-2 * slopeProgress + 2, 3) / 2;
         
-        // Add some small texture variations
-        const noiseScale = 0.01;
-        const noise = this.fractalNoise(x, z, noiseScale, 2, 0.5, 2.0);
-        return baseHeight + noise * 2 * slopeProgress;
+        // Use the eased value for a more natural slope
+        const baseHeight = this.minHeight + (easeInOutCubic * 22);
+        
+        // Add more varied texture to the slopes using multi-frequency noise
+        const largeScale = 0.005;  // Large undulations
+        const mediumScale = 0.02;  // Medium details
+        const smallScale = 0.1;    // Small details
+        
+        // Combine different noise scales with decreasing influence
+        const largeNoise = this.fractalNoise(x, z, largeScale, 2, 0.5, 2.0) * 3;
+        const mediumNoise = this.fractalNoise(x, z, mediumScale, 2, 0.5, 2.0) * 1.5;
+        const smallNoise = this.fractalNoise(x, z, smallScale, 1, 0.5, 2.0) * 0.5;
+        
+        // Progressive detail - more detail appears as we move up the slope
+        const combinedNoise = largeNoise + 
+                           (mediumNoise * easeInOutCubic) + 
+                           (smallNoise * easeInOutCubic * easeInOutCubic);
+        
+        return baseHeight + combinedNoise;
       }
       
       // Generate base terrain with multiple noise octaves
@@ -506,44 +524,74 @@ export class WorldSystem {
     }
    // VALLEY FLOORS
   else if (height < this.minHeight + 10) {
-    // Calculate position in valley floor
+    // Calculate position in valley floor with improved easing
     const valleyDepth = this.minHeight + 10 - height;
     const maxDepth = 10;
     const depthFactor = Math.min(1.0, valleyDepth / maxDepth);
     
-    // Valley floor colors - lighter sandy beaches
-    const valleyFloorColor = new THREE.Color(0xccbb99); // Lighter sand color
-    // Transition color - softer transition
-    const transitionColor = new THREE.Color(0xddcc88); // Even lighter transition color
+    // Create smoother easing function for color transition
+    const easedDepth = Math.pow(depthFactor, 1.5); // More natural falloff
     
-    // Blend colors based on depth
-    color.copy(transitionColor).lerp(valleyFloorColor, depthFactor);
+    // Valley floor colors - sandy beaches with more variation
+    const valleyFloorColor = new THREE.Color(0xccbb99);
+    
+    // Add subtle color variation based on position
+    const noiseValue = this.noise(x * 0.05, z * 0.05) * 0.1;
+    const adjustedValleyColor = new THREE.Color(
+      valleyFloorColor.r + noiseValue,
+      valleyFloorColor.g + noiseValue * 0.8,
+      valleyFloorColor.b + noiseValue * 0.5
+    );
+    
+    // Transition color - more earthy tone for better blending
+    const transitionColor = new THREE.Color(0xc5bc8a); // Slightly greener transition
+    
+    // Apply noise variation to transition color too
+    const adjustedTransitionColor = new THREE.Color(
+      transitionColor.r + noiseValue * 0.8,
+      transitionColor.g + noiseValue,
+      transitionColor.b + noiseValue * 0.6
+    );
+    
+    // Blend colors based on depth with improved easing
+    color.copy(adjustedTransitionColor).lerp(adjustedValleyColor, easedDepth);
+    
+    // Add small-scale texture variation to break up uniformity
+    const microNoiseScale = 0.2;
+    const microNoise = this.noise(x * microNoiseScale, z * microNoiseScale) * 0.03;
+    color.r += microNoise;
+    color.g += microNoise;
+    color.b += microNoise * 0.7;
   }
   // LOWER TERRAIN - gradual transition from valley to hills
   else if (height < this.minHeight + 25) {
-      // Calculate normalized position in the transition zone
+      // Calculate normalized position in the transition zone with improved easing
       const transitionProgress = (height - this.minHeight) / 25;
       
-      // Create more color zones for better transitions
+      // Use smoother S-curve for transitions
+      const smoothStep = x => x * x * (3 - 2 * x); // Smootherstep function
+      const smoothTransition = smoothStep(transitionProgress);
+      
+      // Create more gradual color zones for better transitions
       if (transitionProgress < 0.3) {
-        // Lower zone - sandy transitioning to soil
-        const groundFactor = transitionProgress / 0.3;
+        // Lower zone - sandy transitioning to soil with smoother blend
+        const groundFactor = smoothStep(transitionProgress / 0.3);
         color.setRGB(
           0.85 - groundFactor * 0.15, // Transition from lighter sand to darker soil
           0.8 - groundFactor * 0.2,   // Smooth transition in green channel
           0.6 - groundFactor * 0.15   // Smooth transition in blue channel
         );
       } else if (transitionProgress < 0.7) {
-        // Middle transition zone - soil to vegetation
-        const t = (transitionProgress - 0.3) / 0.4;
+        // Middle transition zone - soil to vegetation with improved blending
+        const t = smoothStep((transitionProgress - 0.3) / 0.4);
         color.setRGB(
           0.7 - t * 0.1,       // Continue reducing red
           0.6 + t * 0.15,      // Increasing green for vegetation
           0.45 - t * 0.05      // Slightly reducing blue
         );
       } else {
-        // Upper transition zone - more vegetation
-        const t = (transitionProgress - 0.7) / 0.3;
+        // Upper transition zone - more vegetation with smoother blend
+        const t = smoothStep((transitionProgress - 0.7) / 0.3);
         color.setRGB(
           0.6 - t * 0.2,       // Less red as we add green
           0.75 + t * 0.1,      // More green
@@ -551,19 +599,22 @@ export class WorldSystem {
         );
       }
       
-      // Add texture variation to break up monotony
-      const noiseScale = 0.05;
-      const noiseValue = Math.sin(x * noiseScale) * Math.cos(z * noiseScale) * 0.05;
+      // Add variable texture based on position to break up hard edges
+      const noiseValue = this.fractalNoise(x * 0.05, z * 0.05, 2, 0.5, 2.0) * 0.05;
       
-      // Apply noise with varying strength
+      // Apply noise with varying strength and different influence per channel
       const noiseStrength = Math.min(1.0, transitionProgress + 0.3);
-      color.r += noiseValue * noiseStrength;
+      color.r += noiseValue * noiseStrength * 0.8;
       color.g += noiseValue * noiseStrength * 1.2;
       color.b += noiseValue * noiseStrength * 0.7;
       
-      // Add small random variations to break up uniformity
-      const smallNoise = (Math.sin(x * 0.2) * Math.cos(z * 0.3) * 
-                         Math.sin(x * 0.1 + z * 0.5)) * 0.03;
+      // Add small random variations with multiple frequencies
+      const smallNoise = (
+        this.noise(x * 0.2, z * 0.3) * 0.6 + 
+        this.noise(x * 0.4, z * 0.5) * 0.3 +
+        this.noise(x * 0.8, z * 0.7) * 0.1
+      ) * 0.03;
+      
       color.multiplyScalar(1.0 + smallNoise);
     }
     // MID-ALTITUDE - Hills and forests
