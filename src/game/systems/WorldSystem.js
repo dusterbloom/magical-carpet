@@ -1365,210 +1365,8 @@ export class WorldSystem {
     }
     // PEAKS - Snow-covered with enhanced transitions
     else {
-      // Create smoother transition from mountains to peaks
-    //   const mountainPeakBoundary = 340;
-    //   const transitionWidth = 40; // Width of transition zone
-      
-    //   // Calculate transition factor with improved smoothstep for mountain-peak boundary
-    //   let boundarySmoothFactor = 0;
-    //   if (height < mountainPeakBoundary + transitionWidth) {
-    //     const transitionProgress = (height - mountainPeakBoundary) / transitionWidth;
-    //     // Smootherstep for extra smooth transition
-    //     boundarySmoothFactor = 1.0 - (transitionProgress * transitionProgress * transitionProgress * (transitionProgress * (transitionProgress * 6 - 15) + 10));
-    //   }
-      
-    //   // Enhanced snow color system with transition zone blending
-    //   // Base snow color with elevation-dependent variations
-    //   const snowWhite = new THREE.Color(0.92, 0.92, 0.96);
-      
-    //   // Higher peaks get more pronounced blue tinge with improved gradient
-    //   const snowBlue = new THREE.Color(0.78, 0.85, 1.0);
-    //   const snowHeight = (height - mountainPeakBoundary) / 200;  // Normalized height in peak zone
-      
-    //   // Apply elevation-based tinting with enhanced curve and spatial variation
-    //   // Create lateral variations in snow color for more natural appearance
-    //   const spatialVariation = this.fractalNoise(x * 0.001, z * 0.001, 3, 0.5, 2.0) * 0.2;
-    //   const blueAmount = Math.min(1, Math.pow(snowHeight + spatialVariation, 0.7)) * 0.5;
-      
-    //   // Create mountain rock color for blending at transition zone
-    //   let mountainColor = new THREE.Color();
-    //   if (boundarySmoothFactor > 0) {
-    //     // Get the same rock types used in mountain zone for consistent transition
-    //     // Create smooth transition from mountain to peak colors
-    //     let baseRockColor;
-        
-    //     // Add spatial coherence to rock types with multi-scale noise
-    //     const rockTypeNoise = this.fractalNoise(
-    //       x * 0.001 + this.seed * 63, 
-    //       z * 0.001 + this.seed * 67,
-    //       3, 0.5, 2.0
-    //     ) * 0.15;
-        
-    //     // Use same temperature adjustments as mountain zone for consistency
-    //     const adjustedTemp = normalizedTemp + rockTypeNoise;
-        
-    //     if (adjustedTemp > 0.6) {
-    //       // Warm rock (more reddish variants)
-    //       baseRockColor = new THREE.Color(
-    //         0.48 + this.fractalNoise(x * 0.05, z * 0.05, 2, 0.5, 2.0) * 0.06, 
-    //         0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
-    //         0.32 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.04
-    //       );
-    //     } else if (adjustedTemp > 0.3) {
-    //       // Temperate rock (gray-brown)
-    //       baseRockColor = new THREE.Color(
-    //         0.42 + this.fractalNoise(x * 0.06, z * 0.06, 2, 0.5, 2.0) * 0.06, 
-    //         0.38 + this.fractalNoise(x * 0.08, z * 0.08, 2, 0.5, 2.0) * 0.06, 
-    //         0.35 + this.fractalNoise(x * 0.1, z * 0.1, 2, 0.5, 2.0) * 0.05
-    //       );
-    //     } else {
-    //       // Cold rock (more bluish-gray)
-    //       baseRockColor = new THREE.Color(
-    //         0.38 + this.fractalNoise(x * 0.07, z * 0.07, 2, 0.5, 2.0) * 0.05, 
-    //         0.38 + this.fractalNoise(x * 0.09, z * 0.09, 2, 0.5, 2.0) * 0.05, 
-    //         0.4 + this.fractalNoise(x * 0.11, z * 0.11, 2, 0.5, 2.0) * 0.06
-    //       );
-    //     }
-        
-    //     // Create dark rock variant with height-based variation just like mountain zone
-    //     const darkRock = new THREE.Color(0.28, 0.28, 0.3);
-    //     const mountainGradient = 0.7; // Match the mountain gradient at boundary
-        
-    //     mountainColor.copy(baseRockColor).lerp(darkRock, mountainGradient);
-        
-    //     // Add mountain snow patches for consistent transition
-    //     // Use same noise patterns as mountain zone near boundary
-    //     const largeSnowNoise = this.fractalNoise(x * 0.04 + this.seed * 17, z * 0.04 + this.seed * 18, 3, 0.5, 2.0);
-    //     const mediumSnowNoise = this.fractalNoise(x * 0.1 + this.seed * 25, z * 0.1 + this.seed * 26, 2, 0.5, 2.0);
-    //     const combinedSnowNoise = largeSnowNoise * 0.6 + mediumSnowNoise * 0.4;
-        
-    //     // High snow amount at the boundary with mountains
-    //     const highSnowColor = new THREE.Color(0.92, 0.92, 0.97);
-    //     mountainColor.lerp(highSnowColor, 0.8 + combinedSnowNoise * 0.2);
-    //   }
-      
-    //   // Apply peak snow color with boundary blending
-    //   if (boundarySmoothFactor > 0) {
-    //     // Multi-step snow color blending at transition zone
-    //     const peakSnowColor = new THREE.Color().copy(snowWhite).lerp(snowBlue, blueAmount);
-    //     color.copy(mountainColor).lerp(peakSnowColor, 1.0 - boundarySmoothFactor);
-    //   } else {
-    //     // Regular peak snow color
-    //     color.copy(snowWhite).lerp(snowBlue, blueAmount);
-    //   }
-      
-    //   // Add enhanced snow texture with multiple noise scales and better coherence
-    //   const largeSnowTexture = this.fractalNoise(x * 0.04 + this.seed * 19, z * 0.04 + this.seed * 20, 3, 0.5, 2.0);
-    //   const mediumSnowTexture = this.fractalNoise(x * 0.12 + this.seed * 27, z * 0.12 + this.seed * 28, 2, 0.5, 2.0);
-    //   const smallSnowTexture = this.fractalNoise(x * 0.3 + this.seed * 33, z * 0.3 + this.seed * 34, 1, 0.5, 2.0);
-      
-    //   // Enhanced texture blending with improved height-dependent weighting
-    //   // Progressive transition from larger to smaller details with elevation
-    //   const normalizedHeight = Math.min(1.0, (height - mountainPeakBoundary) / 200);
-    //   const heightCurve = Math.pow(normalizedHeight, 0.6); // Softer curve
-      
-    //   // Scale weights evolve gradually with elevation
-    //   const largeWeight = 0.7 - heightCurve * 0.4;
-    //   const mediumWeight = 0.2 + heightCurve * 0.2;
-    //   const smallWeight = 0.1 + heightCurve * 0.2;
-      
-    //   // Combine with improved weights and scale awareness
-    //   const snowTexture = 
-    //     largeSnowTexture * largeWeight + 
-    //     mediumSnowTexture * mediumWeight + 
-    //     smallSnowTexture * smallWeight;
-      
-    //   // Apply variation with height-dependent intensity
-    //   const textureIntensity = 0.06 + heightCurve * 0.02; // Stronger texture at higher elevations
-    //   const variation = snowTexture * textureIntensity;
-      
-    //   // Apply with subtle color channel differences for more natural snow
-    //   color.r += variation * 1.0;
-    //   color.g += variation * 1.0;
-    //   color.b += variation * 0.8; // Slightly reduced blue variation for more realistic snow
-      
-    //   // Enhanced rock exposure on steep slopes with improved transitions and detection
-    //   if (slope > 0.6) { // Lower threshold for smoother transition
-    //     // Calculate slope intensity with smoother curve
-    //     const slopeProgress = Math.min(1.0, (slope - 0.6) / 0.6); // 0 at slope=0.6, 1 at slope=1.2
-    //     const slopeIntensity = slopeProgress * slopeProgress * (3 - 2 * slopeProgress); // Smoothstep
-        
-    //     // Calculate rock exposure with improved noise and patterns
-    //     // Multi-scale noise creates more natural rock outcroppings
-    //     const rockExposureNoise = 
-    //         this.fractalNoise(x * 0.08 + this.seed * 21, z * 0.08 + this.seed * 22, 3, 0.5, 2.0) * 0.6 + 
-    //         this.fractalNoise(x * 0.2 + this.seed * 41, z * 0.2 + this.seed * 42, 2, 0.5, 2.0) * 0.4;
-        
-    //     // Improved exposure calculation with more natural distribution
-    //     // Significantly reduce rock exposure at very high elevations and on shallow slopes near peaks
-    //     const exposureThresholdBase = 0.35;
-    //     const highPeakReduction = Math.min(1.0, Math.pow(normalizedHeight * 2, 2)) * 0.3; // Stronger at peak
-    //     const exposureThreshold = exposureThresholdBase - (heightCurve * 0.1) + highPeakReduction;
-        
-    //     // Add slope factor to reduce rock exposure on shallow slopes at high elevations
-    //     const slopeReduction = height > 350 ? (1.0 - Math.min(1.0, slope * 2)) * 0.25 : 0;
-        
-    //     // Combined exposure calculation with height and slope awareness
-    //     const rockExposure = slopeIntensity * Math.max(0, (rockExposureNoise - exposureThreshold - slopeReduction) * 1.8);
-        
-    //     if (rockExposure > 0.05) { // Lower threshold for smoother transition
-    //       // Calculate rock color with improved height-dependent variation
-    //       // Use lighter rocks at higher elevations to avoid black appearance
-    //       const heightVariation = this.fractalNoise(x * 0.005, z * 0.005, 2, 0.5, 2.0) * 0.1;
-    //       const adjustedHeight = snowHeight + heightVariation;
-          
-    //       // Create rock color with height-dependent properties - MUCH lighter and less dark at peaks
-    //       const peakHeight = height > 360 ? 1.0 : Math.max(0, (height - 340) / 20);
-    //       const rockColor = new THREE.Color(
-    //         Math.max(0.5, 0.6 - adjustedHeight * 0.05), // Much lighter at peaks
-    //         Math.max(0.48, 0.58 - adjustedHeight * 0.05), // Much lighter at peaks
-    //         Math.max(0.52, 0.62 - adjustedHeight * 0.05) // Slightly bluer at higher elevations
-    //       );
-          
-    //       // Blend with snow color at very high elevations to avoid stark contrast
-    //       if (height > 360) {
-    //         const snowBlendAmount = Math.min(1.0, (height - 360) / 30) * 0.7;
-    //         const snowColor = new THREE.Color(0.92, 0.92, 0.96);
-    //         rockColor.lerp(snowColor, snowBlendAmount);
-    //       }
-          
-    //       // Progressive multi-stage blending for smoother transitions
-    //       if (rockExposure < 0.2) {
-    //         // Very subtle rock exposure with minimal transition
-    //         const lightRockBlend = rockExposure * 5; // Scale up for more impact in this range
-    //         color.lerp(rockColor, lightRockBlend * 0.3); // Subtle blend
-    //       } else if (rockExposure < 0.5) {
-    //         // Medium rock exposure with moderate transition
-    //         const mediumRockBlend = (rockExposure - 0.2) / 0.3; // 0 to 1 range
-    //         const intermColor = new THREE.Color().copy(color).lerp(rockColor, 0.3);
-    //         color.copy(intermColor).lerp(rockColor, mediumRockBlend * 0.6); // Two-step blend
-    //       } else {
-    //         // Heavy rock exposure with full transition - but limit max exposure blend at high elevations
-    //         const maxExposureBlend = height > 360 ? 0.5 : 0.8;
-    //         color.lerp(rockColor, rockExposure * maxExposureBlend);
-    //       }
-    //     }
-    //   }
-    // }
+    color.setRGB(0.6, 0.6, 0.6); // Assign a fixed mid-grey/blue color
     
-    // // Ensure color values are valid
-    // color.r = Math.max(0, Math.min(1, color.r));
-    // color.g = Math.max(0, Math.min(1, color.g));
-    // color.b = Math.max(0, Math.min(1, color.b));
-    
-    // return color;
-    // ----> START TEMPORARY OVERRIDE <----
-    color.setRGB(0.6, 0.6, 0.7); // Assign a fixed mid-grey/blue color
-    // ----> END TEMPORARY OVERRIDE <----
-
-
-    /* // ----> ORIGINAL PEAK LOGIC COMMENTED OUT <----
-    const mountainPeakBoundary = 340;
-    const transitionWidth = 40;
-    // ... all the complex calculations for snow, rock, blending ...
-    // ... rock exposure calculation ...
-    // ... blending logic ...
-    */ // ----> END ORIGINAL PEAK LOGIC <----
 }
 
 // Ensure color values are valid (KEEP THIS FINAL CLAMP)
@@ -1807,162 +1605,322 @@ return color;
     return true;
   }
 
+  // computeSmoothedNormals(geometry, startX, startZ) {
+  //   const positions = geometry.attributes.position;
+  //   const vertexCount = positions.count;
+  //   const tempNormals = [];
+    
+  //   // First, compute normal for each face and accumulate to vertices
+  //   for (let i = 0; i < vertexCount; i++) {
+  //     tempNormals[i] = new THREE.Vector3(0, 0, 0);
+  //   }
+    
+  //   const indices = geometry.index ? geometry.index.array : null;
+  //   let triangleCount;
+    
+  //   if (indices) {
+  //     triangleCount = indices.length / 3;
+  //   } else {
+  //     triangleCount = vertexCount / 3;
+  //   }
+    
+  //   // Calculate normals for each face and accumulate
+  //   for (let i = 0; i < triangleCount; i++) {
+  //     let vA, vB, vC;
+      
+  //     if (indices) {
+  //       vA = indices[i * 3];
+  //       vB = indices[i * 3 + 1];
+  //       vC = indices[i * 3 + 2];
+  //     } else {
+  //       vA = i * 3;
+  //       vB = i * 3 + 1;
+  //       vC = i * 3 + 2;
+  //     }
+      
+  //     const pA = new THREE.Vector3().fromBufferAttribute(positions, vA);
+  //     const pB = new THREE.Vector3().fromBufferAttribute(positions, vB);
+  //     const pC = new THREE.Vector3().fromBufferAttribute(positions, vC);
+      
+  //     const cb = new THREE.Vector3().subVectors(pC, pB);
+  //     const ab = new THREE.Vector3().subVectors(pA, pB);
+  //     const normal = new THREE.Vector3().crossVectors(cb, ab).normalize();
+      
+  //     // Add face normal to each vertex normal with distance-based weighting
+  //     // This creates smoother transitions at sharp edges
+  //     tempNormals[vA].add(normal);
+  //     tempNormals[vB].add(normal);
+  //     tempNormals[vC].add(normal);
+  //   }
+    
+  //   // Second pass: identify problematic mountain peaks and smooth them more aggressively
+  //   const worldCoords = new Map();
+  //   for (let i = 0; i < vertexCount; i++) {
+  //     // Store world coordinates for each vertex
+  //     const x = positions.getX(i) + startX;
+  //     const y = positions.getY(i);
+  //     const z = positions.getZ(i) + startZ;
+  //     worldCoords.set(i, { x, y, z });
+
+  //     // Pre-normalize for initial comparison
+  //     tempNormals[i].normalize();
+  //   }
+    
+  //   // Find vertices with problematic normals (mountain peaks/sharp edges)
+  //   const problematicVertices = new Set();
+  //   for (let i = 0; i < vertexCount; i++) {
+  //     // Check if this is a mountain peak (high altitude + nearly horizontal normal)
+  //     const worldY = worldCoords.get(i).y;
+  //     const normalY = tempNormals[i].y;
+      
+  //     // Identify sharper peaks at higher elevations with more horizontal normals
+  //     if (worldY > 200 && Math.abs(normalY) < 0.5) {
+  //       problematicVertices.add(i);
+  //     }
+
+  //     // Identify extremely sharp edges regardless of height
+  //     if (Math.abs(normalY) < 0.2) {
+  //       problematicVertices.add(i);
+  //     }
+      
+  //     // Additional check for high mountain peaks with any downward facing normals
+  //     if (worldY > 340 && normalY < 0) {
+  //       problematicVertices.add(i);
+  //     }
+  //   }
+    
+  //   // Perform additional smoothing on problematic vertices
+  //   // for (const vertexIndex of problematicVertices) {
+  //   //   // Find neighboring vertices
+  //   //   const neighbors = new Set();
+  //   //   for (let i = 0; i < triangleCount; i++) {
+  //   //     let vA, vB, vC;
+        
+  //   //     if (indices) {
+  //   //       vA = indices[i * 3];
+  //   //       vB = indices[i * 3 + 1];
+  //   //       vC = indices[i * 3 + 2];
+  //   //     } else {
+  //   //       vA = i * 3;
+  //   //       vB = i * 3 + 1;
+  //   //       vC = i * 3 + 2;
+  //   //     }
+        
+  //   //     // If this vertex is part of this triangle
+  //   //     if (vA === vertexIndex || vB === vertexIndex || vC === vertexIndex) {
+  //   //       // Add all vertices from this triangle
+  //   //       neighbors.add(vA);
+  //   //       neighbors.add(vB);
+  //   //       neighbors.add(vC);
+  //   //     }
+  //   //   }
+      
+  //   //   // Calculate smoothed normal from neighbors
+  //   //   const smoothedNormal = new THREE.Vector3(0, 0, 0);
+  //   //   for (const neighborIndex of neighbors) {
+  //   //     smoothedNormal.add(tempNormals[neighborIndex].clone());
+  //   //   }
+  //   //   smoothedNormal.normalize();
+      
+  //   //   // Blend with an upward-facing normal proportional to the height
+  //   //   // Higher elevations get more upward normal blending
+  //   //   const worldY = worldCoords.get(vertexIndex).y;
+  //   //   const upNormal = new THREE.Vector3(0, 1, 0);
+      
+  //   //   // Modified height factor calculation - stronger correction at higher elevation
+
+  //   //   // Apply stronger correction when we're at high elevations
+  //   //   const heightFactor = Math.min(1, (worldY - 200) / 200) * 0.5;
+  //   //   const snowFactor = worldY > 340 ? 0.3 : 0;
+  //   //   let blendFactor = 0.5 + heightFactor + snowFactor;
+  //   //   blendFactor = Math.min(blendFactor, 0.5); // Clamp below 1.0 (e.g., 0.95)
+      
+  //   //   tempNormals[vertexIndex].copy(smoothedNormal).lerp(upNormal, blendFactor).normalize();      
+      
+  //   //   // Ensure no downward-facing normals on peaks
+  //   //   if (worldY > 340 && tempNormals[vertexIndex].y < 0.1) {
+  //   //     tempNormals[vertexIndex].y = 0.1;
+  //   //     tempNormals[vertexIndex].normalize();
+  //   //   }
+  //   // }
+    
+  //   // Final normalization of all normals
+  //   for (let i = 0; i < vertexCount; i++) {
+  //     tempNormals[i].normalize();
+  //   }
+    
+  //   // Create normal buffer attribute
+  //   const normalArray = new Float32Array(vertexCount * 3);
+    
+  //   for (let i = 0; i < vertexCount; i++) {
+  //     normalArray[i * 3] = tempNormals[i].x;
+  //     normalArray[i * 3 + 1] = tempNormals[i].y;
+  //     normalArray[i * 3 + 2] = tempNormals[i].z;
+  //   }
+    
+  //   geometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
+  // }
+
+  
   computeSmoothedNormals(geometry, startX, startZ) {
     const positions = geometry.attributes.position;
     const vertexCount = positions.count;
-    const tempNormals = [];
-    
-    // First, compute normal for each face and accumulate to vertices
-    for (let i = 0; i < vertexCount; i++) {
-      tempNormals[i] = new THREE.Vector3(0, 0, 0);
-    }
-    
+    // Initialize tempNormals as an array of Vector3 instances
+    const tempNormals = Array.from({ length: vertexCount }, () => new THREE.Vector3());
+
     const indices = geometry.index ? geometry.index.array : null;
-    let triangleCount;
-    
-    if (indices) {
-      triangleCount = indices.length / 3;
-    } else {
-      triangleCount = vertexCount / 3;
-    }
-    
-    // Calculate normals for each face and accumulate
+    const triangleCount = indices ? indices.length / 3 : vertexCount / 3;
+
+    const pA = new THREE.Vector3();
+    const pB = new THREE.Vector3();
+    const pC = new THREE.Vector3();
+    const cb = new THREE.Vector3();
+    const ab = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+
+    // First pass: Calculate face normals and accumulate them onto vertices
     for (let i = 0; i < triangleCount; i++) {
-      let vA, vB, vC;
-      
+      let vA_idx, vB_idx, vC_idx;
+
       if (indices) {
-        vA = indices[i * 3];
-        vB = indices[i * 3 + 1];
-        vC = indices[i * 3 + 2];
+        vA_idx = indices[i * 3];
+        vB_idx = indices[i * 3 + 1];
+        vC_idx = indices[i * 3 + 2];
       } else {
-        vA = i * 3;
-        vB = i * 3 + 1;
-        vC = i * 3 + 2;
+        vA_idx = i * 3;
+        vB_idx = i * 3 + 1;
+        vC_idx = i * 3 + 2;
       }
-      
-      const pA = new THREE.Vector3().fromBufferAttribute(positions, vA);
-      const pB = new THREE.Vector3().fromBufferAttribute(positions, vB);
-      const pC = new THREE.Vector3().fromBufferAttribute(positions, vC);
-      
-      const cb = new THREE.Vector3().subVectors(pC, pB);
-      const ab = new THREE.Vector3().subVectors(pA, pB);
-      const normal = new THREE.Vector3().crossVectors(cb, ab).normalize();
-      
-      // Add face normal to each vertex normal with distance-based weighting
-      // This creates smoother transitions at sharp edges
-      tempNormals[vA].add(normal);
-      tempNormals[vB].add(normal);
-      tempNormals[vC].add(normal);
+
+      pA.fromBufferAttribute(positions, vA_idx);
+      pB.fromBufferAttribute(positions, vB_idx);
+      pC.fromBufferAttribute(positions, vC_idx);
+
+      cb.subVectors(pC, pB);
+      ab.subVectors(pA, pB);
+      normal.crossVectors(cb, ab); // Don't normalize yet, magnitude weights contribution
+
+      // Add face normal (magnitude matters for weighting)
+      // Check if indices are valid before adding
+       if (tempNormals[vA_idx]) tempNormals[vA_idx].add(normal);
+       if (tempNormals[vB_idx]) tempNormals[vB_idx].add(normal);
+       if (tempNormals[vC_idx]) tempNormals[vC_idx].add(normal);
     }
-    
-    // Second pass: identify problematic mountain peaks and smooth them more aggressively
+
+    // Store world coordinates and pre-normalize for initial checks
     const worldCoords = new Map();
     for (let i = 0; i < vertexCount; i++) {
-      // Store world coordinates for each vertex
-      const x = positions.getX(i) + startX;
-      const y = positions.getY(i);
-      const z = positions.getZ(i) + startZ;
-      worldCoords.set(i, { x, y, z });
+        const worldX = positions.getX(i) + startX;
+        const worldY = positions.getY(i);
+        const worldZ = positions.getZ(i) + startZ;
+        worldCoords.set(i, { x: worldX, y: worldY, z: worldZ });
 
-      // Pre-normalize for initial comparison
-      tempNormals[i].normalize();
+        // Normalize the accumulated normals from the first pass
+        if (tempNormals[i] && tempNormals[i].lengthSq() > 0.0001) {
+             tempNormals[i].normalize();
+        } else if (tempNormals[i]) {
+             // If zero length, default to up
+             tempNormals[i].set(0, 1, 0);
+        }
     }
-    
-    // Find vertices with problematic normals (mountain peaks/sharp edges)
+
+    // Find vertices with potentially problematic normals (peaks/sharp edges)
+    // Let's be a bit more conservative here initially
     const problematicVertices = new Set();
     for (let i = 0; i < vertexCount; i++) {
-      // Check if this is a mountain peak (high altitude + nearly horizontal normal)
-      const worldY = worldCoords.get(i).y;
-      const normalY = tempNormals[i].y;
-      
-      // Identify sharper peaks at higher elevations with more horizontal normals
-      if (worldY > 200 && Math.abs(normalY) < 0.5) {
-        problematicVertices.add(i);
-      }
+        const worldY = worldCoords.get(i).y;
+        const normalY = tempNormals[i].y; // Use the pre-normalized value
 
-      // Identify extremely sharp edges regardless of height
-      if (Math.abs(normalY) < 0.2) {
-        problematicVertices.add(i);
-      }
-      
-      // Additional check for high mountain peaks with any downward facing normals
-      if (worldY > 340 && normalY < 0) {
-        problematicVertices.add(i);
-      }
+        // Only target high peaks with significantly flat or downward normals
+        if (worldY > 300 && normalY < 0.3) { problematicVertices.add(i); }
+        // Or very sharp edges regardless of height
+        // if (Math.abs(normalY) < 0.1) { problematicVertices.add(i); } // Maybe disable this one?
     }
-    
-    // Perform additional smoothing on problematic vertices
-    // for (const vertexIndex of problematicVertices) {
-    //   // Find neighboring vertices
-    //   const neighbors = new Set();
-    //   for (let i = 0; i < triangleCount; i++) {
-    //     let vA, vB, vC;
-        
-    //     if (indices) {
-    //       vA = indices[i * 3];
-    //       vB = indices[i * 3 + 1];
-    //       vC = indices[i * 3 + 2];
-    //     } else {
-    //       vA = i * 3;
-    //       vB = i * 3 + 1;
-    //       vC = i * 3 + 2;
-    //     }
-        
-    //     // If this vertex is part of this triangle
-    //     if (vA === vertexIndex || vB === vertexIndex || vC === vertexIndex) {
-    //       // Add all vertices from this triangle
-    //       neighbors.add(vA);
-    //       neighbors.add(vB);
-    //       neighbors.add(vC);
-    //     }
-    //   }
-      
-    //   // Calculate smoothed normal from neighbors
-    //   const smoothedNormal = new THREE.Vector3(0, 0, 0);
-    //   for (const neighborIndex of neighbors) {
-    //     smoothedNormal.add(tempNormals[neighborIndex].clone());
-    //   }
-    //   smoothedNormal.normalize();
-      
-    //   // Blend with an upward-facing normal proportional to the height
-    //   // Higher elevations get more upward normal blending
-    //   const worldY = worldCoords.get(vertexIndex).y;
-    //   const upNormal = new THREE.Vector3(0, 1, 0);
-      
-    //   // Modified height factor calculation - stronger correction at higher elevation
 
-    //   // Apply stronger correction when we're at high elevations
-    //   const heightFactor = Math.min(1, (worldY - 200) / 200) * 0.5;
-    //   const snowFactor = worldY > 340 ? 0.3 : 0;
-    //   let blendFactor = 0.5 + heightFactor + snowFactor;
-    //   blendFactor = Math.min(blendFactor, 0.5); // Clamp below 1.0 (e.g., 0.95)
-      
-    //   tempNormals[vertexIndex].copy(smoothedNormal).lerp(upNormal, blendFactor).normalize();      
-      
-    //   // Ensure no downward-facing normals on peaks
-    //   if (worldY > 340 && tempNormals[vertexIndex].y < 0.1) {
-    //     tempNormals[vertexIndex].y = 0.1;
-    //     tempNormals[vertexIndex].normalize();
-    //   }
-    // }
-    
-    // Final normalization of all normals
-    for (let i = 0; i < vertexCount; i++) {
-      tempNormals[i].normalize();
-    }
-    
-    // Create normal buffer attribute
+    // --- Second pass: Apply gentler smoothing to problematic vertices ---
+    const smoothedNormal = new THREE.Vector3(); // Re-use this vector
+    const upNormal = new THREE.Vector3(0, 1, 0);
+
+    for (const vertexIndex of problematicVertices) {
+        // Find neighboring vertices
+        const neighbors = new Set();
+        for (let i = 0; i < triangleCount; i++) {
+             let vA_idx, vB_idx, vC_idx;
+             if (indices) {
+                  vA_idx = indices[i * 3]; vB_idx = indices[i * 3 + 1]; vC_idx = indices[i * 3 + 2];
+             } else {
+                  vA_idx = i * 3; vB_idx = i * 3 + 1; vC_idx = i * 3 + 2;
+             }
+
+             if (vA_idx === vertexIndex || vB_idx === vertexIndex || vC_idx === vertexIndex) {
+                  neighbors.add(vA_idx); neighbors.add(vB_idx); neighbors.add(vC_idx);
+             }
+        }
+
+        // Calculate averaged normal from neighbors (using already normalized tempNormals)
+        smoothedNormal.set(0, 0, 0);
+        let validNeighbors = 0;
+        for (const neighborIndex of neighbors) {
+             // Make sure the neighbor normal exists and is valid
+             if (tempNormals[neighborIndex] && !isNaN(tempNormals[neighborIndex].x)) {
+                 smoothedNormal.add(tempNormals[neighborIndex]);
+                 validNeighbors++;
+             }
+        }
+
+        // Only proceed if we have valid neighbors and the smoothed normal is not zero
+        if (validNeighbors > 0 && smoothedNormal.lengthSq() > 0.0001) {
+            smoothedNormal.normalize();
+
+            // Apply a GENTLE upward bias, especially at higher altitudes
+            const worldY = worldCoords.get(vertexIndex).y;
+
+            // --- Start with a very small base blend factor ---
+            let blendFactor = 0.1;
+            // Increase blend slightly based on how high it is above the 'problem' threshold
+            if (worldY > 300) {
+                 blendFactor += Math.min(0.4, (worldY - 300) / 150 * 0.4); // Max 0.4 added blend for height
+            }
+            // Make sure blendFactor never reaches 1.0
+            blendFactor = Math.min(blendFactor, 0.99); // Hard cap at 0.6
+
+            // Lerp towards the 'up' vector using the calculated gentle blendFactor
+            tempNormals[vertexIndex].copy(smoothedNormal).lerp(upNormal, blendFactor).normalize();
+
+            // Optional: A less aggressive final clamp to prevent extreme downward normals on peaks
+            if (worldY > 340 && tempNormals[vertexIndex].y < 0.05) {
+                 tempNormals[vertexIndex].y = 0.05; // Ensure it's at least slightly positive
+                 tempNormals[vertexIndex].normalize();
+            }
+
+        } else {
+             // Fallback if no valid neighbors or smoothedNormal was zero:
+             // Keep the original normal from the first pass (which defaults to up if it was zero)
+             // tempNormals[vertexIndex] already holds the value from the first pass normalization.
+        }
+    } // End loop over problematicVertices
+
+    // --- Final normalization and buffer creation ---
     const normalArray = new Float32Array(vertexCount * 3);
-    
     for (let i = 0; i < vertexCount; i++) {
-      normalArray[i * 3] = tempNormals[i].x;
-      normalArray[i * 3 + 1] = tempNormals[i].y;
-      normalArray[i * 3 + 2] = tempNormals[i].z;
+        // Final normalization (handles cases that skipped the second pass too)
+        // Check again for safety, though previous steps should handle most issues
+        if (tempNormals[i] && !isNaN(tempNormals[i].x) && tempNormals[i].lengthSq() > 0.0001) {
+             tempNormals[i].normalize();
+        } else if (tempNormals[i]) {
+             tempNormals[i].set(0, 1, 0); // Default to up if invalid/zero
+        } else {
+            // Should not happen if initialized correctly, but good fallback
+            tempNormals[i] = new THREE.Vector3(0, 1, 0);
+        }
+
+        normalArray[i * 3] = tempNormals[i].x;
+        normalArray[i * 3 + 1] = tempNormals[i].y;
+        normalArray[i * 3 + 2] = tempNormals[i].z;
     }
-    
+
     geometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
   }
-
   /**
    * Creates a procedural landmark at a position
    * @param {number} x - X coordinate
