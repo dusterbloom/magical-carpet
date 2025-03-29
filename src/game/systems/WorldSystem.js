@@ -309,8 +309,25 @@ export class WorldSystem {
         offset: { value: 400 },
         exponent: { value: 0.7 }
       },
-      vertexShader: `...`,
-      fragmentShader: `...`,
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        void main() {
+          float h = normalize(vWorldPosition + offset).y;
+          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+        }
+      `,
       side: THREE.BackSide,
       fog: false
     });
@@ -322,13 +339,6 @@ export class WorldSystem {
     };
     this.scene.add(this.sky);
     this.scene.fog = new THREE.FogExp2(0x88ccff, 0.0003);
-    
-    // Create night sky elements (stars and moon)
-    // this.createNightSky();
-    // Create the basic cloud sprites (if needed)
-    // this.createClouds();
-    // Create volumetric clouds for improved realism
-    // this.createVolumetricClouds();
   }
 
   getTerrainHeight(x, z) {
@@ -790,69 +800,29 @@ export class WorldSystem {
     // Add colors to geometry
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     
-    // Update normals with improved smoothing
+    // Update normals
     geometry.computeVertexNormals();
     
-    // Additional smoothing for normals to reduce edge artifacts
-    const normals = geometry.attributes.normal.array;
-    const positions = geometry.attributes.position.array;
+    // Fix for the z-fighting issue - simplified approach
+    // Instead of trying to average normals which was causing shader errors, 
+    // we'll slightly adjust the terrain geometry to ensure no perfectly coplanar faces
     
-    // Create a map of vertex positions to their corresponding normals
-    const positionToNormals = new Map();
+    const positions = geometry.attributes.position;
     
-    // Collect all normals for identical vertex positions
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = Math.round(positions[i] * 100) / 100;
-      const y = Math.round(positions[i + 1] * 100) / 100;
-      const z = Math.round(positions[i + 2] * 100) / 100;
-      const key = `${x},${y},${z}`;
+    // Apply very small noise to vertices to prevent z-fighting
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
       
-      const nx = normals[i];
-      const ny = normals[i + 1];
-      const nz = normals[i + 2];
-      
-      if (!positionToNormals.has(key)) {
-        positionToNormals.set(key, []);
-      }
-      
-      positionToNormals.get(key).push({index: i, normal: [nx, ny, nz]});
+      // Add very subtle noise that won't be visible but will prevent z-fighting
+      const microNoise = (Math.random() - 0.5) * 0.02;
+      positions.setY(i, y + microNoise);
     }
     
-    // Average normals for vertices at the same position
-    for (const [key, normalsList] of positionToNormals.entries()) {
-      if (normalsList.length > 1) {
-        // Average the normals
-        const avgNormal = [0, 0, 0];
-        
-        for (const item of normalsList) {
-          avgNormal[0] += item.normal[0];
-          avgNormal[1] += item.normal[1];
-          avgNormal[2] += item.normal[2];
-        }
-        
-        avgNormal[0] /= normalsList.length;
-        avgNormal[1] /= normalsList.length;
-        avgNormal[2] /= normalsList.length;
-        
-        // Normalize
-        const length = Math.sqrt(avgNormal[0] * avgNormal[0] + 
-                                avgNormal[1] * avgNormal[1] + 
-                                avgNormal[2] * avgNormal[2]);
-        
-        avgNormal[0] /= length;
-        avgNormal[1] /= length;
-        avgNormal[2] /= length;
-        
-        // Apply averaged normal to all vertices at this position
-        for (const item of normalsList) {
-          normals[item.index] = avgNormal[0];
-          normals[item.index + 1] = avgNormal[1];
-          normals[item.index + 2] = avgNormal[2];
-        }
-      }
-    }
-    
-    geometry.attributes.normal.needsUpdate = true;
+    // Recompute normals after our adjustments
+    geometry.computeVertexNormals();
+    geometry.attributes.position.needsUpdate = true;
     
     return geometry;
   }
@@ -876,11 +846,11 @@ export class WorldSystem {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
 
-            // Ensure terrain renders properly
+            // Ensure terrain renders properly - increased factor to avoid z-fighting
             mesh.renderOrder = 0;
             this.materials.terrain.polygonOffset = true;
-            this.materials.terrain.polygonOffsetFactor = 1;
-            this.materials.terrain.polygonOffsetUnits = 1;
+            this.materials.terrain.polygonOffsetFactor = 2; // Increased from 1
+            this.materials.terrain.polygonOffsetUnits = 2;  // Increased from 1
             
             // Add to scene only once
             this.scene.add(mesh);
@@ -2120,13 +2090,17 @@ export class WorldSystem {
 
             // Create new chunk if it doesn't exist
             if (!this.currentChunks.has(key)) {
-              const geometry = this.createChunkGeometry(worldX, worldZ);
-              const mesh = new THREE.Mesh(geometry, this.materials.terrain);
-              mesh.position.set(worldX, 0, worldZ);
-              mesh.castShadow = true;
-              mesh.receiveShadow = true;
-              this.scene.add(mesh);
-              this.currentChunks.set(key, mesh);
+              try {
+                const geometry = this.createChunkGeometry(worldX, worldZ);
+                const mesh = new THREE.Mesh(geometry, this.materials.terrain);
+                mesh.position.set(worldX, 0, worldZ);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                this.scene.add(mesh);
+                this.currentChunks.set(key, mesh);
+              } catch (error) {
+                console.error("Error creating chunk:", error);
+              }
             }
           }
         }
