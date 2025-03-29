@@ -96,15 +96,16 @@ export class WaterSystem {
     const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
   
     const water = new Water(waterGeometry, {
-      textureWidth: 512,
-      textureHeight: 512,
+      textureWidth: 2048,
+      textureHeight: 2048,
       waterNormals: new TextureLoader().load('textures/2waternormals.jpg', function (texture) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       }),
       sunDirection: new THREE.Vector3(),
       sunColor: 0xffffff,
       waterColor: 0x001e0f,
-      distortionScale: 3.7,
+      distortionScale: 1.5,
+      clipBias: 0.00001,
       fog: this.scene.fog !== undefined
     });
   
@@ -154,8 +155,8 @@ export class WaterSystem {
     }
   
     if (this.engine.camera) {
-      this.water.position.x = Math.round(this.engine.camera.position.x);
-      this.water.position.z = Math.round(this.engine.camera.position.z);
+      this.water.position.x = this.engine.camera.position.x;
+      this.water.position.z = this.engine.camera.position.z;
     }
   }
   /**
