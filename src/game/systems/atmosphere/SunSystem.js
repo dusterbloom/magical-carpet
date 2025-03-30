@@ -109,10 +109,18 @@ export class SunSystem {
   update(delta) {
     const timeOfDay = this.atmosphereSystem.getTimeOfDay();
     
-    // Calculate sun position based on time of day
+    // Get current month for seasonal variation
+    const yearProgress = this.atmosphereSystem.yearProgress || 0;
+    
+    // Calculate sun position based on time of day with seasonal variation
     const sunAngle = timeOfDay * Math.PI * 2;
+    
+    // Seasonal variation - sun is higher in summer, lower in winter
+    // Assuming year starts with winter (yearProgress 0 = winter)
+    const seasonalHeight = Math.sin(yearProgress * Math.PI * 2) * 0.2 + 1.0; // 0.8 to 1.2
+    
     const radius = 10000;
-    const height = 5000;
+    const height = 5000 * seasonalHeight; // Adjust height based on season
     
     this.sunPosition.set(
       Math.cos(sunAngle) * radius,

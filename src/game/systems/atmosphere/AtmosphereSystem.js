@@ -22,6 +22,14 @@ export class AtmosphereSystem {
     this.elapsed = 0;
     this.dayDuration = 10; // 10 minutes per day cycle
     
+    // Calendar tracking
+    this.currentDay = 0;
+    this.daysPerMonth = 30;
+    this.currentMonth = 0;
+    this.monthsPerYear = 12;
+    this.yearProgress = 0; // 0.0-1.0 for seasonal changes
+    this.moonPhase = 0; // 0.0-1.0 (0 = new moon, 0.5 = full moon, 1.0 = new moon)
+    
     // Initialize time of day - sync to user's local time if desired
     const now = new Date();
     const secondsInDay = 86400;
@@ -70,6 +78,36 @@ export class AtmosphereSystem {
   }
   
   /**
+   * Update calendar and time tracking
+   * @param {number} delta - Time delta in minutes
+   */
+  updateCalendar(delta) {
+    // Update day tracking
+    const previousDay = this.currentDay;
+    
+    // Advance days
+    const dayProgress = delta / this.dayDuration;
+    this.currentDay += dayProgress;
+    
+    // Handle month transitions
+    if (this.currentDay >= this.daysPerMonth) {
+      this.currentDay -= this.daysPerMonth;
+      this.currentMonth++;
+      
+      // Handle year transitions
+      if (this.currentMonth >= this.monthsPerYear) {
+        this.currentMonth = 0;
+      }
+    }
+    
+    // Update year progress (for seasonal changes - future feature)
+    this.yearProgress = (this.currentMonth + (this.currentDay / this.daysPerMonth)) / this.monthsPerYear;
+    
+    // Update moon phase (complete cycle over a month)
+    this.moonPhase = (this.currentDay / this.daysPerMonth);
+  }
+  
+  /**
    * Update the atmospheric systems
    * @param {number} delta - Time delta in minutes
    * @param {number} elapsed - Total elapsed time
@@ -79,8 +117,15 @@ export class AtmosphereSystem {
     this.elapsed = elapsed;
     
     // Update time of day (0.0-1.0)
+    const previousTimeOfDay = this.timeOfDay;
     this.timeOfDay += delta / this.dayDuration;
-    if (this.timeOfDay >= 1.0) this.timeOfDay -= 1.0;
+    
+    // Detect day transitions
+    if (this.timeOfDay >= 1.0) {
+      this.timeOfDay -= 1.0;
+      // When we have a day transition, update the calendar
+      this.updateCalendar(delta);
+    }
     
     // Update all subsystems
     this.skySystem.update(delta);
@@ -137,5 +182,28 @@ export class AtmosphereSystem {
    */
   getMoonPosition() {
     return this.moonSystem ? this.moonSystem.getMoonPosition() : new THREE.Vector3();
+  }
+  
+  /**
+   * Get the current moon phase (0.0-1.0)
+   * 0.0 = New Moon (not visible)
+   * 0.25 = Waxing Half Moon
+   * 0.5 = Full Moon
+   * 0.75 = Waning Half Moon
+   * @returns {number} Moon phase value
+   */
+  getMoonPhase() {
+    return this.moonPhase;
+  }
+
+  /**
+   * Get the illuminated portion of the moon (0.0-1.0)
+   * @returns {number} Illumination factor
+   */
+  getMoonIllumination() {
+    // Simplified model: illumination follows a sine wave
+    // Full illumination at full moon (0.5 phase)
+    // No illumination at new moon (0.0 or 1.0 phase)
+    return Math.sin(this.moonPhase * Math.PI);
   }
 }

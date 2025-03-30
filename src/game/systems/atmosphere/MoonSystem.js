@@ -67,7 +67,9 @@ export class MoonSystem {
     const moonMaterial = new THREE.MeshBasicMaterial({
       map: moonTexture,
       fog: false,
-      side: THREE.FrontSide
+      side: THREE.FrontSide,
+      transparent: true,
+      opacity: 1.0
     });
     
     this.moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
@@ -87,30 +89,67 @@ export class MoonSystem {
   update(delta) {
     const timeOfDay = this.atmosphereSystem.getTimeOfDay();
     const nightFactor = this.atmosphereSystem.getNightFactor();
+    const moonPhase = this.atmosphereSystem.getMoonPhase();
+    const moonIllumination = this.atmosphereSystem.getMoonIllumination();
     
-    // Calculate moon position (opposite to sun)
-    const moonAngle = ((timeOfDay + 0.5) % 1.0) * Math.PI * 2;
+    // Calculate moon position with slight variation from being exactly opposite to sun
+    // This creates more natural moon rise/set cycles that vary with the lunar month
+    const timeOffset = 0.5 + (moonPhase * 0.1 - 0.05); // Varies between 0.45 and 0.55
+    const moonAngle = ((timeOfDay + timeOffset) % 1.0) * Math.PI * 2;
     
-    this.moonPosition.set(
-      6000 * Math.cos(moonAngle),
-      3000 * Math.sin(moonAngle),
-      6000 * Math.sin(moonAngle * 0.5)
-    );
+    // Modify height based on moon phase
+    // Moon is higher in sky during full moon, lower during new moon
+    const heightFactor = 0.8 + moonIllumination * 0.4; // 0.8 to 1.2
     
-    this.moonMesh.position.copy(this.moonPosition);
+    // Calculate orbital path that starts below horizon and moves across the sky
+    // Similar to sun but offset in time
+    const radius = 9000; // Slightly smaller than sun distance
+    const height = 5000 * heightFactor;
     
-    // Update moon visibility based on night factor
-    this.moonMesh.visible = nightFactor > 0.05;
+    // Calculate y position to make moon rise and set
+    let y = Math.sin(moonAngle) * height;
     
-    // Make moon face camera
-    if (this.engine.camera) {
-      this.moonMesh.lookAt(this.engine.camera.position);
+    // Calculate horizontal positions (x and z)
+    let x = Math.cos(moonAngle) * radius;
+    let z = Math.sin(moonAngle * 0.7) * radius * 0.5;
+    
+    this.moonPosition.set(x, y, z);
+    
+    // Only make moon visible when it's above the horizon
+    // Horizon is roughly at y=0
+    const isAboveHorizon = y > 0;
+    
+    // Moon is visible at night when above horizon
+    this.moonMesh.visible = isAboveHorizon && nightFactor > 0.05;
+    
+    // If visible, update position
+    if (this.moonMesh.visible) {
+      this.moonMesh.position.copy(this.moonPosition);
+      
+      // Make moon face camera
+      if (this.engine.camera) {
+        this.moonMesh.lookAt(this.engine.camera.position);
+      }
+      
+      // Update moon appearance based on phase
+      if (this.moonMesh.material) {
+        // Adjust opacity based on illumination to simulate phases
+        // Keeping this subtle so the moon is still visible during all phases
+        const opacity = 0.7 + moonIllumination * 0.3;
+        this.moonMesh.material.opacity = opacity;
+      }
     }
     
-    // Update moonlight intensity based on night factor
+    // Update moonlight intensity based on night factor, moon illumination, and visibility
     if (this.moonLight) {
-      this.moonLight.intensity = 0.2 * nightFactor;
+      // Moonlight is strongest during full moon, weakest during new moon
+      // Only present when moon is above horizon
+      this.moonLight.intensity = isAboveHorizon ? 0.2 * nightFactor * moonIllumination : 0;
     }
+    
+    // Rotate the moon to show the correct phase (simplified approximation)
+    // This rotates the texture to match the current phase
+    this.moonMesh.rotation.y = (moonPhase * Math.PI * 2) % (Math.PI * 2);
   }
   
   /**
