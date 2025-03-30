@@ -10,7 +10,7 @@ import { PlayerSystem } from "../systems/PlayerSystem";
 import { UISystem } from "../systems/UISystem";
 // Import new systems
 import { VegetationSystem } from "../systems/VegetationSystem";
-import { AtmosphereSystem } from "../systems/AtmosphereSystem";
+import { AtmosphereSystem } from "../systems/atmosphere-integration";
 import { WaterSystem } from "../systems/WaterSystem";
 import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
@@ -83,8 +83,8 @@ export class Engine {
     this.systems.world = new WorldSystem(this);
     this.systems.water = new WaterSystem(this);
     this.systems.vegetation = new VegetationSystem(this);
+    this.systems.player = new PlayerSystem(this);      // Player BEFORE atmosphere to avoid dependency issues
     this.systems.atmosphere = new AtmosphereSystem(this);
-    this.systems.player = new PlayerSystem(this);
     this.systems.ui = new UISystem(this);
     this.systems.carpetTrail = new CarpetTrailSystem(this);
     this.systems.landmarks = new LandmarkSystem(this);
@@ -98,8 +98,8 @@ export class Engine {
       "world", // Base terrain must be initialized first
       "water", // Water system should be initialized after terrain
       "vegetation", // Vegetation needs terrain to place trees
-      "atmosphere", // Atmosphere enhances the sky and adds clouds
       "player", // Player needs terrain for physics
+      "atmosphere", // Atmosphere now initialized AFTER player
       "ui", // UI needs player for HUD elements
       "carpetTrail", // Trail system needs player
       "landmarks",   // Landmarks need world and player
@@ -146,8 +146,8 @@ export class Engine {
       "world",
       "water",
       "vegetation",
-      "atmosphere",
-      "player",
+      "player",     // Player now updated BEFORE atmosphere
+      "atmosphere", 
       "carpetTrail", // Update trail after player movement
       "landmarks",   // Update landmarks
       "ui",
