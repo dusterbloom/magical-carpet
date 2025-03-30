@@ -65,13 +65,10 @@ createWater() {
   
   water.rotation.x = -Math.PI / 2;
   water.position.y = this.waterLevel;
-  // Configure which layers the water reflection camera should see
-  if (water.material.uniforms.reflectionCamera) {
-    const reflectionCamera = water.material.uniforms.reflectionCamera.value;
-    reflectionCamera.layers.set(0); // Reset layers
-    reflectionCamera.layers.enable(1); // Regular scene
-    reflectionCamera.layers.enable(2); // Cloud reflections
-  }
+  
+  // Store a reference to handle the reflection camera setup
+  // (We'll initialize it properly in the update method since it might not exist yet)
+  this._reflectionCameraInitialized = false;
 
   water.rotation.x = -Math.PI / 2;
   water.position.y = this.waterLevel;
@@ -103,6 +100,61 @@ update(deltaTime) {
       this.water.position.x = this.engine.camera.position.x;
       this.water.position.z = this.engine.camera.position.z;
     }
+    
+    // Initialize reflection camera when it becomes available
+    if (!this._reflectionCameraInitialized && this.water.material.uniforms.reflectionCamera) {
+      const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
+      // Configure base layers (default scene content)
+      reflectionCamera.layers.set(0);  // Reset to default layer
+      reflectionCamera.layers.enable(1); // Regular scene
+      reflectionCamera.layers.enable(2); // Cloud reflections
+      this._reflectionCameraInitialized = true;
+    }
+    
+    // Check if sun is visible and set reflection accordingly
+    if (this.engine.systems.atmosphere && this.engine.systems.atmosphere.sunSystem) {
+      const sunSystem = this.engine.systems.atmosphere.sunSystem;
+      
+      // Store the original onBeforeRender function
+      if (!this._originalOnBeforeRender && this.water.onBeforeRender) {
+        this._originalOnBeforeRender = this.water.onBeforeRender;
+      }
+      
+      // Override onBeforeRender to control the sun in water reflections
+      this.water.onBeforeRender = (renderer, scene, camera) => {
+        if (!this._reflectionCameraInitialized || !this.water.material.uniforms.reflectionCamera) {
+          // Skip if reflection camera isn't ready
+          if (this._originalOnBeforeRender) {
+            this._originalOnBeforeRender(renderer, scene, camera);
+          }
+          return;
+        }
+        
+        // Get the reflection camera
+        const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
+        
+        // Get the sun position and check if it's above horizon AND visible
+        const sunPos = sunSystem.getSunPosition();
+        // Use a higher threshold to account for mountains
+        // This creates a buffer zone where the sun won't reflect if it's near the horizon
+        const safeThreshold = sunSystem.HORIZON_LEVEL + 200;
+        const isSunHighEnough = sunPos.y > safeThreshold;
+        
+        // Only allow sun reflection if it's well above the horizon (above mountains)
+        if (isSunHighEnough) {
+          // Sun should be visible in reflection - enable layer 10
+          reflectionCamera.layers.enable(10);
+        } else {
+          // Sun should be hidden - disable layer 10
+          reflectionCamera.layers.disable(10);
+        }
+        
+        // Call original render function
+        if (this._originalOnBeforeRender) {
+          this._originalOnBeforeRender(renderer, scene, camera);
+        }
+      };
+    }
   }
 }
 
@@ -131,6 +183,12 @@ update(deltaTime) {
    */
   dispose() {
     if (this.water) {
+      // Restore original onBeforeRender if we overrode it
+      if (this._originalOnBeforeRender) {
+        this.water.onBeforeRender = this._originalOnBeforeRender;
+        this._originalOnBeforeRender = null;
+      }
+      
       this.scene.remove(this.water);
       this.water.geometry.dispose();
       this.water.material.dispose();

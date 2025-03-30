@@ -46,12 +46,14 @@ export class SunSystem {
       transparent: true,
       opacity: 0.9,
       side: THREE.DoubleSide,
-      depthWrite: false,
-      depthTest: false
+      depthWrite: true,
+      depthTest: true
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
     this.sunSphere.renderOrder = 10000;
+    // Add the sun to a specific layer (layer 10) so we can control its visibility in reflections
+    this.sunSphere.layers.set(10);
     this.scene.add(this.sunSphere);
     
     // Subtle glow
@@ -61,11 +63,12 @@ export class SunSystem {
       transparent: true,
       opacity: 0.2,
       side: THREE.DoubleSide,
-      depthWrite: false,
-      depthTest: false
+      depthWrite: true,
+      depthTest: true
     });
     
     this.sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+    // Glow inherits the layer from its parent (the sun sphere)
     this.sunSphere.add(this.sunGlow);
   }
   
@@ -133,7 +136,7 @@ export class SunSystem {
     } else {
       // Night - hide sun
       this.sunLight.intensity = 0.1;
-      this.ambientLight.intensity = 0.2;
+      this.ambientLight.intensity = 0.1;
     }
   }
   
