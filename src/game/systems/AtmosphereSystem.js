@@ -27,7 +27,7 @@ export class AtmosphereSystem {
     this.elapsed = 0;
 
     // Day/night cycle
-    this.dayDuration = 86400; // 10 minutes per day cycle
+    this.dayDuration = 10; // 10 minutes per day cycle
 
     // DEBUGGING: Force to night time
     // Keep this forced value for testing night sky stars
@@ -36,7 +36,7 @@ export class AtmosphereSystem {
     const currentSeconds =
       now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
-    // this.timeOfDay = currentSeconds / secondsInDay; // sync to user time
+    this.timeOfDay = currentSeconds / secondsInDay; // sync to user time
     this.timeOfDay = 40000 / 86400; // afternoon
     console.log("Synced Time of Day:", this.timeOfDay);
 
@@ -281,10 +281,10 @@ createVolumetricClouds() {
   }
   // Create visible sun sphere
   createSunSphere() {
-    // Create a MUCH larger, brighter sun sphere
-    const sunGeometry = new THREE.SphereGeometry(16, 16, 16);
+    // Create a larger, more realistic sun sphere with proper materials
+    const sunGeometry = new THREE.SphereGeometry(200, 32, 32);
     const sunMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
+      color: 0xffff80,
       transparent: false,
       fog: false
     });
@@ -293,8 +293,8 @@ createVolumetricClouds() {
     this.sunSphere.renderOrder = 10000; // Render after sky
     this.scene.add(this.sunSphere);
     
-    // Add a very large glow effect
-    const sunGlowGeometry = new THREE.SphereGeometry(32, 16, 16);
+    // Add multi-layered glow effect for more realistic appearance
+    const sunGlowGeometry = new THREE.SphereGeometry(320, 32, 32);
     const sunGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       transparent: true,
@@ -305,8 +305,17 @@ createVolumetricClouds() {
     this.sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
     this.sunSphere.add(this.sunGlow);
     
-    // Place sun at fixed position for testing
-    // this.sunSphere.position.set(1000, 2000, 1000);
+    // Add a second, larger glow layer
+    const sunOuterGlowGeometry = new THREE.SphereGeometry(500, 32, 32);
+    const sunOuterGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff80,
+      transparent: true,
+      opacity: 0.15,
+      fog: false
+    });
+    
+    this.sunOuterGlow = new THREE.Mesh(sunOuterGlowGeometry, sunOuterGlowMaterial);
+    this.sunSphere.add(this.sunOuterGlow);
   }
 
   createNightSky() {
@@ -722,27 +731,43 @@ createVolumetricClouds() {
     // Calculate sun angle (0 to 2π) based on time of day
     const sunAngle = this.timeOfDay * Math.PI * 2;
     
-    // Calculate sun position in a large circle
-    const radius = 6000; // Large radius for distant sun
-    const height = 3000; // Maximum height of sun arc
+    // Use larger radius for more realistic distant sun appearance
+    const radius = 10000; // Increased radius for distant sun appearance
+    const height = 5000;  // Increased height for more realistic arc
     
     this.sunSphere.position.set(
       Math.cos(sunAngle) * radius,
       Math.sin(sunAngle) * height,
-      Math.sin(sunAngle) * radius
+      Math.sin(sunAngle * 0.5) * radius // Add slight variation to z-axis movement
     );
 
     // Update sun visibility based on time of day
     this.sunSphere.visible = this.timeOfDay > 0.25 && this.timeOfDay < 0.75;
     
-    // If you have a sun glow effect, update it too
+    // If you have sun glow effects, update them too
     if (this.sunGlow) {
       this.sunGlow.visible = this.sunSphere.visible;
+    }
+    
+    if (this.sunOuterGlow) {
+      this.sunOuterGlow.visible = this.sunSphere.visible;
     }
 
     // Update the actual sunlight direction to match visual sun
     if (this.sunLight) {
       this.sunLight.position.copy(this.sunSphere.position);
+      
+      // Adjust sunlight color based on time of day
+      if (this.timeOfDay > 0.25 && this.timeOfDay < 0.35) {
+        // Sunrise - more orange
+        this.sunLight.color.setHex(0xffaa33);
+      } else if (this.timeOfDay > 0.65 && this.timeOfDay < 0.75) {
+        // Sunset - more orange/red
+        this.sunLight.color.setHex(0xff7733);
+      } else {
+        // Day - yellow/white
+        this.sunLight.color.setHex(0xffffcc);
+      }
     }
   }
 }
