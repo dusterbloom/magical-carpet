@@ -1,0 +1,284 @@
+client.ts:19 [vite] connecting...
+client.ts:155 [vite] connected.
+AssetManager.js:213 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:256:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:215:15)
+    at chunk-BU75RJHU.js?v=cfe79e11:21383:20
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:203
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:220
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:33 Asset not found: /assets/models/carpet.glb - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:205
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:220
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:33 Asset not found: /assets/textures/carpet.jpg - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+onImageError @ chunk-BU75RJHU.js?v=cfe79e11:21546
+AssetManager.js:213 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:256:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:215:15)
+    at chunk-BU75RJHU.js?v=cfe79e11:21383:20
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:203
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:220
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:33 Asset not found: /assets/models/mana.glb - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:205
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:220
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=cfe79e11:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:33 Asset not found: /assets/textures/terrain.jpg - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+onImageError @ chunk-BU75RJHU.js?v=cfe79e11:21546
+AssetManager.js:33 Asset not found: /assets/textures/sky.jpg - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+onImageError @ chunk-BU75RJHU.js?v=cfe79e11:21546
+AtmosphereSystem.js:39 Synced Time of Day: 0.46296296296296297
+Engine.js:114 System initialized: network
+WorldSystem.js:227 Initializing WorldSystem...
+WorldSystem.js:1463 Creating initial terrain...
+WorldSystem.js:248 WorldSystem initialized
+Engine.js:114 System initialized: world
+WaterSystem.js:26 Initializing WaterSystem...
+WaterSystem.js:33 Setting water level to -60 based on terrain
+WaterSystem.js:39 WaterSystem initialized
+Engine.js:114 System initialized: water
+VegetationSystem.js:83 Initializing VegetationSystem...
+VegetationSystem.js:91 VegetationSystem initialized
+Engine.js:114 System initialized: vegetation
+AtmosphereSystem.js:46 Initializing AtmosphereSystem...
+AtmosphereSystem.js:112 Created sun light and ambient light
+AtmosphereSystem.js:52 AtmosphereSystem: Creating star field...
+AtmosphereSystem.js:54 AtmosphereSystem: Initializing star field...
+AtmosphereSystem.js:56 AtmosphereSystem: Star field initialized
+AtmosphereSystem.js:118 THREE.Material: 'skinning' is not a property of THREE.ShaderMaterial.
+setValues @ chunk-BU75RJHU.js?v=cfe79e11:9348
+ShaderMaterial @ chunk-BU75RJHU.js?v=cfe79e11:11253
+createSky @ AtmosphereSystem.js:118
+initialize @ AtmosphereSystem.js:79
+await in initialize
+initialize @ Engine.js:113
+await in initialize
+(anonymous) @ main.js:12
+AtmosphereSystem.js:197 Creating procedural clouds...
+AtmosphereSystem.js:230 Created cloud 0 at position: _Vector3 {x: 992.1354010994819, y: 625.9146655233944, z: 125.16926893279431}
+AtmosphereSystem.js:230 Created cloud 1 at position: _Vector3 {x: -106.76372007792978, y: 750.3233231680829, z: 994.284420110826}
+AtmosphereSystem.js:230 Created cloud 2 at position: _Vector3 {x: -223.97858927606546, y: 692.5738668534734, z: -974.5940650065049}
+AtmosphereSystem.js:230 Created cloud 3 at position: _Vector3 {x: -355.9630258394107, y: 696.9889384169898, z: 934.5000397192346}
+AtmosphereSystem.js:230 Created cloud 4 at position: _Vector3 {x: 498.9138574186375, y: 695.0533573504351, z: -866.6515810149172}
+AtmosphereSystem.js:230 Created cloud 5 at position: _Vector3 {x: 825.2994175073384, y: 715.1069643780261, z: -564.6953793524859}
+AtmosphereSystem.js:230 Created cloud 6 at position: _Vector3 {x: -648.3321280815518, y: 618.4725983438551, z: 761.3576371832401}
+AtmosphereSystem.js:230 Created cloud 7 at position: _Vector3 {x: 404.4898642181194, y: 607.4515411547976, z: -914.5424811045178}
+AtmosphereSystem.js:230 Created cloud 8 at position: _Vector3 {x: -290.5338321237973, y: 658.631690628363, z: 956.8647200056344}
+AtmosphereSystem.js:230 Created cloud 9 at position: _Vector3 {x: -176.46845439565232, y: 627.6348954003569, z: 984.3062961310414}
+AtmosphereSystem.js:230 Created cloud 10 at position: _Vector3 {x: 994.0671353588797, y: 668.2649985644149, z: -108.76824168566294}
+AtmosphereSystem.js:230 Created cloud 11 at position: _Vector3 {x: 257.58216141300665, y: 694.6798820560024, z: 966.256399783103}
+AtmosphereSystem.js:230 Created cloud 12 at position: _Vector3 {x: -1.7163404796653854, y: 683.989719486117, z: -999.9985270865942}
+AtmosphereSystem.js:230 Created cloud 13 at position: _Vector3 {x: -867.6284499570078, y: 719.5364168048468, z: -497.2131060472963}
+AtmosphereSystem.js:230 Created cloud 14 at position: _Vector3 {x: 983.0157647244434, y: 620.1873840667234, z: -183.5211331242746}
+AtmosphereSystem.js:230 Created cloud 15 at position: _Vector3 {x: -618.7244064497544, y: 711.0791055964668, z: -785.6081140514011}
+AtmosphereSystem.js:230 Created cloud 16 at position: _Vector3 {x: 999.8438277947264, y: 627.7711543765424, z: -17.672578215689224}
+AtmosphereSystem.js:230 Created cloud 17 at position: _Vector3 {x: 469.5320814600201, y: 737.5305129212928, z: -882.9154118486215}
+AtmosphereSystem.js:230 Created cloud 18 at position: _Vector3 {x: -3.9194104036018773, y: 711.7190286724806, z: 999.9923190815458}
+AtmosphereSystem.js:230 Created cloud 19 at position: _Vector3 {x: -979.5933481033214, y: 610.9255651461731, z: 200.98973195595093}
+AtmosphereSystem.js:197 Creating procedural clouds...
+AtmosphereSystem.js:230 Created cloud 0 at position: _Vector3 {x: 888.2931542914198, y: 621.0925365245231, z: -459.27690126872267}
+AtmosphereSystem.js:230 Created cloud 1 at position: _Vector3 {x: 999.773770771877, y: 632.9056325017693, z: -21.2698678082944}
+AtmosphereSystem.js:230 Created cloud 2 at position: _Vector3 {x: 804.7906155802166, y: 683.2735623547339, z: 593.5588134919875}
+AtmosphereSystem.js:230 Created cloud 3 at position: _Vector3 {x: -942.053377918702, y: 755.2551180706433, z: -335.4630130908072}
+AtmosphereSystem.js:230 Created cloud 4 at position: _Vector3 {x: 901.7471110944939, y: 629.0191687163842, z: 432.26397910621074}
+AtmosphereSystem.js:230 Created cloud 5 at position: _Vector3 {x: -704.9677313602804, y: 799.6423117076413, z: 709.2393797165662}
+AtmosphereSystem.js:230 Created cloud 6 at position: _Vector3 {x: 809.704294161282, y: 727.3499754301192, z: -586.8381003452147}
+AtmosphereSystem.js:230 Created cloud 7 at position: _Vector3 {x: 987.6084488548472, y: 632.2292617402687, z: -156.9380506777197}
+AtmosphereSystem.js:230 Created cloud 8 at position: _Vector3 {x: -756.1121263689255, y: 759.8162311662894, z: 654.442092440471}
+AtmosphereSystem.js:230 Created cloud 9 at position: _Vector3 {x: -905.3360915984555, y: 684.8788521084576, z: 424.6958455756696}
+AtmosphereSystem.js:230 Created cloud 10 at position: _Vector3 {x: -406.42418695664645, y: 749.3992840332278, z: -913.6845080533153}
+AtmosphereSystem.js:230 Created cloud 11 at position: _Vector3 {x: 418.1410509913156, y: 777.3567259018905, z: 908.3821120408954}
+AtmosphereSystem.js:230 Created cloud 12 at position: _Vector3 {x: -951.7603605986224, y: 613.4425512753788, z: -306.8423308365069}
+AtmosphereSystem.js:230 Created cloud 13 at position: _Vector3 {x: -963.6111260180494, y: 657.3371449243108, z: -267.3080578924376}
+AtmosphereSystem.js:230 Created cloud 14 at position: _Vector3 {x: -919.995088712194, y: 766.3935852812419, z: 391.92988753786324}
+AtmosphereSystem.js:230 Created cloud 15 at position: _Vector3 {x: -926.1078697415606, y: 718.6906044355311, z: 377.2588151425337}
+AtmosphereSystem.js:230 Created cloud 16 at position: _Vector3 {x: -928.1199199622095, y: 624.9455467599187, z: -372.28136425201563}
+AtmosphereSystem.js:230 Created cloud 17 at position: _Vector3 {x: 934.2727822665424, y: 788.3215270314486, z: -356.5590670785611}
+AtmosphereSystem.js:230 Created cloud 18 at position: _Vector3 {x: 986.2856030255322, y: 787.5140692972072, z: 165.04759696694262}
+AtmosphereSystem.js:230 Created cloud 19 at position: _Vector3 {x: -844.7724117665217, y: 679.9691533914588, z: -535.1257537422155}
+AtmosphereSystem.js:87 AtmosphereSystem initialized
+Engine.js:114 System initialized: atmosphere
+PlayerModels.js:46 Created 6 carpet models
+PlayerSpells.js:22 Spell system initialized
+PlayerSystem.js:49 Player system initialized
+Engine.js:114 System initialized: player
+UISystem.js:182 Minimap functionality moved to MinimapSystem
+UISystem.js:15 UI system initialized
+Engine.js:114 System initialized: ui
+CarpetTrailSystem.js:105 Initializing CarpetTrailSystem
+Engine.js:114 System initialized: carpetTrail
+LandmarkSystem.js:76 Initializing LandmarkSystem...
+LandmarkSystem.js:80 LandmarkSystem initialized
+Engine.js:114 System initialized: landmarks
+MinimapSystem.js:39 Initializing MinimapSystem...
+MinimapSystem.js:52 MinimapSystem initialized
+Engine.js:114 System initialized: minimap
+Engine.js:128 Engine initialized successfully
+main.js:14 Magical Vibe Carpet initialized successfully!
+main.js:15 Use window.getPerformanceReport() to view performance metrics
+[Violation] 'requestAnimationFrame' handler took 151ms
+AssetManager.js:227 EncodingError: Unable to decode audio data
+handleError @ chunk-BU75RJHU.js?v=cfe79e11:23882
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:23873
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ chunk-BU75RJHU.js?v=cfe79e11:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:33 Asset not found: /assets/audio/background.mp3 - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+handleError @ chunk-BU75RJHU.js?v=cfe79e11:23884
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:23873
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ chunk-BU75RJHU.js?v=cfe79e11:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:227 EncodingError: Unable to decode audio data
+handleError @ chunk-BU75RJHU.js?v=cfe79e11:23882
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:23873
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ chunk-BU75RJHU.js?v=cfe79e11:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:33 Asset not found: /assets/audio/spell.mp3 - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+handleError @ chunk-BU75RJHU.js?v=cfe79e11:23884
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:23873
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ chunk-BU75RJHU.js?v=cfe79e11:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:227 EncodingError: Unable to decode audio data
+handleError @ chunk-BU75RJHU.js?v=cfe79e11:23882
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:23873
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ chunk-BU75RJHU.js?v=cfe79e11:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+AssetManager.js:33 Asset not found: /assets/audio/collect.mp3 - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=cfe79e11:21120
+handleError @ chunk-BU75RJHU.js?v=cfe79e11:23884
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:23873
+(anonymous) @ chunk-BU75RJHU.js?v=cfe79e11:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=cfe79e11:21376
+load @ chunk-BU75RJHU.js?v=cfe79e11:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js:79
+(anonymous) @ main.js:12
+PlayerSystem.js:94 Local player created with ID: player_4140
+PlayerSystem.js:127 Network player created with ID: player_ai_1
+PlayerSystem.js:127 Network player created with ID: player_ai_2
+NetworkManager.js:39 Network simulation initialized
+VegetationSystem.js:936 Reducing vegetation density to 0.95 due to low FPS (0.7)
+[Violation] 'requestAnimationFrame' handler took 1653ms
+VegetationSystem.js:936 Reducing vegetation density to 0.90 due to low FPS (0.9)
+VegetationSystem.js:936 Reducing vegetation density to 0.85 due to low FPS (1.0)
+window.getPerformanceReport()
+Engine.js:231 Performance Report: {averages: {…}, current: {…}, peaks: {…}}averages: {fps: 0.9485608442590787, drawCalls: 197.73333333333332, triangles: 270093.3333333333, points: 0, lines: 0, …}drawCalls: 197.73333333333332fps: 0.9485608442590787geometries: 290.46666666666664lines: 0memoryUsage: 79130549.33333333points: 0systemTimes: atmosphere: 0.07699999928474427carpetTrail: 0.06500000029802322landmarks: 0.0019999998807907105minimap: 0.3079999995231628network: 0player: 0.010000000596046449render: 1.9630000004172325ui: 0.025999999940395355vegetation: 0.024999999701976777water: 0.0009999999403953552world: 0.03499999970197678[[Prototype]]: Objecttextures: 41.266666666666666triangles: 270093.3333333333[[Prototype]]: Objectcurrent: drawCalls: 217fps: 1systemTimes: atmosphere: 0.09999999403953552carpetTrail: 0landmarks: 0minimap: 0.9000000059604645network: 0player: 0render: 1.800000011920929ui: 0vegetation: 0water: 0world: 0.09999999403953552[[Prototype]]: Objecttriangles: 281948[[Prototype]]: Objectpeaks: maxAtmosphereTime: 0.30000001192092896maxCarpetTrailTime: 0.3999999761581421maxDrawCalls: 310maxLandmarksTime: 0.09999999403953552maxMinimapTime: 1.199999988079071maxNetworkTime: 0maxPlayerTime: 0.10000002384185791maxRenderTime: 3.9000000059604645maxUiTime: 0.29999998211860657maxVegetationTime: 0.10000002384185791maxWaterTime: 0.09999999403953552maxWorldTime: 0.19999998807907104minFps: 0.5518763796909493[[Prototype]]: Object[[Prototype]]: Objectconstructor: ƒ Object()hasOwnProperty: ƒ hasOwnProperty()isPrototypeOf: ƒ isPrototypeOf()propertyIsEnumerable: ƒ propertyIsEnumerable()toLocaleString: ƒ toLocaleString()toString: ƒ toString()valueOf: ƒ valueOf()__defineGetter__: ƒ __defineGetter__()__defineSetter__: ƒ __defineSetter__()__lookupGetter__: ƒ __lookupGetter__()__lookupSetter__: ƒ __lookupSetter__()__proto__: (...)get __proto__: ƒ __proto__()set __proto__: ƒ __proto__()
+{averages: {…}, current: {…}, peaks: {…}}averages: {fps: 0.9485608442590787, drawCalls: 197.73333333333332, triangles: 270093.3333333333, points: 0, lines: 0, …}current: {fps: 1, drawCalls: 217, triangles: 281948, systemTimes: {…}}peaks: {maxDrawCalls: 310, minFps: 0.5518763796909493, maxNetworkTime: 0, maxWorldTime: 0.19999998807907104, maxWaterTime: 0.09999999403953552, …}[[Prototype]]: Object
+VegetationSystem.js:936 Reducing vegetation density to 0.80 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.75 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.70 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.65 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.60 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.55 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.50 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.45 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.40 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.35 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.30 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.30 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.30 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.30 due to low FPS (1.0)
+VegetationSystem.js:936 Reducing vegetation density to 0.30 due to low FPS (1.0)
