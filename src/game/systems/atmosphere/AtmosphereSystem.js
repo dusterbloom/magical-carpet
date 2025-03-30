@@ -35,10 +35,10 @@ export class AtmosphereSystem {
     const now = new Date();
     const secondsInDay = 86400;
     const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-    this.timeOfDay = currentSeconds / secondsInDay; // 0.0-1.0 representing full day
+    // this.timeOfDay = currentSeconds / secondsInDay; // 0.0-1.0 representing full day
     
     // Optional override for testing specific times
-    // this.timeOfDay = 0.5; // Noon
+    this.timeOfDay = 0.5; // Noon
     // this.timeOfDay = 0.0; // Midnight
     // this.timeOfDay = 0.25; // Sunrise
     // this.timeOfDay = 0.75; // Sunset
