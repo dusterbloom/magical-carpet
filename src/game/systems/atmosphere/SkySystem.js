@@ -58,26 +58,57 @@ export class SkySystem {
    */
   updateSkyColors() {
     const timeOfDay = this.atmosphereSystem.getTimeOfDay();
+    const nightFactor = this.atmosphereSystem.getNightFactor();
     let fogColor;
+    
+    // Update sky material properties based on time of day
+    const uniforms = this.sky.material.uniforms;
     
     // Update fog color based on time of day
     if (timeOfDay < 0.25) {
       // Night to sunrise transition
       const t = timeOfDay / 0.25;
       fogColor = new THREE.Color(0x000010).lerp(new THREE.Color(0xff9933), t);
+      
+      // Night sky parameters
+      const sunriseProgress = timeOfDay / 0.25; // 0 at midnight, 1 at sunrise
+      uniforms['turbidity'].value = 8 * sunriseProgress + 0.5;
+      uniforms['rayleigh'].value = 1 * sunriseProgress + 0.2;
+      uniforms['mieCoefficient'].value = 0.025 * sunriseProgress + 0.001;
     } else if (timeOfDay < 0.5) {
       // Sunrise to noon
       const t = (timeOfDay - 0.25) / 0.25;
       fogColor = new THREE.Color(0xff9933).lerp(new THREE.Color(0x89cff0), t);
+      
+      // Morning sky parameters
+      uniforms['turbidity'].value = 8;
+      uniforms['rayleigh'].value = 1 * t + 0.5;
+      uniforms['mieCoefficient'].value = 0.025;
     } else if (timeOfDay < 0.75) {
       // Noon to sunset
       const t = (timeOfDay - 0.5) / 0.25;
       fogColor = new THREE.Color(0x89cff0).lerp(new THREE.Color(0xff9933), t);
+      
+      // Afternoon sky parameters
+      uniforms['turbidity'].value = 8;
+      uniforms['rayleigh'].value = 1;
+      uniforms['mieCoefficient'].value = 0.025;
     } else {
       // Sunset to night
       const t = (timeOfDay - 0.75) / 0.25;
       fogColor = new THREE.Color(0xff9933).lerp(new THREE.Color(0x000010), t);
+      
+      // Evening sky parameters
+      const nightProgress = (timeOfDay - 0.75) / 0.25; // 0 at sunset, 1 at midnight
+      uniforms['turbidity'].value = 8 * (1 - nightProgress) + 0.5;
+      uniforms['rayleigh'].value = 1 * (1 - nightProgress) + 0.2;
+      uniforms['mieCoefficient'].value = 0.025 * (1 - nightProgress) + 0.001;
     }
+    
+    // Adjust renderer exposure based on time of day
+    const baseExposure = 0.6;
+    const exposureRange = 0.4;
+    this.engine.renderer.toneMappingExposure = baseExposure - nightFactor * exposureRange;
     
     // Update fog
     if (this.scene.fog) {

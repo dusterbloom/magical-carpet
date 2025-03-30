@@ -138,23 +138,36 @@ export class SunSystem {
     // Update sunlight position
     this.sunLight.position.copy(this.sunPosition);
     
+    const nightFactor = this.atmosphereSystem.getNightFactor();
+    
     // Update sunlight color and intensity based on time of day
     if (timeOfDay > 0.25 && timeOfDay < 0.35) {
       // Sunrise - more orange
       this.sunLight.color.setHex(0xffaa33);
       this.sunLight.intensity = 1.0;
+      this.ambientLight.intensity = 0.4 + 0.3 * ((timeOfDay - 0.25) / 0.1);
+      this.ambientLight.color.setHex(0x505040); // Yellowish morning ambient
     } else if (timeOfDay > 0.65 && timeOfDay < 0.75) {
       // Sunset - more orange/red
       this.sunLight.color.setHex(0xff7733);
       this.sunLight.intensity = 1.0;
+      this.ambientLight.intensity = 0.4 + 0.3 * (1 - ((timeOfDay - 0.65) / 0.1));
+      this.ambientLight.color.setHex(0x503030); // Reddish evening ambient
     } else if (timeOfDay > 0.35 && timeOfDay < 0.65) {
       // Day - yellow/white
       this.sunLight.color.setHex(0xffffcc);
       this.sunLight.intensity = 1.2;
+      this.ambientLight.intensity = 0.7;
+      this.ambientLight.color.setHex(0x404060); // Reset to default daytime ambient
     } else {
       // Night - dim blue
       this.sunLight.color.setHex(0x334455);
       this.sunLight.intensity = 0.1;
+      
+      // Reduce ambient light at night for darkness
+      // Use a minimum value to avoid complete darkness
+      this.ambientLight.intensity = 0.1;
+      this.ambientLight.color.setHex(0x112233); // Bluish night ambient
     }
   }
   
