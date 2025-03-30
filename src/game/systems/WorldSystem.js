@@ -241,7 +241,7 @@ export class WorldSystem {
     this.createManaNodes();
 
     if (this.engine.camera) {
-      this.engine.camera.far = 12000; // Increased from 15000
+      this.engine.camera.far = 22000; // Increased from 15000
       this.engine.camera.updateProjectionMatrix();
     }
     
