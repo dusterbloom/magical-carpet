@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { StarsParticleSystem } from "./StarsParticleSystem";
 
 export class AtmosphereSystem {
@@ -9,6 +10,7 @@ export class AtmosphereSystem {
 
     // Initialize components
     this.starSystem = null; // Will be initialized in initialize()
+    this.sky = null; // ThreeJS Sky object
 
     // Clouds
     this.clouds = [];
@@ -75,8 +77,9 @@ export class AtmosphereSystem {
         Math.floor(count * 0.2)
       );
     }
-    // Create enhanced sky
-    this.createSky();
+    
+    // Create ThreeJS Sky with sun
+    this.createSkyWithSun();
 
     // Create clouds
     this.createVolumetricClouds();
@@ -112,55 +115,40 @@ export class AtmosphereSystem {
     console.log("Created sun light and ambient light");
   }
 
-  // Updated createSky method with precision declaration and skinning disabled
-  createSky() {
-    const skyGeometry = new THREE.SphereGeometry(8000, 32, 15);
-    const skyMaterial = new THREE.ShaderMaterial({
-      precision: "mediump", // Explicitly set the precision for the shader
-      uniforms: {
-        topColor: { value: new THREE.Color(0x3388ff) },
-        bottomColor: { value: new THREE.Color(0xaaddff) },
-        offset: { value: 400 },
-        exponent: { value: 0.7 },
-      },
-      vertexShader: `
-        precision mediump float;
-        varying vec3 vWorldPosition;
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        precision mediump float;
-        uniform vec3 topColor;
-        uniform vec3 bottomColor;
-        uniform float offset;
-        uniform float exponent;
-        varying vec3 vWorldPosition;
-        void main() {
-          float h = normalize(vWorldPosition + offset).y;
-          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
-        }
-      `,
-      side: THREE.BackSide,
-      fog: false,
-      skinning: false, // Explicitly disable skinning
-    });
-
-    this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
-    this.sky.onBeforeRender = () => {
-      if (this.engine.camera) {
-        this.sky.position.copy(this.engine.camera.position);
-      }
-    };
+  // Create advanced sky with sun using ThreeJS Sky
+  createSkyWithSun() {
+    // Remove the old sky if it exists
+    if (this.sky) {
+      this.scene.remove(this.sky);
+    }
+    
+    // Add Sky
+    this.sky = new Sky();
+    this.sky.scale.setScalar(30000); // Reduced scale to make sun more visible
     this.scene.add(this.sky);
-    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.00003);
+    
+    // Set up the uniforms with values that make sun more prominent
+    const uniforms = this.sky.material.uniforms;
+    uniforms['turbidity'].value = 8;
+    uniforms['rayleigh'].value = 1;
+    uniforms['mieCoefficient'].value = 0.025; // Increased for more defined sun
+    uniforms['mieDirectionalG'].value = 0.999; // Higher value makes sun more defined
+    
 
+    
+    // Set tone mapping exposure
+    this.engine.renderer.toneMappingExposure = 0.6; // Slightly increased
+    
+    // Set the scene fog
+    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.00003);
+    
     // Create night sky components (moon)
     this.createNightSky();
+    
+    // Create a physical sun sphere for better visibility
+    this.createSunSphere();
     this.createVolumetricClouds();
+
   }
 
 // Try these changes to the createCloudSpriteMaterial method
@@ -197,7 +185,7 @@ createVolumetricClouds() {
   console.log('Creating procedural clouds...');
   this.clouds = [];
   
-  const cloudCount = 20; // Fewer clouds for testing
+  const cloudCount = 100; // Original cloud count
 
   for (let i = 0; i < cloudCount; i++) {
     const cloudMaterial = this.createCloudSpriteMaterial();
@@ -213,27 +201,28 @@ createVolumetricClouds() {
     // Position clouds closer to player
     const player = this.engine.systems.player?.localPlayer;
     const playerPos = player ? player.position : new THREE.Vector3(0, 0, 0);
-    const radius = 1000;
+    const radius = 1000 + Math.random() * 3000; // Varied distance
     const theta = Math.random() * Math.PI * 2;
 
         
    
     cloud.position.set(
       playerPos.x + radius * Math.cos(theta),
-      600 + Math.random() * 200,  // Lower height for visibility
+      400 + Math.random() * 400,  // Height between 400-800
       playerPos.z + radius * Math.sin(theta)
     );
     
     cloud.userData = {
       rotationSpeed: 0,
-      horizontalSpeed: (Math.random() - 0.5) * 0.5, // Slower movement
-      verticalFactor: 0
+      horizontalSpeed: (Math.random() - 0.5) * 10,
+      verticalFactor: Math.random() * 5,
+      timeOffset: Math.random() * 1000
     };
     
     this.scene.add(cloud);
     this.clouds.push(cloud);
-    // console.log(`Created cloud ${i} at position:`, cloud.position);
   }
+  console.log(`Created ${cloudCount} clouds`);
 }
   updateVolumetricClouds(delta) {
     if (!this.clouds || this.clouds.length === 0) return;
@@ -290,6 +279,36 @@ createVolumetricClouds() {
       }
     });
   }
+  // Create visible sun sphere
+  createSunSphere() {
+    // Create a MUCH larger, brighter sun sphere
+    const sunGeometry = new THREE.SphereGeometry(16, 16, 16);
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: false,
+      fog: false
+    });
+    
+    this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
+    this.sunSphere.renderOrder = 10000; // Render after sky
+    this.scene.add(this.sunSphere);
+    
+    // Add a very large glow effect
+    const sunGlowGeometry = new THREE.SphereGeometry(32, 16, 16);
+    const sunGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: true,
+      opacity: 0.3,
+      fog: false
+    });
+    
+    this.sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
+    this.sunSphere.add(this.sunGlow);
+    
+    // Place sun at fixed position for testing
+    // this.sunSphere.position.set(1000, 2000, 1000);
+  }
+
   createNightSky() {
     const textureLoader = new THREE.TextureLoader();
 
@@ -470,12 +489,6 @@ createVolumetricClouds() {
       lightColor = new THREE.Color(0xffffcc);
     }
 
-    // Apply colors
-    if (this.sky) {
-      this.sky.material.uniforms.topColor.value = topColor;
-      this.sky.material.uniforms.bottomColor.value = bottomColor;
-    }
-
     // Update fog
     if (this.scene.fog) {
       this.scene.fog.color = fogColor;
@@ -485,7 +498,7 @@ createVolumetricClouds() {
     if (this.sunLight) {
       this.sunLight.intensity = lightIntensity;
       this.sunLight.color = lightColor;
-
+    
       // Update sun position
       const sunAngle = this.timeOfDay * Math.PI * 2;
       this.sunPosition.set(
@@ -495,7 +508,7 @@ createVolumetricClouds() {
       );
 
       this.sunLight.position.copy(this.sunPosition);
-
+      
       // Debug sun position
       if (this.elapsed % 60 < 1) {
         // console.log(`Sun position: x=${this.sunPosition.x.toFixed(0)}, y=${this.sunPosition.y.toFixed(0)}`);
@@ -644,6 +657,9 @@ createVolumetricClouds() {
     // Update elapsed time
     this.elapsed = elapsed;
 
+    // FIXED TIME OF DAY FOR TESTING - Set to noon for maximum visibility
+    // this.timeOfDay = 0.5; // Noon
+    
     // Update time of day
     this.timeOfDay += delta / this.dayDuration;
     if (this.timeOfDay >= 1.0) this.timeOfDay -= 1.0;
@@ -700,11 +716,34 @@ createVolumetricClouds() {
       if (this.moonLight) {
         this.moonLight.intensity = 0.3; // Force intensity for testing
       }
+    }
+     // Replace with proper sun position calculation based on time of day
+  if (this.sunSphere) {
+    // Calculate sun angle (0 to 2π) based on time of day
+    const sunAngle = this.timeOfDay * Math.PI * 2;
+    
+    // Calculate sun position in a large circle
+    const radius = 6000; // Large radius for distant sun
+    const height = 3000; // Maximum height of sun arc
+    
+    this.sunSphere.position.set(
+      Math.cos(sunAngle) * radius,
+      Math.sin(sunAngle) * height,
+      Math.sin(sunAngle) * radius
+    );
 
-      // Log moon information for debugging
-      if (this.elapsed % 10 < 1) {
-        // console.log(`Moon: visible=${this.moonMesh.visible}, position=(${this.moonMesh.position.x.toFixed(0)},${this.moonMesh.position.y.toFixed(0)},${this.moonMesh.position.z.toFixed(0)})`);
-      }
+    // Update sun visibility based on time of day
+    this.sunSphere.visible = this.timeOfDay > 0.25 && this.timeOfDay < 0.75;
+    
+    // If you have a sun glow effect, update it too
+    if (this.sunGlow) {
+      this.sunGlow.visible = this.sunSphere.visible;
+    }
+
+    // Update the actual sunlight direction to match visual sun
+    if (this.sunLight) {
+      this.sunLight.position.copy(this.sunSphere.position);
     }
   }
+}
 }
