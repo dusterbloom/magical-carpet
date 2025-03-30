@@ -46,12 +46,12 @@ export class SunSystem {
       transparent: true,
       opacity: 0.9,
       side: THREE.DoubleSide,
-      depthWrite: true,
-      depthTest: true
+      depthWrite: false,
+      depthTest: false
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
-    this.sunSphere.renderOrder = 10000;
+    this.sunSphere.renderOrder = -1;
     // Add the sun to a specific layer (layer 10) so we can control its visibility in reflections
     this.sunSphere.layers.set(10);
     this.scene.add(this.sunSphere);
@@ -63,8 +63,8 @@ export class SunSystem {
       transparent: true,
       opacity: 0.2,
       side: THREE.DoubleSide,
-      depthWrite: true,
-      depthTest: true
+      depthWrite: false,
+      depthTest: false
     });
     
     this.sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
