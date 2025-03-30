@@ -3,6 +3,7 @@ import * as THREE from "three";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { InputManager } from "./InputManager";
 import { AssetManager } from "./AssetManager";
+import { PerformanceMonitor } from "./PerformanceMonitor";
 import { NetworkManager } from "../systems/NetworkManager";
 import { WorldSystem } from "../systems/WorldSystem";
 import { PlayerSystem } from "../systems/PlayerSystem";
@@ -28,6 +29,9 @@ export class Engine {
     this.isVisible = true;
     this.maxDeltaTime = 1/15; // Cap at 15 FPS equivalent
     this.devicePixelRatio = Math.min(window.devicePixelRatio, 2);
+    
+    // Create performance monitor
+    this.performanceMonitor = new PerformanceMonitor();
 
     // Create core managers
     this.input = new InputManager();
@@ -150,19 +154,28 @@ export class Engine {
       "minimap"    // Update minimap last to capture all world changes
     ];
 
-    // Update systems
+    // Update systems with performance monitoring
     for (const systemName of updateOrder) {
       const system = this.systems[systemName];
       if (system && typeof system.update === "function") {
+        const startTime = performance.now();
         system.update(this.delta, this.elapsed);
+        const endTime = performance.now();
+        this.performanceMonitor.addSystemTime(systemName, endTime - startTime);
       }
     }
 
-  // Standard rendering - ShorelineEffect removed
-  this.renderer.render(this.scene, this.camera);
+    // Standard rendering with performance monitoring
+    const renderStartTime = performance.now();
+    this.renderer.render(this.scene, this.camera);
+    const renderEndTime = performance.now();
+    this.performanceMonitor.addSystemTime("render", renderEndTime - renderStartTime);
+    
+    // Update performance monitor
+    this.performanceMonitor.update(this.renderer, this);
 
-  // Update stats if available
-  if (this.stats) this.stats.update();
+    // Update stats if available
+    if (this.stats) this.stats.update();
 }
 
 
@@ -206,5 +219,16 @@ onResize() {
         system.handleVisibilityChange(true);
       }
     }
+  }
+  
+  /**
+   * Generates and returns a performance report
+   * Call this from the browser console to get performance data
+   * @returns {Object} Performance report
+   */
+  getPerformanceReport() {
+    const report = this.performanceMonitor.generateReport();
+    console.log("Performance Report:", report);
+    return report;
   }
 }
