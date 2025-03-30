@@ -2945,7 +2945,7 @@ return color;
         
         // Check if location is suitable
         if (this.isPositionSuitableForLandmark(worldX, worldZ, landmarkType)) {
-          console.log(`Creating ${landmarkType.name} landmark at ${worldX}, ${worldZ}`);
+          // console.log(`Creating ${landmarkType.name} landmark at ${worldX}, ${worldZ}`);
           this.createLandmark(worldX, worldZ, landmarkType);
           return; // Only create one landmark at a time
         }

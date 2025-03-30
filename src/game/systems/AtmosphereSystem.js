@@ -227,7 +227,7 @@ createVolumetricClouds() {
     
     this.scene.add(cloud);
     this.clouds.push(cloud);
-    console.log(`Created cloud ${i} at position:`, cloud.position);
+    // console.log(`Created cloud ${i} at position:`, cloud.position);
   }
 }
   updateVolumetricClouds(delta) {
