@@ -134,7 +134,9 @@ export class AtmosphereSystem {
     uniforms['mieCoefficient'].value = 0.025; // Increased for more defined sun
     uniforms['mieDirectionalG'].value = 0.999; // Higher value makes sun more defined
     
-
+    // IMPORTANT: DON'T UPDATE SKY POSITION EVERY FRAME
+    // Only set it once here, and don't follow camera in the update method
+    this.sky.position.set(0, 0, 0);
     
     // Set tone mapping exposure
     this.engine.renderer.toneMappingExposure = 0.6; // Slightly increased
@@ -145,10 +147,14 @@ export class AtmosphereSystem {
     // Create night sky components (moon)
     this.createNightSky();
     
-    // Create a physical sun sphere for better visibility
-    this.createSunSphere();
+    // Create physical sun AFTER sky is set up
+    // The separation of sky backdrop and physical sun prevents the issue
+    this.createSunSphere(); 
+    
+    // Create clouds last to ensure proper layering
     this.createVolumetricClouds();
-
+    
+    console.log('Sky and sun created with proper world-space positioning');
   }
 
 // Try these changes to the createCloudSpriteMaterial method
@@ -281,41 +287,64 @@ createVolumetricClouds() {
   }
   // Create visible sun sphere
   createSunSphere() {
-    // Create a larger, more realistic sun sphere with proper materials
-    const sunGeometry = new THREE.SphereGeometry(200, 32, 32);
+    // First remove any existing sun objects
+    if (this.sunSphere) {
+      if (this.sunSphere.parent) {
+        this.sunSphere.parent.remove(this.sunSphere);
+      }
+    }
+    
+    // Create much smaller sun sphere for distant appearance
+    const sunGeometry = new THREE.SphereGeometry(100, 16, 16); // Smaller geometry
     const sunMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff80,
       transparent: false,
-      fog: false
+      fog: false,
+      depthWrite: false, // Don't write to depth buffer to prevent clipping
+      depthTest: false   // Don't test against depth buffer to always be visible
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
     this.sunSphere.renderOrder = 10000; // Render after sky
+    
+    // Create the sun in world space, not as a child of anything
     this.scene.add(this.sunSphere);
     
-    // Add multi-layered glow effect for more realistic appearance
-    const sunGlowGeometry = new THREE.SphereGeometry(320, 32, 32);
+    // Scale down the sun
+    this.sunSphere.scale.set(0.05, 0.05, 0.05);
+    
+    // Position sun far away initially
+    this.sunSphere.position.set(10000, 5000, 0);
+    
+    // Add a simple glow effect
+    const sunGlowGeometry = new THREE.SphereGeometry(1.5, 16, 16);
     const sunGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       transparent: true,
       opacity: 0.3,
-      fog: false
+      fog: false,
+      depthWrite: false,
+      depthTest: false
     });
     
     this.sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
     this.sunSphere.add(this.sunGlow);
     
     // Add a second, larger glow layer
-    const sunOuterGlowGeometry = new THREE.SphereGeometry(500, 32, 32);
+    const sunOuterGlowGeometry = new THREE.SphereGeometry(2.5, 16, 16);
     const sunOuterGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff80,
       transparent: true,
       opacity: 0.15,
-      fog: false
+      fog: false,
+      depthWrite: false,
+      depthTest: false
     });
     
     this.sunOuterGlow = new THREE.Mesh(sunOuterGlowGeometry, sunOuterGlowMaterial);
     this.sunSphere.add(this.sunOuterGlow);
+    
+    console.log('Created sun sphere with proper scaling at world position:', this.sunSphere.position);
   }
 
   createNightSky() {
@@ -679,9 +708,10 @@ createVolumetricClouds() {
     // Calculate night time factor (0 during day, 1 during night)
     const nightTimeFactor = this.getNightFactor();
 
-    // Make sure sky follows camera
-    if (this.sky && this.engine.camera) {
-      this.sky.position.copy(this.engine.camera.position);
+    // DO NOT make sky follow camera - it should stay fixed at world origin
+    // Keeping sky at origin allows proper world-space positioning of sun
+    if (this.sky && this.sky.position.length() > 0) {
+      this.sky.position.set(0, 0, 0);
     }
 
     // Update the basic clouds (if still used)
@@ -726,36 +756,49 @@ createVolumetricClouds() {
         this.moonLight.intensity = 0.3; // Force intensity for testing
       }
     }
-     // Replace with proper sun position calculation based on time of day
+     // Fixed sun position calculation based solely on time of day - no player relation
   if (this.sunSphere) {
     // Calculate sun angle (0 to 2π) based on time of day
     const sunAngle = this.timeOfDay * Math.PI * 2;
     
-    // Use larger radius for more realistic distant sun appearance
-    const radius = 10000; // Increased radius for distant sun appearance
-    const height = 5000;  // Increased height for more realistic arc
+    // Detach sun from camera and place in fixed world space
+    // Remove from scene and re-add to ensure proper world placement
+    if (this.sunSphere.parent !== this.scene) {
+      if (this.sunSphere.parent) {
+        this.sunSphere.parent.remove(this.sunSphere);
+      }
+      this.scene.add(this.sunSphere);
+    }
     
+    // Drastically reduce sun size
+    if (this.sunSphere.scale.x > 0.1) {
+      this.sunSphere.scale.set(0.05, 0.05, 0.05);
+      if (this.sunGlow) this.sunGlow.scale.set(1, 1, 1); // Reset glow to normal relative scale
+      if (this.sunOuterGlow) this.sunOuterGlow.scale.set(1.5, 1.5, 1.5); // Reset outer glow
+    }
+    
+    // Position sun much further away in world space
+    const radius = 25000; // Very large radius for distant appearance
+    const height = 15000;  // Very high for proper arc
+    
+    // Calculate absolute world position
     this.sunSphere.position.set(
       Math.cos(sunAngle) * radius,
-      Math.sin(sunAngle) * height,
-      Math.sin(sunAngle * 0.5) * radius // Add slight variation to z-axis movement
+      Math.max(1000, Math.sin(sunAngle) * height), // Keep sun high above horizon
+      Math.sin(sunAngle * 0.5) * radius * 0.5 // Minor z-variation but not tied to player
     );
 
     // Update sun visibility based on time of day
     this.sunSphere.visible = this.timeOfDay > 0.25 && this.timeOfDay < 0.75;
     
-    // If you have sun glow effects, update them too
-    if (this.sunGlow) {
-      this.sunGlow.visible = this.sunSphere.visible;
-    }
-    
-    if (this.sunOuterGlow) {
-      this.sunOuterGlow.visible = this.sunSphere.visible;
-    }
-
-    // Update the actual sunlight direction to match visual sun
+    // Update the sunlight direction to match visual sun
     if (this.sunLight) {
-      this.sunLight.position.copy(this.sunSphere.position);
+      // Position sunlight separately from visual sun for better lighting
+      this.sunLight.position.set(
+        Math.cos(sunAngle) * radius,
+        Math.max(1000, Math.sin(sunAngle) * height),
+        0 // Keep light on a simple 2D arc for consistent shadows
+      );
       
       // Adjust sunlight color based on time of day
       if (this.timeOfDay > 0.25 && this.timeOfDay < 0.35) {
