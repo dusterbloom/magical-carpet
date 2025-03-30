@@ -52,8 +52,20 @@ export class PerformanceMonitor {
     // Get renderer stats
     const info = renderer.info;
     
-    // Calculate FPS
-    const fps = 1000 / (now - this.metrics.lastUpdate);
+    // Calculate FPS - use a moving average to smooth out spikes
+    // Get direct frame time from engine's delta time if available
+    let fps = 0;
+    if (engine && engine.delta > 0) {
+      fps = 1 / engine.delta; // More accurate when using engine's delta time
+    } else {
+      const elapsed = now - this.metrics.lastUpdate;
+      if (elapsed > 0) { // Avoid division by zero
+        fps = 1000 / elapsed;
+      }
+    }
+    
+    // Cap FPS to reasonable values to avoid extreme spikes
+    fps = Math.min(Math.max(fps, 1), 120);
     
     // Record metrics
     this.addMetric('fps', fps);
@@ -109,9 +121,25 @@ export class PerformanceMonitor {
     const averages = {};
     for (const [key, values] of Object.entries(this.metrics)) {
       if (key !== 'systemTimes' && key !== 'lastUpdate') {
-        averages[key] = values.length > 0 
-          ? values.reduce((a, b) => a + b, 0) / values.length 
-          : 0;
+        // For FPS, use a more stable calculation - focus on recent samples and remove outliers
+        if (key === 'fps' && values.length > 0) {
+          // Sort values to identify outliers
+          const sortedValues = [...values].sort((a, b) => a - b);
+          // Remove top and bottom 10% to get rid of spikes
+          const trimStart = Math.floor(sortedValues.length * 0.1);
+          const trimEnd = Math.ceil(sortedValues.length * 0.9);
+          const trimmedValues = sortedValues.slice(trimStart, trimEnd);
+          
+          // Calculate average of trimmed values
+          averages[key] = trimmedValues.length > 0 
+            ? trimmedValues.reduce((a, b) => a + b, 0) / trimmedValues.length
+            : (values.length > 0 ? values[values.length - 1] : 0); // Fall back to latest value
+        } else {
+          // Standard average for other metrics
+          averages[key] = values.length > 0 
+            ? values.reduce((a, b) => a + b, 0) / values.length 
+            : 0;
+        }
       }
     }
     

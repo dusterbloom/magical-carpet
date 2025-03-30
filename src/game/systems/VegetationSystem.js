@@ -17,11 +17,11 @@ export class VegetationSystem {
     this.treeLODLevels = []; // Current LOD level for each instance
     this.currentChunks = new Set();
     
-    // LOD distance thresholds
+    // LOD distance thresholds - reduced for better performance
     this.lodDistances = {
-      high: 300,   // Use high detail up to 300 units
-      medium: 800, // Use medium detail up to 800 units away
-      low: 1600    // Use low detail up to 1600 units away
+      high: 200,   // Use high detail up to 200 units (reduced from 300)
+      medium: 600, // Use medium detail up to 600 units away (reduced from 800)
+      low: 1200    // Use low detail up to 1200 units away (reduced from 1600)
     };
     
     // Frustum culling support
@@ -290,8 +290,8 @@ export class VegetationSystem {
     this.treeInstancedMeshes = [];
     this.treeMatrices = [];
     
-    // Maximum number of instances per type (can be increased if needed)
-    const maxInstances = 5000;
+    // Reduced maximum number of instances to improve performance
+    const maxInstances = 2000; // Reduced from 5000 to improve memory usage
     
     // Initialize arrays for transformation matrices
     this.treeMatrices = [];
@@ -706,6 +706,17 @@ export class VegetationSystem {
       // Move the last tree to this index
       this.treeMatrices[type][oldLOD][index] = this.treeMatrices[type][oldLOD][lastIndex];
       
+      // Find the tree that was at lastIndex and update its LOD level tracking
+      // This is crucial for maintaining correct LOD level tracking
+      for (let i = 0; i < this.treeLODLevels[type].length; i++) {
+        // If we find a tree with the oldLOD level that will be moved
+        if (this.treeLODLevels[type][i] === oldLOD) {
+          // Update to the new index
+          this.treeLODLevels[type][i] = index;
+          break;
+        }
+      }
+      
       // Update the moved tree's matrices
       this.updateTreeInstanceMatrices(type, oldLOD, index);
     }
@@ -732,8 +743,21 @@ export class VegetationSystem {
     // Update matrices in new LOD level
     this.updateTreeInstanceMatrices(type, newLOD, newIndex);
     
-    // Update LOD level tracking
-    this.treeLODLevels[type][index] = newLOD;
+    // Update LOD level tracking - find the appropriate tree to update
+    // This is more reliable than assuming it's at a specific index
+    let found = false;
+    for (let i = 0; i < this.treeLODLevels[type].length; i++) {
+      if (this.treeLODLevels[type][i] === oldLOD) {
+        this.treeLODLevels[type][i] = newLOD;
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      // If somehow we didn't find the appropriate tree, add a fallback
+      this.treeLODLevels[type].push(newLOD);
+    }
   }
   
   /**
@@ -919,25 +943,66 @@ export class VegetationSystem {
     
     // Get current FPS from performance monitor if available
     let currentFPS = 60; // Default assumption
-    if (this.performanceMonitor && this.performanceMonitor.metrics && 
+    
+    // Check if performanceMonitor has a getAverages method to get more stable readings
+    if (this.performanceMonitor && typeof this.performanceMonitor.getAverages === 'function') {
+      // Use the more stable averages instead of raw metrics
+      const averages = this.performanceMonitor.getAverages();
+      if (averages && typeof averages.fps === 'number') {
+        currentFPS = averages.fps;
+      }
+    } else if (this.performanceMonitor && this.performanceMonitor.metrics && 
         this.performanceMonitor.metrics.fps.length > 0) {
-      // Get average of last 5 fps readings
+      // Fall back to manual calculation if getAverages isn't available
       const recentFPS = this.performanceMonitor.metrics.fps.slice(
         Math.max(0, this.performanceMonitor.metrics.fps.length - 5));
       if (recentFPS.length > 0) {
-        currentFPS = recentFPS.reduce((sum, fps) => sum + fps, 0) / recentFPS.length;
+        // Sort and remove outliers for more stability
+        const sortedFPS = [...recentFPS].sort((a, b) => a - b);
+        const validFPS = sortedFPS.slice(1, sortedFPS.length - 1); // Remove highest and lowest
+        currentFPS = validFPS.length > 0 
+          ? validFPS.reduce((sum, fps) => sum + fps, 0) / validFPS.length
+          : (recentFPS.length > 0 ? recentFPS[recentFPS.length - 1] : 60);
       }
     }
     
+    // Ignore extremely high or low values that are likely measurement errors
+    if (currentFPS < 1 || currentFPS > 150) {
+      console.log(`Ignoring unrealistic FPS value: ${currentFPS}`);
+      return;
+    }
+    
+    // Check current triangle count to determine if we need more aggressive optimization
+    let highTriangleCount = false;
+    let extremeTriangleCount = false;
+    let triangleCount = 0;
+    
+    if (this.performanceMonitor && this.performanceMonitor.metrics && 
+        this.performanceMonitor.metrics.triangles.length > 0) {
+      triangleCount = this.performanceMonitor.metrics.triangles[
+        this.performanceMonitor.metrics.triangles.length - 1];
+      
+      // Modern GPUs can handle higher triangle counts, so adjust thresholds
+      highTriangleCount = triangleCount > 400000; // Only consider high if over 400k triangles  
+      extremeTriangleCount = triangleCount > 500000; // Extreme optimization needed above 500k
+    }
+    
     // Update density scale based on performance
-    if (currentFPS < this.targetFPS * 0.8) { // Below 80% of target
-      // Reduce density gradually to improve performance
-      this.densityScale = Math.max(0.3, this.densityScale - 0.05);
-      console.log(`Reducing vegetation density to ${this.densityScale.toFixed(2)} due to low FPS (${currentFPS.toFixed(1)})`);
-    } else if (currentFPS > this.targetFPS * 1.2 && this.densityScale < 1.0) { // Above 120% of target
-      // Increase density gradually if we have performance headroom
+    // Prioritize FPS over triangle count, but still consider both
+    if (currentFPS < this.targetFPS * 0.7 || extremeTriangleCount) { 
+      // Severe performance issue - aggressive reduction
+      const reductionFactor = 0.1;
+      this.densityScale = Math.max(0.3, this.densityScale - reductionFactor);
+      console.log(`Reducing vegetation density to ${this.densityScale.toFixed(2)} due to ${extremeTriangleCount ? 'extreme triangle count' : 'very low FPS'} (${currentFPS.toFixed(1)} FPS, ${triangleCount} triangles)`);
+    } else if (currentFPS < this.targetFPS * 0.9 || highTriangleCount) {
+      // Moderate performance issue - gentle reduction
+      const reductionFactor = 0.05;
+      this.densityScale = Math.max(0.3, this.densityScale - reductionFactor);
+      console.log(`Reducing vegetation density to ${this.densityScale.toFixed(2)} due to ${highTriangleCount ? 'high triangle count' : 'low FPS'} (${currentFPS.toFixed(1)} FPS, ${triangleCount} triangles)`);
+    } else if (currentFPS > this.targetFPS * 1.2 && this.densityScale < 1.0 && triangleCount < 350000) {
+      // Good performance and reasonable triangle count - increase density
       this.densityScale = Math.min(1.0, this.densityScale + 0.02);
-      console.log(`Increasing vegetation density to ${this.densityScale.toFixed(2)} due to good FPS (${currentFPS.toFixed(1)})`);
+      console.log(`Increasing vegetation density to ${this.densityScale.toFixed(2)} due to good performance (${currentFPS.toFixed(1)} FPS, ${triangleCount} triangles)`);
     }
     
     // Record time of adjustment
