@@ -198,10 +198,13 @@ createVolumetricClouds() {
   this.clouds = [];
   
   const cloudCount = 20; // Fewer clouds for testing
-  
+
   for (let i = 0; i < cloudCount; i++) {
     const cloudMaterial = this.createCloudSpriteMaterial();
     const cloud = new THREE.Sprite(cloudMaterial);
+
+    // Add specific layer for water reflections
+    cloud.layers.enable(2); // Water reflections layer
     
     // Make clouds MUCH larger for visibility
     const scale = 800 + Math.random() * 600;
@@ -212,7 +215,9 @@ createVolumetricClouds() {
     const playerPos = player ? player.position : new THREE.Vector3(0, 0, 0);
     const radius = 1000;
     const theta = Math.random() * Math.PI * 2;
-    
+
+        
+   
     cloud.position.set(
       playerPos.x + radius * Math.cos(theta),
       600 + Math.random() * 200,  // Lower height for visibility

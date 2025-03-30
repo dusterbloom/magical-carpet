@@ -42,64 +42,71 @@ export class WaterSystem {
   /**
    * Create the water surface
    */
-   
-  createWater() {
-    
-    const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
   
-    const water = new Water(waterGeometry, {
-      textureWidth: 2048,
-      textureHeight: 2048,
-      waterNormals: new TextureLoader().load('textures/2waternormals.jpg', function (texture) {
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(2, 2); // Gentle repeat to reduce stretching
-      }),
-      sunDirection: new THREE.Vector3(), // Will be updated in update method
-      sunColor: 0xffffff,
-      waterColor: 0x001e8f, // More vibrant blue that won't show terrain
-      distortionScale: 1.2, // Only slightly reduced from 1.5
-      clipBias: 0.0001, // Moderately increased from 0.00001
-      fog: this.scene.fog !== undefined,
-      alpha: 0.95 // Higher opacity to mask terrain
-    });
+  // WaterSystem.js
+createWater() {
+  const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
   
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = this.waterLevel;
-    this.water = water;
-    this.scene.add(water);
+  const water = new Water(waterGeometry, {
+    textureWidth: 2048,
+    textureHeight: 2048,
+    waterNormals: new TextureLoader().load('textures/2waternormals.jpg', function (texture) {
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(32, 32); // Gentle repeat to reduce stretching
+    }),
+    sunDirection: new THREE.Vector3(), // Will be updated in update method
+    sunColor: 0xffffff,
+    waterColor: 0x001e0f, // More vibrant blue that won't show terrain
+    distortionScale: 0.8, // Only slightly reduced from 1.5
+    clipBias: 0.001, // Moderately increased from 0.00001
+    fog: this.scene.fog !== undefined,
+    alpha: 0.95 // Higher opacity to mask terrain
+  });
+  
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = this.waterLevel;
+  // Configure which layers the water reflection camera should see
+  if (water.material.uniforms.reflectionCamera) {
+    const reflectionCamera = water.material.uniforms.reflectionCamera.value;
+    reflectionCamera.layers.set(0); // Reset layers
+    reflectionCamera.layers.enable(1); // Regular scene
+    reflectionCamera.layers.enable(2); // Cloud reflections
   }
+
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = this.waterLevel;
+
+  this.water = water;
+  this.scene.add(water);
+}
+
+
 
   // /**
   //  * Update the water system (called each frame)
   //  * @param {number} deltaTime - Time elapsed since last update
   //  */
-  
-  update(deltaTime) {
-    if (this.water) {
-      // Update time at a reduced rate to slow down wave animation
-      this.water.material.uniforms['time'].value += deltaTime * 0.8;
-      
-      // Sync with atmosphere system sun direction if available
-      if (this.engine.systems.atmosphere && this.engine.systems.atmosphere.sunLight) {
-        const sunDirection = this.engine.systems.atmosphere.sunLight.position.clone().normalize();
-        this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
-      }
+
+// Add this to your update method
+update(deltaTime) {
+  if (this.water) {
+    this.water.material.uniforms['time'].value += deltaTime * 0.8;
+    
+    // Update sun direction
+    if (this.engine.systems.atmosphere && this.engine.systems.atmosphere.sunLight) {
+      const sunDirection = this.engine.systems.atmosphere.sunLight.position.clone().normalize();
+      this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
     }
-  
+
+    // Update position without rounding to avoid reflection jumps
     if (this.engine.camera) {
-      // Follow camera but round to integer to avoid sub-pixel rendering issues
-      this.water.position.x = Math.round(this.engine.camera.position.x);
-      this.water.position.z = Math.round(this.engine.camera.position.z);
-      
-      // Adjust water transparency based on camera position
-      // More transparent when underwater, more opaque when above
-      if (this.isUnderwater(this.engine.camera.position)) {
-        this.water.material.uniforms['alpha'].value = 0.8;
-        } else {
-        this.water.material.uniforms['alpha'].value = 0.95;
-      }
+      this.water.position.x = this.engine.camera.position.x;
+      this.water.position.z = this.engine.camera.position.z;
     }
   }
+}
+
+
   /**
    * Test if a position is underwater
    * @param {THREE.Vector3} position - The position to test
