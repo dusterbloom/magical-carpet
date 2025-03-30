@@ -1,0 +1,208 @@
+client.ts:19 [vite] connecting...
+client.ts:155 [vite] connected.
+AssetManager.js:33 Asset not found: /assets/textures/carpet.jpg - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+onImageError @ chunk-BU75RJHU.js?v=b06b62d9:21546
+AssetManager.js:33 Asset not found: /assets/textures/terrain.jpg - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+onImageError @ chunk-BU75RJHU.js?v=b06b62d9:21546
+AssetManager.js:33 Asset not found: /assets/textures/sky.jpg - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+onImageError @ chunk-BU75RJHU.js?v=b06b62d9:21546
+AssetManager.js:213 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:256:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:215:15)
+    at chunk-BU75RJHU.js?v=b06b62d9:21383:20
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:203
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:220
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:33 Asset not found: /assets/models/carpet.glb - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:205
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:220
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:213 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:256:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:215:15)
+    at chunk-BU75RJHU.js?v=b06b62d9:21383:20
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:203
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:220
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:33 Asset not found: /assets/models/mana.glb - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:205
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:220
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=b06b62d9:213
+(anonymous) @ AssetManager.js:213
+loadModels @ AssetManager.js:212
+(anonymous) @ AssetManager.js:177
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AtmosphereSystem.js?t=1743356103756:46 Synced Time of Day: 0.8191550925925926
+Engine.js?t=1743356103756:114 System initialized: network
+WorldSystem.js?t=1743342354680:227 Initializing WorldSystem...
+WorldSystem.js?t=1743342354680:1463 Creating initial terrain...
+WorldSystem.js?t=1743342354680:248 WorldSystem initialized
+Engine.js?t=1743356103756:114 System initialized: world
+WaterSystem.js?t=1743345981445:26 Initializing WaterSystem...
+WaterSystem.js?t=1743345981445:33 Setting water level to -60 based on terrain
+WaterSystem.js?t=1743345981445:39 WaterSystem initialized
+Engine.js?t=1743356103756:114 System initialized: water
+VegetationSystem.js:83 Initializing VegetationSystem...
+VegetationSystem.js:91 VegetationSystem initialized
+Engine.js?t=1743356103756:114 System initialized: vegetation
+PlayerModels.js:46 Created 6 carpet models
+PlayerSpells.js:22 Spell system initialized
+PlayerSystem.js:49 Player system initialized
+Engine.js?t=1743356103756:114 System initialized: player
+AtmosphereSystem.js?t=1743356103756:60 Initializing AtmosphereSystem...
+AssetManager.js:227 EncodingError: Unable to decode audio data
+handleError @ chunk-BU75RJHU.js?v=b06b62d9:23882
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:23873
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ chunk-BU75RJHU.js?v=b06b62d9:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:33 Asset not found: /assets/audio/background.mp3 - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+handleError @ chunk-BU75RJHU.js?v=b06b62d9:23884
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:23873
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ chunk-BU75RJHU.js?v=b06b62d9:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:227 EncodingError: Unable to decode audio data
+handleError @ chunk-BU75RJHU.js?v=b06b62d9:23882
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:23873
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ chunk-BU75RJHU.js?v=b06b62d9:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:33 Asset not found: /assets/audio/spell.mp3 - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+handleError @ chunk-BU75RJHU.js?v=b06b62d9:23884
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:23873
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ chunk-BU75RJHU.js?v=b06b62d9:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:227 EncodingError: Unable to decode audio data
+handleError @ chunk-BU75RJHU.js?v=b06b62d9:23882
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:23873
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ chunk-BU75RJHU.js?v=b06b62d9:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+AssetManager.js:33 Asset not found: /assets/audio/collect.mp3 - using fallback
+(anonymous) @ AssetManager.js:33
+LoadingManager.itemError @ chunk-BU75RJHU.js?v=b06b62d9:21120
+handleError @ chunk-BU75RJHU.js?v=b06b62d9:23884
+Promise.catch
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:23873
+(anonymous) @ chunk-BU75RJHU.js?v=b06b62d9:21383
+Promise.then
+load @ chunk-BU75RJHU.js?v=b06b62d9:21376
+load @ chunk-BU75RJHU.js?v=b06b62d9:23867
+(anonymous) @ AssetManager.js:227
+loadAudio @ AssetManager.js:226
+(anonymous) @ AssetManager.js:178
+initialize @ AssetManager.js:174
+initialize @ Engine.js?t=1743356103756:79
+(anonymous) @ main.js?t=1743356103756:12
+PlayerSystem.js:94 Local player created with ID: player_7725
+PlayerSystem.js:127 Network player created with ID: player_ai_1
+PlayerSystem.js:127 Network player created with ID: player_ai_2
+NetworkManager.js:39 Network simulation initialized
+AtmosphereSystem.js?t=1743356103756:78 AtmosphereSystem initialized
+Engine.js?t=1743356103756:114 System initialized: atmosphere
+UISystem.js?t=1743356081590:183 Minimap functionality moved to MinimapSystem
+UISystem.js?t=1743356081590:16 UI system initialized
+Engine.js?t=1743356103756:114 System initialized: ui
+CarpetTrailSystem.js:105 Initializing CarpetTrailSystem
+Engine.js?t=1743356103756:114 System initialized: carpetTrail
+LandmarkSystem.js?t=1743342291079:76 Initializing LandmarkSystem...
+LandmarkSystem.js?t=1743342291079:80 LandmarkSystem initialized
+Engine.js?t=1743356103756:114 System initialized: landmarks
+MinimapSystem.js:39 Initializing MinimapSystem...
+MinimapSystem.js:52 MinimapSystem initialized
+Engine.js?t=1743356103756:114 System initialized: minimap
+VegetationSystem.js:971 Ignoring unrealistic FPS value: 0
+Engine.js?t=1743356103756:128 Engine initialized successfully
+main.js?t=1743356103756:14 Magical Vibe Carpet initialized successfully!
+main.js?t=1743356103756:15 Use window.getPerformanceReport() to view performance metrics
+VegetationSystem.js:996 Reducing vegetation density to 0.90 due to very low FPS (1.0 FPS, 319154 triangles)

@@ -20,7 +20,8 @@ export class AtmosphereSystem {
     
     // Time tracking
     this.elapsed = 0;
-    this.dayDuration = 10; // 10 minutes per day cycle
+    this.dayDuration = 1440;   // 1440 minutes = 24 hours = 86400 seconds
+    this.timeScale = 1.0;    // Default to 360x real time (4 minutes = 1 day)
     
     // Calendar tracking
     this.currentDay = 0;
@@ -28,9 +29,9 @@ export class AtmosphereSystem {
     this.currentMonth = 0;
     this.monthsPerYear = 12;
     this.yearProgress = 0; // 0.0-1.0 for seasonal changes
-    this.moonPhase = 0; // 0.0-1.0 (0 = new moon, 0.5 = full moon, 1.0 = new moon)
+    this.moonPhase = 1; // 0.0-1.0 (0 = new moon, 0.5 = full moon, 1.0 = new moon)
     
-    // Initialize time of day - sync to user's local time if desired
+    // Initialize time of day from system clock
     const now = new Date();
     const secondsInDay = 86400;
     const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -108,6 +109,17 @@ export class AtmosphereSystem {
   }
   
   /**
+   * Set the time of day manually
+   * @param {number} hour - Hour (0-23)
+   * @param {number} minute - Minute (0-59)
+   */
+  setTime(hour, minute) {
+    // Convert to time of day (0.0-1.0)
+    this.timeOfDay = (hour + (minute / 60)) / 24;
+    console.log(`Time set to ${hour}:${minute.toString().padStart(2, '0')} (${this.timeOfDay.toFixed(4)})`); 
+  }
+  
+  /**
    * Update the atmospheric systems
    * @param {number} delta - Time delta in minutes
    * @param {number} elapsed - Total elapsed time
@@ -116,9 +128,12 @@ export class AtmosphereSystem {
     // Update elapsed time
     this.elapsed = elapsed;
     
+    // Apply time scale to delta for time acceleration/deceleration
+    const scaledDelta = delta * this.timeScale;
+    
     // Update time of day (0.0-1.0)
     const previousTimeOfDay = this.timeOfDay;
-    this.timeOfDay += delta / this.dayDuration;
+    this.timeOfDay += scaledDelta / this.dayDuration;
     
     // Detect day transitions
     if (this.timeOfDay >= 1.0) {
@@ -129,10 +144,10 @@ export class AtmosphereSystem {
     
     // Update all subsystems
     this.skySystem.update(delta);
-    this.sunSystem.update(delta);
     this.moonSystem.update(delta);
     this.starSystem.update(delta);
     this.cloudSystem.update(delta);
+    this.sunSystem.update(delta);
   }
   
   /**

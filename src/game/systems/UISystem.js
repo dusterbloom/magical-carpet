@@ -11,6 +11,7 @@ export class UISystem {
     this.createHealthDisplay();
     this.createSpellsUI();
     this.createMinimapUI();
+    // this.createTimeControls();
     
     console.log("UI system initialized");
   }
@@ -243,6 +244,175 @@ export class UISystem {
       this.updateHealthDisplay(player.health, player.maxHealth);
     }
     
+    // Update time display if atmosphere system exists
+    this.updateTimeDisplay();
+    
     // Minimap is now updated by MinimapSystem
+  }
+  
+  /**
+   * Update time display showing current time of day
+   */
+  updateTimeDisplay() {
+    const atmosphereSystem = this.engine.systems.atmosphere;
+    if (!atmosphereSystem) return;
+    
+    // Update current time display
+    if (this.elements.timeDisplay) {
+      const timeOfDay = atmosphereSystem.getTimeOfDay();
+      const hours24 = Math.floor(timeOfDay * 24);
+      const minutes = Math.floor((timeOfDay * 24 * 60) % 60);
+      
+      this.elements.timeDisplay.textContent = 
+        `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+  }
+  
+  /**
+   * Create time control UI elements
+   */
+  createTimeControls() {
+    // Create container for time controls
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.top = '10px';
+    container.style.left = '10px';
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    container.style.padding = '10px';
+    container.style.borderRadius = '5px';
+    container.style.color = 'white';
+    container.style.fontFamily = 'Arial, sans-serif';
+    container.style.zIndex = '1000';
+    container.style.pointerEvents = 'auto';
+    
+    // Time display
+    const timeLabel = document.createElement('div');
+    timeLabel.textContent = 'Current Time:';
+    container.appendChild(timeLabel);
+    
+    const timeDisplay = document.createElement('div');
+    timeDisplay.style.fontSize = '24px';
+    timeDisplay.style.marginBottom = '10px';
+    timeDisplay.textContent = '00:00';
+    container.appendChild(timeDisplay);
+    this.elements.timeDisplay = timeDisplay;
+    
+    // Time presets
+    const presetLabel = document.createElement('div');
+    presetLabel.textContent = 'Presets:';
+    container.appendChild(presetLabel);
+    
+    const presets = [
+      { label: 'Midnight', hour: 0, minute: 0 },
+      { label: 'Sunrise', hour: 6, minute: 0 },
+      { label: 'Noon', hour: 12, minute: 0 },
+      { label: 'Sunset', hour: 18, minute: 0 }
+    ];
+    
+    const presetContainer = document.createElement('div');
+    presetContainer.style.display = 'flex';
+    presetContainer.style.gap = '5px';
+    presetContainer.style.marginBottom = '10px';
+    
+    presets.forEach(preset => {
+      const button = document.createElement('button');
+      button.textContent = preset.label;
+      button.style.flex = '1';
+      button.style.padding = '5px';
+      button.addEventListener('click', () => {
+        const atmosphereSystem = this.engine.systems.atmosphere;
+        if (atmosphereSystem) {
+          atmosphereSystem.setTime(preset.hour, preset.minute);
+        }
+      });
+      presetContainer.appendChild(button);
+    });
+    
+    container.appendChild(presetContainer);
+    
+    // Time scale control
+    const timeScaleLabel = document.createElement('div');
+    timeScaleLabel.textContent = 'Time Scale:';
+    container.appendChild(timeScaleLabel);
+    
+    const timeScaleContainer = document.createElement('div');
+    timeScaleContainer.style.display = 'flex';
+    timeScaleContainer.style.gap = '5px';
+    
+    const scales = [
+      { label: 'Real', value: 1 },
+      { label: '60x', value: 60 },
+      { label: '360x', value: 360 },
+      { label: '720x', value: 720 }
+    ];
+    
+    scales.forEach(scale => {
+      const button = document.createElement('button');
+      button.textContent = scale.label;
+      button.style.flex = '1';
+      button.style.padding = '5px';
+      button.addEventListener('click', () => {
+        const atmosphereSystem = this.engine.systems.atmosphere;
+        if (atmosphereSystem) {
+          atmosphereSystem.timeScale = scale.value;
+          console.log(`Time scale set to ${scale.value}x`);
+        }
+      });
+      timeScaleContainer.appendChild(button);
+    });
+    
+    container.appendChild(timeScaleContainer);
+    
+    // Custom time setter
+    const customTimeLabel = document.createElement('div');
+    customTimeLabel.textContent = 'Set Custom Time:';
+    customTimeLabel.style.marginTop = '10px';
+    container.appendChild(customTimeLabel);
+    
+    const customTimeContainer = document.createElement('div');
+    customTimeContainer.style.display = 'flex';
+    customTimeContainer.style.gap = '5px';
+    customTimeContainer.style.marginTop = '5px';
+    
+    const hourInput = document.createElement('input');
+    hourInput.type = 'number';
+    hourInput.min = 0;
+    hourInput.max = 23;
+    hourInput.value = 12;
+    hourInput.style.width = '50px';
+    customTimeContainer.appendChild(hourInput);
+    
+    const separator = document.createElement('span');
+    separator.textContent = ':';
+    separator.style.display = 'flex';
+    separator.style.alignItems = 'center';
+    customTimeContainer.appendChild(separator);
+    
+    const minuteInput = document.createElement('input');
+    minuteInput.type = 'number';
+    minuteInput.min = 0;
+    minuteInput.max = 59;
+    minuteInput.value = 0;
+    minuteInput.style.width = '50px';
+    customTimeContainer.appendChild(minuteInput);
+    
+    const setButton = document.createElement('button');
+    setButton.textContent = 'Set';
+    setButton.style.marginLeft = '5px';
+    setButton.addEventListener('click', () => {
+      const hour = parseInt(hourInput.value, 10);
+      const minute = parseInt(minuteInput.value, 10);
+      
+      const atmosphereSystem = this.engine.systems.atmosphere;
+      if (atmosphereSystem) {
+        atmosphereSystem.setTime(hour, minute);
+      }
+    });
+    customTimeContainer.appendChild(setButton);
+    
+    container.appendChild(customTimeContainer);
+    
+    // Add to document
+    this.container.appendChild(container);
   }
 }
