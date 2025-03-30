@@ -46,12 +46,16 @@ export class SunSystem {
       transparent: true,
       opacity: 0.9,
       side: THREE.DoubleSide,
-      depthWrite: false,
-      depthTest: false
+      depthWrite: false, 
+      // Use depth test but with a custom depth function that always passes
+      // This ensures the sun is rendered last but still positioned correctly in 3D space
+      depthTest: true,
+      depthFunc: THREE.AlwaysDepth
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
-    this.sunSphere.renderOrder = -1;
+    // Set high render order to ensure sun is rendered after all landscape elements
+    this.sunSphere.renderOrder = 99; // High value ensures it's drawn after terrain
     // Add the sun to a specific layer (layer 10) so we can control its visibility in reflections
     this.sunSphere.layers.set(10);
     this.scene.add(this.sunSphere);
@@ -64,7 +68,8 @@ export class SunSystem {
       opacity: 0.2,
       side: THREE.DoubleSide,
       depthWrite: false,
-      depthTest: false
+      depthTest: true,
+      depthFunc: THREE.AlwaysDepth
     });
     
     this.sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
@@ -101,8 +106,8 @@ export class SunSystem {
       this.sunSphere.lookAt(this.atmosphereSystem.engine.camera.position);
     }
     
-    // Set visibility based on horizon
-    this.sunSphere.visible = this.sunPosition.y > this.HORIZON_LEVEL;
+    // Always keep the sun visible, but will be occluded naturally when below horizon
+    this.sunSphere.visible = true;
   }
   
   updateSunAppearance(timeOfDay) {
@@ -110,8 +115,13 @@ export class SunSystem {
     const altitude = this.sunPosition.y;
     const horizonProximity = Math.max(0, 1 - Math.abs(altitude) / 1500);
     
+    // Adjust opacity based on altitude to fade sun below horizon
+    const belowHorizonFactor = altitude > 0 ? 1.0 : Math.max(0, 1.0 + (altitude / 300));
+    this.sunSphere.material.opacity = 0.9 * belowHorizonFactor;
+    this.sunGlow.material.opacity = 0.2 * belowHorizonFactor;
+    
     // Determine color based on height and time
-    if (altitude > 0) {
+    if (altitude > -300) {
       if (horizonProximity > 0.3) {
         // Sunrise/sunset colors
         const color = timeOfDay < 0.5 ? 0xffaa33 : 0xff7733;
