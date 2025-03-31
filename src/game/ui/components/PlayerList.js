@@ -18,8 +18,8 @@ export class PlayerList {
     // Create container
     this.container.id = 'player-list';
     this.container.style.position = 'absolute';
-    this.container.style.top = '20px';
-    this.container.style.left = '20px';
+    this.container.style.top = '120px'; // Position below the time control button
+    this.container.style.right = '20px'; // Right side
     this.container.style.backgroundColor = 'rgba(0, 0, 30, 0.7)';
     this.container.style.borderRadius = '10px';
     this.container.style.padding = '10px';
@@ -30,6 +30,35 @@ export class PlayerList {
     this.container.style.maxHeight = '300px';
     this.container.style.overflowY = 'auto';
     this.container.style.minWidth = '200px';
+    this.container.style.display = 'none'; // Initially hidden
+    
+    // Create toggle button
+    const toggleButton = document.createElement('div');
+    toggleButton.id = 'player-list-toggle';
+    toggleButton.style.position = 'absolute';
+    toggleButton.style.top = '70px'; // Position below time button
+    toggleButton.style.right = '80px'; // Position to the right of time button
+    toggleButton.style.width = '40px';
+    toggleButton.style.height = '40px';
+    toggleButton.style.backgroundColor = 'rgba(45, 48, 52, 0.9)';
+    toggleButton.style.borderRadius = '50%';
+    toggleButton.style.display = 'flex';
+    toggleButton.style.justifyContent = 'center';
+    toggleButton.style.alignItems = 'center';
+    toggleButton.style.cursor = 'pointer';
+    toggleButton.style.zIndex = '1001';
+    toggleButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.3)';
+    toggleButton.style.pointerEvents = 'auto';
+    toggleButton.innerHTML = '👥';
+    toggleButton.style.fontSize = '20px';
+    toggleButton.title = 'Players';
+    
+    // Toggle visibility on click
+    toggleButton.addEventListener('click', () => {
+      this.toggle();
+      toggleButton.style.backgroundColor = this.visible ? 
+        'rgba(65, 68, 72, 0.9)' : 'rgba(45, 48, 52, 0.9)';
+    });
     
     // Create header
     const header = document.createElement('div');
@@ -64,11 +93,10 @@ export class PlayerList {
     this.container.appendChild(header);
     this.container.appendChild(listContainer);
     
-    // Add to UI container
+    // Add toggle button and container to UI container
+    document.getElementById('ui-container').appendChild(toggleButton);
     document.getElementById('ui-container').appendChild(this.container);
     
-    // Hide by default
-    this.hide();
     this.initialized = true;
   }
   

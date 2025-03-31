@@ -58,8 +58,8 @@ export class PlayerSystem {
   }
   
   createLocalPlayer(id) {
-    // Get a random carpet model
-    const carpetModel = this.models.createCarpetModel();
+    // Get a carpet model with the player ID for consistent color
+    const carpetModel = this.models.createCarpetModel(id);
     
     // Create player object
     const player = {
@@ -108,8 +108,8 @@ export class PlayerSystem {
       return;
     }
     
-    // Get a random carpet model
-    const carpetModel = this.models.createCarpetModel();
+    // Get a carpet model with the player ID for consistent color
+    const carpetModel = this.models.createCarpetModel(data.id);
     
     // Create player object
     const player = {

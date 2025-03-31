@@ -40,13 +40,16 @@ io.on('connection', (socket) => {
   socket.on('request_id', () => {
     const playerId = uuidv4();
     
-    // Create new player
+    // Get number of connected players to position them in a staggered formation
+    const playerCount = players.size;
+    
+    // Create new player with staggered position
     const player = {
       id: playerId,
       name: `Player_${playerId.substring(0, 5)}`,
-      x: 0,
-      y: 0,
-      z: 0,
+      x: playerCount * 8, // Space players horizontally
+      y: 150, // Same altitude for all players
+      z: playerCount * 8, // Stagger diagonally
       socketId: socket.id
     };
     

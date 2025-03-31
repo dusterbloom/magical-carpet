@@ -31,7 +31,8 @@ export class MinimapSystem {
       otherPlayer: 'rgba(255, 100, 100, 1)',
       background: 'rgba(0, 0, 20, 0.5)',
       border: 'rgba(255, 255, 255, 0.5)',
-      direction: 'white'
+      direction: 'white',
+      playerNames: true // Show player names on minimap
     };
   }
 
@@ -275,8 +276,15 @@ export class MinimapSystem {
     const playerSystem = this.engine.systems.player;
     if (!playerSystem) return;
     
+    // Create a player array for distance sorting
+    const playersArray = Array.from(playerSystem.players.values());
+    
+    // Get local player
+    const localPlayer = playerSystem.localPlayer;
+    if (!localPlayer) return;
+    
     // Draw each player
-    playerSystem.players.forEach(player => {
+    playersArray.forEach(player => {
       // Convert world position to minimap position
       const mapPos = this.worldToMap(player.position.x, player.position.z);
       
@@ -294,6 +302,18 @@ export class MinimapSystem {
           this.context.arc(mapPos.x, mapPos.z, 3, 0, Math.PI * 2);
         }
         this.context.fill();
+        
+        // Draw player name if enabled
+        if (this.colors.playerNames && !player.isLocal) {
+          this.context.font = '8px Arial';
+          this.context.textAlign = 'center';
+          this.context.fillStyle = 'white';
+          this.context.fillText(
+            player.name || `Player ${player.id.substring(0, 4)}`,
+            mapPos.x,
+            mapPos.z - 8
+          );
+        }
         
         // Draw direction indicator for local player
         if (player.isLocal) {
@@ -315,8 +335,76 @@ export class MinimapSystem {
           this.context.lineTo(mapPos.x, mapPos.z);
           this.context.fill();
         }
+        
+        // For other players, draw a small directional arrow
+        if (!player.isLocal) {
+          // Calculate distance to local player
+          const distance = localPlayer.position.distanceTo(player.position);
+          
+          // Draw distance number
+          this.context.font = '8px Arial';
+          this.context.textAlign = 'center';
+          this.context.fillStyle = 'yellow';
+          this.context.fillText(
+            `${Math.round(distance)}m`,
+            mapPos.x,
+            mapPos.z + 10
+          );
+        }
+      } else if (!player.isLocal) {
+        // Player outside of minimap range - draw edge indicator
+        this.drawPlayerOffMap(player, localPlayer);
       }
     });
+  }
+  
+  /**
+   * Draw indicator for players outside of minimap range
+   */
+  drawPlayerOffMap(player, localPlayer) {
+    const centerX = this.size / 2;
+    const centerY = this.size / 2;
+    const radius = this.size / 2 - 5; // Slightly inside the minimap edge
+    
+    // Calculate angle from local player to this player
+    const dx = player.position.x - localPlayer.position.x;
+    const dz = player.position.z - localPlayer.position.z;
+    let angle = Math.atan2(dz, dx);
+    
+    // Rotate by -90 degrees to match minimap orientation
+    angle -= Math.PI / 2;
+    
+    // Calculate position on edge of minimap
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+    
+    // Draw arrow pointing to player
+    this.context.beginPath();
+    this.context.fillStyle = 'rgba(255, 100, 100, 1)';
+    
+    // Create triangle pointing in direction of player
+    this.context.save();
+    this.context.translate(x, y);
+    this.context.rotate(angle);
+    
+    // Draw triangle
+    this.context.beginPath();
+    this.context.moveTo(0, -5);
+    this.context.lineTo(-3, 3);
+    this.context.lineTo(3, 3);
+    this.context.closePath();
+    this.context.fill();
+    
+    this.context.restore();
+    
+    // Calculate distance to local player
+    const distance = localPlayer.position.distanceTo(player.position);
+    
+    // Draw small distance indicator
+    this.context.font = '8px Arial';
+    this.context.textAlign = 'center';
+    this.context.fillStyle = 'yellow';
+    this.context.fillText(`${Math.round(distance)}m`, x, y + 10);
   }
   
   /**

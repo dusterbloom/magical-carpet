@@ -19,14 +19,14 @@ export class PlayerModels {
     // In a real implementation, you would use the loaded models from assets
     // For simplicity, we'll create simple meshes
     
-    // Create different carpet materials for players
+    // Create different carpet materials for players with brighter colors
     this.carpetMaterials = [
-      new THREE.MeshStandardMaterial({ color: 0xff5555, roughness: 0.7, metalness: 0.3 }),
-      new THREE.MeshStandardMaterial({ color: 0x55ff55, roughness: 0.7, metalness: 0.3 }),
-      new THREE.MeshStandardMaterial({ color: 0x5555ff, roughness: 0.7, metalness: 0.3 }),
-      new THREE.MeshStandardMaterial({ color: 0xffff55, roughness: 0.7, metalness: 0.3 }),
-      new THREE.MeshStandardMaterial({ color: 0xff55ff, roughness: 0.7, metalness: 0.3 }),
-      new THREE.MeshStandardMaterial({ color: 0x55ffff, roughness: 0.7, metalness: 0.3 })
+      new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.7, metalness: 0.3 }),
+      new THREE.MeshStandardMaterial({ color: 0x33ff33, roughness: 0.7, metalness: 0.3 }),
+      new THREE.MeshStandardMaterial({ color: 0x3333ff, roughness: 0.7, metalness: 0.3 }),
+      new THREE.MeshStandardMaterial({ color: 0xffff33, roughness: 0.7, metalness: 0.3 }),
+      new THREE.MeshStandardMaterial({ color: 0xff33ff, roughness: 0.7, metalness: 0.3 }),
+      new THREE.MeshStandardMaterial({ color: 0x33ffff, roughness: 0.7, metalness: 0.3 })
     ];
     
     // Create a simple carpet model
@@ -46,10 +46,36 @@ export class PlayerModels {
     console.log(`Created ${this.carpetModels.length} carpet models`);
   }
   
-  createCarpetModel() {
-    // Get a random carpet model
-    const carpetIndex = Math.floor(Math.random() * this.carpetModels.length);
+  createCarpetModel(playerId) {
+    // Use player ID to determine carpet color consistently
+    let carpetIndex = 0;
+    
+    if (playerId) {
+      // Hash the player ID to get a consistent color
+      let hash = 0;
+      for (let i = 0; i < playerId.length; i++) {
+        hash = ((hash << 5) - hash) + playerId.charCodeAt(i);
+        hash |= 0; // Convert to 32bit integer
+      }
+      carpetIndex = Math.abs(hash) % this.carpetModels.length;
+    } else {
+      // Random for local testing
+      carpetIndex = Math.floor(Math.random() * this.carpetModels.length);
+    }
+    
     const carpetModel = this.carpetModels[carpetIndex].clone();
+    
+    // Add a floating marker above the carpet for better visibility
+    const markerGeometry = new THREE.SphereGeometry(1, 8, 8);
+    const markerMaterial = new THREE.MeshBasicMaterial({ 
+      color: this.carpetMaterials[carpetIndex].color,
+      transparent: true,
+      opacity: 0.8 
+    });
+    
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.y = 3; // Position above carpet
+    carpetModel.add(marker);
     
     return carpetModel;
   }
