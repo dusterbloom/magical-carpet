@@ -4,6 +4,7 @@ export class SunSystem {
   constructor(atmosphereSystem) {
     this.atmosphereSystem = atmosphereSystem;
     this.scene = atmosphereSystem.scene;
+    this.engine = atmosphereSystem.engine;
     
     // Constants - centralized configuration
     this.SUN_RADIUS = 120;
@@ -17,6 +18,18 @@ export class SunSystem {
     this.sunGlow = null;
     this.ambientLight = null;
     this.sunPosition = new THREE.Vector3();
+    
+    // Configuration for render layers
+    this.renderLayer = 10; // Default layer for the sun (used by water reflections)
+    
+    // Configuration for different materials/appearances
+    this.sunMaterialConfig = {
+      color: 0xffff00,
+      opacity: 0.9
+    };
+    
+    // Track visibility state
+    this.isVisible = true;
   }
   
   async initialize() {
@@ -42,22 +55,23 @@ export class SunSystem {
     // Simple, small sun disk
     const sunGeometry = new THREE.CircleGeometry(this.SUN_RADIUS, 32);
     const sunMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
-      transparent: false,
-      opacity: 0.81,
+      color: this.sunMaterialConfig.color,
+      transparent: true,
+      opacity: this.sunMaterialConfig.opacity,
       side: THREE.FrontSide,
-      // depthWrite: false, 
+      depthWrite: false, 
       // Use depth test but with a custom depth function that always passes
       // This ensures the sun is rendered last but still positioned correctly in 3D space
-      // depthTest: true,
-      // depthFunc: THREE.AlwaysDepth
+      depthTest: true,
+      depthFunc: THREE.AlwaysDepth
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
     // Set high render order to ensure sun is rendered after all landscape elements
     this.sunSphere.renderOrder = 99; // High value ensures it's drawn after terrain
     // Add the sun to a specific layer (layer 10) so we can control its visibility in reflections
-    this.sunSphere.layers.set(10);
+    this.sunSphere.layers.set(this.renderLayer);
+    this.sunSphere.visible = this.isVisible;
     this.scene.add(this.sunSphere);
     
     // Subtle glow
@@ -85,9 +99,7 @@ export class SunSystem {
     this.updateSunAppearance(timeOfDay);
   }
   
-  updateSunPosition(timeOfDay, yearProgress) {
-    
-  
+  updateSunPosition(timeOfDay, yearProgress) {  
     // Calculate seasonal tilt effect on path
     const seasonalTilt = 1.0 + Math.sin(yearProgress * Math.PI * 2) * 0.15;
     
@@ -104,12 +116,12 @@ export class SunSystem {
     this.sunLight.position.copy(this.sunPosition);
     
     // Face camera
-    if (this.atmosphereSystem.engine.camera) {
-      this.sunSphere.lookAt(this.atmosphereSystem.engine.camera.position);
+    if (this.engine.camera) {
+      this.sunSphere.lookAt(this.engine.camera.position);
     }
     
-    // Always keep the sun visible, but will be occluded naturally when below horizon
-    this.sunSphere.visible = true;
+    // Apply visibility based on tracking state
+    this.sunSphere.visible = this.isVisible;
   }
   
   updateSunAppearance(timeOfDay) {
@@ -154,5 +166,31 @@ export class SunSystem {
   
   getSunPosition() {
     return this.sunPosition.clone();
+  }
+  
+  // Public methods for controlling appearance
+  setSunColor(color) {
+    this.sunMaterialConfig.color = color;
+    if (this.sunSphere && this.sunSphere.material) {
+      this.sunSphere.material.color.setHex(color);
+    }
+  }
+  
+  setSunVisibility(isVisible) {
+    this.isVisible = isVisible;
+    if (this.sunSphere) {
+      this.sunSphere.visible = isVisible;
+    }
+  }
+  
+  // Methods to support water reflections
+  enableReflections(enable) {
+    if (this.sunSphere) {
+      if (enable) {
+        this.sunSphere.layers.enable(this.renderLayer);
+      } else {
+        this.sunSphere.layers.disable(this.renderLayer);
+      }
+    }
   }
 }

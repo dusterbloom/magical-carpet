@@ -142,12 +142,12 @@ export class AtmosphereSystem {
       this.updateCalendar(delta);
     }
     
-    // Update all subsystems
-    this.skySystem.update(delta);
+    // Update all subsystems - ensure SunSystem updates before systems that might use it
+    this.sunSystem.update(delta);  // Update SunSystem first
+    this.skySystem.update(delta);  // Sky system now relies on sun system
     this.moonSystem.update(delta);
     this.starSystem.update(delta);
     this.cloudSystem.update(delta);
-    this.sunSystem.update(delta);
   }
   
   /**

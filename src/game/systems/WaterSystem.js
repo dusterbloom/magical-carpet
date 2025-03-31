@@ -84,14 +84,15 @@ createWater() {
   //  * @param {number} deltaTime - Time elapsed since last update
   //  */
 
-// Add this to your update method
 update(deltaTime) {
   if (this.water) {
     this.water.material.uniforms['time'].value += deltaTime * 0.8;
     
-    // Update sun direction
-    if (this.engine.systems.atmosphere && this.engine.systems.atmosphere.sunLight) {
-      const sunDirection = this.engine.systems.atmosphere.sunLight.position.clone().normalize();
+    // Update sun direction using SunSystem reference
+    if (this.engine.systems.atmosphere && 
+        this.engine.systems.atmosphere.sunSystem) {
+      const sunPosition = this.engine.systems.atmosphere.sunSystem.getSunPosition();
+      const sunDirection = sunPosition.clone().normalize();
       this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
     }
 
@@ -111,7 +112,7 @@ update(deltaTime) {
       this._reflectionCameraInitialized = true;
     }
     
-    // Check if sun is visible and set reflection accordingly
+    // Update reflection using SunSystem's enableReflections method
     if (this.engine.systems.atmosphere && this.engine.systems.atmosphere.sunSystem) {
       const sunSystem = this.engine.systems.atmosphere.sunSystem;
       
@@ -130,24 +131,14 @@ update(deltaTime) {
           return;
         }
         
-        // Get the reflection camera
-        const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
-        
         // Get the sun position and check if it's above horizon AND visible
         const sunPos = sunSystem.getSunPosition();
         // Use a higher threshold to account for mountains
-        // This creates a buffer zone where the sun won't reflect if it's near the horizon
         const safeThreshold = sunSystem.HORIZON_LEVEL + 200;
         const isSunHighEnough = sunPos.y > safeThreshold;
         
-        // Only allow sun reflection if it's well above the horizon (above mountains)
-        if (isSunHighEnough) {
-          // Sun should be visible in reflection - enable layer 10
-          reflectionCamera.layers.enable(10);
-        } else {
-          // Sun should be hidden - disable layer 10
-          reflectionCamera.layers.disable(10);
-        }
+        // Use SunSystem's enableReflections method
+        sunSystem.enableReflections(isSunHighEnough);
         
         // Call original render function
         if (this._originalOnBeforeRender) {
