@@ -43,14 +43,14 @@ export class SunSystem {
     const sunGeometry = new THREE.CircleGeometry(this.SUN_RADIUS, 32);
     const sunMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
-      transparent: true,
-      opacity: 0.9,
-      side: THREE.DoubleSide,
-      depthWrite: false, 
+      transparent: false,
+      opacity: 1,
+      side: THREE.FrontSide,
+      // depthWrite: false, 
       // Use depth test but with a custom depth function that always passes
       // This ensures the sun is rendered last but still positioned correctly in 3D space
-      depthTest: true,
-      depthFunc: THREE.AlwaysDepth
+      // depthTest: true,
+      // depthFunc: THREE.AlwaysDepth
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
@@ -86,6 +86,8 @@ export class SunSystem {
   }
   
   updateSunPosition(timeOfDay, yearProgress) {
+    
+  
     // Calculate seasonal tilt effect on path
     const seasonalTilt = 1.0 + Math.sin(yearProgress * Math.PI * 2) * 0.15;
     

@@ -54,11 +54,11 @@ export class SkySystem {
     const sunGeometry = new THREE.CircleGeometry(150, 32);
     const sunMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.9,
-      depthWrite: false,
-      depthTest: false
+      side: THREE.FrontSide,
+      transparent: false,
+      opacity: 0.91,
+      // depthWrite: false,
+      // depthTest: false
     });
     
     this.directSun = new THREE.Mesh(sunGeometry, sunMaterial);

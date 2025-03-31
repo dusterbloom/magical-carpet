@@ -297,11 +297,13 @@ createVolumetricClouds() {
     // Create much smaller sun sphere for distant appearance
     const sunGeometry = new THREE.SphereGeometry(100, 16, 16); // Smaller geometry
     const sunMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff80,
-      transparent: false,
-      fog: false,
-      depthWrite: false, // Don't write to depth buffer to prevent clipping
-      depthTest: false   // Don't test against depth buffer to always be visible
+      color: 0xffff00,
+      side: THREE.FrontSide,
+      transparent: true,
+      opacity: 0.1,
+      
+      // depthWrite: true, // Don't write to depth buffer to prevent clipping
+      // depthTest: false   // Don't test against depth buffer to always be visible
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
