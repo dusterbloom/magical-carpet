@@ -4,6 +4,7 @@ import Stats from "three/examples/jsm/libs/stats.module";
 import { InputManager } from "./InputManager";
 import { AssetManager } from "./AssetManager";
 import { PerformanceMonitor } from "./PerformanceMonitor";
+import { Settings } from "./settings/Settings";
 import { NetworkManager } from "../systems/NetworkManager";
 import { WorldSystem } from "../systems/WorldSystem";
 import { PlayerSystem } from "../systems/PlayerSystem";
@@ -15,6 +16,7 @@ import { WaterSystem } from "../systems/WaterSystem";
 import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
+
 // ShorelineEffect removed
 
 
@@ -32,6 +34,9 @@ export class Engine {
     
     // Create performance monitor
     this.performanceMonitor = new PerformanceMonitor();
+    
+    // Create settings but do NOT add it to systems list
+    this.settings = new Settings();
 
     // Create core managers
     this.input = new InputManager();
@@ -79,6 +84,7 @@ export class Engine {
     await this.assets.initialize();
 
     // Create systems in correct order (dependencies first)
+   
     this.systems.network = new NetworkManager(this);
     this.systems.world = new WorldSystem(this);
     this.systems.water = new WaterSystem(this);
@@ -89,11 +95,13 @@ export class Engine {
     this.systems.carpetTrail = new CarpetTrailSystem(this);
     this.systems.landmarks = new LandmarkSystem(this);
     this.systems.minimap = new MinimapSystem(this);
+    // Settings is already initialized in the constructor, not a system
     // ShorelineEffect removed
 
 
     // Define initialization order (some systems depend on others)
     const initOrder = [
+      
       "network",
       "world", // Base terrain must be initialized first
       "water", // Water system should be initialized after terrain
@@ -173,6 +181,14 @@ export class Engine {
     
     // Update performance monitor
     this.performanceMonitor.update(this.renderer, this);
+    
+    // Check if performance requires adjusting quality settings - only on mobile
+    if (this.settings && this.settings.isMobile && Math.floor(this.elapsed) % 5 === 0) {
+      const report = this.performanceMonitor.generateReport();
+      if (this.settings.updateFromPerformance(report)) {
+        console.log('Mobile: Performance-based quality adjustments applied');
+      }
+    }
 
     // Update stats if available
     if (this.stats) this.stats.update();

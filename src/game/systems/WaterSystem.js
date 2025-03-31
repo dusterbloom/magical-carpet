@@ -47,9 +47,42 @@ export class WaterSystem {
 createWater() {
   const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
   
+  // Get quality setting from engine if available - only apply reduced quality on mobile
+  let waterQuality = 'high';
+  if (this.engine.settings && this.engine.settings.quality && this.engine.settings.isMobile) {
+    waterQuality = this.engine.settings.quality.water;
+    console.log(`Mobile device: Creating water with ${waterQuality} quality`);
+  }
+  
+  // Configure water based on quality setting (only for mobile)
+  let textureSize = 2048;
+  let distortionScale = 0.8;
+  let alpha = 0.95;
+  
+  // Only apply reduced settings on mobile
+  if (this.engine.settings && this.engine.settings.isMobile) {
+    switch (waterQuality) {
+      case 'low':
+        textureSize = 128; // Extremely low texture
+        distortionScale = 0; // No distortion at all
+        alpha = 0.8; // More transparent
+        break;
+      case 'medium':
+        textureSize = 256; // Much smaller than before
+        distortionScale = 0.1; // Very little distortion
+        alpha = 0.85;
+        break;
+      case 'high':
+        textureSize = 512; // Half of previous
+        distortionScale = 0.2;
+        alpha = 0.9;
+        break;
+    }
+  }
+  
   const water = new Water(waterGeometry, {
-    textureWidth: 2048,
-    textureHeight: 2048,
+    textureWidth: textureSize,
+    textureHeight: textureSize,
     waterNormals: new TextureLoader().load('textures/2waternormals.jpg', function (texture) {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(32, 32); // Gentle repeat to reduce stretching
@@ -57,10 +90,10 @@ createWater() {
     sunDirection: new THREE.Vector3(), // Will be updated in update method
     sunColor: 0xffffff,
     waterColor: 0x001e0f, // More vibrant blue that won't show terrain
-    distortionScale: 0.8, // Only slightly reduced from 1.5
+    distortionScale: distortionScale,
     clipBias: 0.001, // Moderately increased from 0.00001
     fog: this.scene.fog !== undefined,
-    alpha: 0.95 // Higher opacity to mask terrain
+    alpha: alpha // Opacity adjusted based on quality
   });
   
   water.rotation.x = -Math.PI / 2;
@@ -69,6 +102,23 @@ createWater() {
   // Store a reference to handle the reflection camera setup
   // (We'll initialize it properly in the update method since it might not exist yet)
   this._reflectionCameraInitialized = false;
+  this._waterQuality = waterQuality;
+  
+  // For mobile with low quality, immediately disable reflections completely
+  if (this.engine.settings && this.engine.settings.isMobile && waterQuality === 'low') {
+    console.log('Mobile low quality: Disabling water reflections completely');
+    // Set the texture matrix to identity to disable reflections
+    water.material.uniforms['textureMatrix'].value = new THREE.Matrix4();
+    
+    // Modify the material directly for even more optimization
+    if (water.material) {
+      // Simplify the material by reducing effect complexity
+      water.material.defines = water.material.defines || {};
+      water.material.defines.DEPTH_EFFECT = 0;
+      water.material.defines.SKY_EFFECT = 0;
+      water.material.needsUpdate = true;
+    }
+  }
 
   water.rotation.x = -Math.PI / 2;
   water.position.y = this.waterLevel;
@@ -86,7 +136,16 @@ createWater() {
 
 update(deltaTime) {
   if (this.water) {
-    this.water.material.uniforms['time'].value += deltaTime * 0.8;
+    // Use default animation speed for desktop, adjust for mobile only
+    let animationSpeed = 0.8;
+    
+    // Only adjust animation speed on mobile
+    if (this.engine.settings && this.engine.settings.isMobile && this._waterQuality) {
+      animationSpeed = this._waterQuality === 'low' ? 0.3 : 
+                        this._waterQuality === 'medium' ? 0.5 : 0.8;
+    }
+    
+    this.water.material.uniforms['time'].value += deltaTime * animationSpeed;
     
     // Update sun direction using SunSystem reference
     if (this.engine.systems.atmosphere && 
@@ -102,13 +161,25 @@ update(deltaTime) {
       this.water.position.z = this.engine.camera.position.z;
     }
     
+    // Skip reflection processing for low quality on mobile
+    if (this.engine.settings && this.engine.settings.isMobile && 
+        this._waterQuality === 'low') {
+      return;
+    }
+    
     // Initialize reflection camera when it becomes available
     if (!this._reflectionCameraInitialized && this.water.material.uniforms.reflectionCamera) {
       const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
       // Configure base layers (default scene content)
       reflectionCamera.layers.set(0);  // Reset to default layer
       reflectionCamera.layers.enable(1); // Regular scene
-      reflectionCamera.layers.enable(2); // Cloud reflections
+      
+      // On mobile, only enable cloud reflections for high quality
+      if (!this.engine.settings || !this.engine.settings.isMobile || 
+          this._waterQuality === 'high') {
+        reflectionCamera.layers.enable(2); // Cloud reflections
+      }
+      
       this._reflectionCameraInitialized = true;
     }
     
@@ -145,6 +216,48 @@ update(deltaTime) {
           this._originalOnBeforeRender(renderer, scene, camera);
         }
       };
+    }
+  }
+  
+  // Check performance and update quality if needed - but ONLY on mobile
+  if (this.engine.settings && this.engine.settings.isMobile && 
+      this.engine.performanceMonitor && this._waterQuality) {
+    const currentQuality = this._waterQuality;
+    const report = this.engine.performanceMonitor.generateReport();
+    
+    // If FPS drops below threshold, check if we need to update water quality
+    // More aggressive for mobile - force low quality on very poor performance
+    if (report.current.fps < 15) { // Lowered from 20
+      const newQuality = 'low'; // Always set to low for poor performance mobile
+      
+      console.log(`Mobile: Very low FPS detected (${report.current.fps.toFixed(1)}), setting water quality to low`);
+      
+      // Recreate water with lower quality
+      if (this.engine.settings) {
+        this.engine.settings.setQuality('water', newQuality);
+        
+        // Remove existing water
+        if (this.water) {
+          this.scene.remove(this.water);
+          this.water.geometry.dispose();
+          this.water.material.dispose();
+        }
+        
+        // Create new water with updated quality
+        this.createWater();
+      }
+    }
+    
+    // If FPS still extremely low after applying low quality settings, disable water entirely
+    if (report.current.fps < 10 && this._waterQuality === 'low' && this.water && this.water.visible) {
+      console.log(`Mobile: Emergency performance mode - making water invisible`);
+      // Hide water entirely without removing it
+      this.water.visible = false;
+    }
+    // If FPS recovers, make water visible again
+    else if (report.current.fps > 20 && this._waterQuality === 'low' && this.water && !this.water.visible) {
+      console.log(`Mobile: Performance recovered - making water visible again`);
+      this.water.visible = true;
     }
   }
 }

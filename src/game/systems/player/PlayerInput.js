@@ -12,6 +12,16 @@ export class PlayerInput {
     this.rotationDamping = 0.92;     // New: dampens rotation
     
     this.currentThrottle = 0;
+    
+    // Motion control properties
+    this.motionControlsEnabled = false;
+    this.motionSensitivity = {
+      pitch: 0.05,  // Controls up/down movement
+      yaw: 0.08     // Controls left/right turning
+    };
+    
+    // Touch altitude control state
+    this.touchAltitude = { up: false, down: false };
   }
   
   setupInput() {
@@ -92,9 +102,13 @@ export class PlayerInput {
     if (spacePressed) verticalForce += 1;
     if (input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight')) verticalForce -= 1;
     
+    // Handle touch altitude controls
+    if (this.touchAltitude.up) verticalForce += 1;
+    if (this.touchAltitude.down) verticalForce -= 1;
+    
     // Update contrail system based on space key state
     if (this.engine.systems.carpetTrail) {
-      this.engine.systems.carpetTrail.setSpaceBarState(spacePressed);
+      this.engine.systems.carpetTrail.setSpaceBarState(spacePressed || this.touchAltitude.up);
     }
     
     if (verticalForce !== 0) {
@@ -104,6 +118,43 @@ export class PlayerInput {
     // Apply natural falling when not using vertical controls
     if (verticalForce === 0) {
       physics.applyAltitudeChange(player, -5 * delta); // Gentle falling
+    }
+    
+    // Handle device motion controls if enabled
+    if (this.motionControlsEnabled && input.deviceMotionEnabled && input.initialOrientation) {
+      const orientation = input.deviceOrientation;
+      const initial = input.initialOrientation;
+      
+      // Calculate differences from initial orientation
+      const betaDiff = (orientation.beta - initial.beta) * this.motionSensitivity.pitch;
+      const gammaDiff = (orientation.gamma - initial.gamma) * this.motionSensitivity.yaw;
+      
+      // Map beta (forward/back tilt) to altitude changes
+      if (Math.abs(betaDiff) > 3) { // Reduced threshold from 5 to 3
+        // Forward tilt (negative beta diff) -> go down
+        // Backward tilt (positive beta diff) -> go up
+        physics.applyAltitudeChange(player, betaDiff * delta * 0.5);
+      }
+      
+      // Map gamma (left/right tilt) to turning
+      if (Math.abs(gammaDiff) > 1) { // Reduced threshold from 2 to 1
+        // Right tilt (positive gamma diff) -> turn right
+        // Left tilt (negative gamma diff) -> turn left
+        player.rotation.y -= gammaDiff * delta;
+        
+        // Apply banking effect
+        const targetBankAngle = -gammaDiff * 0.03;
+        player.bankAngle = THREE.MathUtils.lerp(
+          player.bankAngle,
+          targetBankAngle,
+          0.1
+        );
+      }
+      
+      // IMPORTANT ADDITION: Always apply forward force when using motion controls
+      // This ensures the carpet is always moving forward
+      const motionForwardForce = player.maxSpeed * 0.5; // Use 50% of max speed
+      physics.applyForwardForce(player, motionForwardForce * delta);
     }
   }
   
@@ -220,6 +271,27 @@ export class PlayerInput {
     });
     
     this.setupJoystickEvents(input, joystick);
+  }
+  
+  // Toggle motion controls on/off
+  toggleMotionControls(enabled) {
+    this.motionControlsEnabled = enabled;
+    const input = this.engine.input;
+    
+    if (enabled) {
+      input.setDeviceMotionEnabled(true);
+      
+      // Hide virtual joystick when using motion controls
+      if (this.joystick) {
+        this.joystick.active = false;
+        this.joystick.position.x = 0;
+        this.joystick.position.y = 0;
+      }
+    } else {
+      input.setDeviceMotionEnabled(false);
+    }
+    
+    return this.motionControlsEnabled;
   }
   
   setupJoystickEvents(input, joystickElement) {

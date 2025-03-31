@@ -541,6 +541,77 @@ export class UISystem {
     
     container.appendChild(sliderContainer);
     
+    // Add toggle for motion controls (only on mobile)
+    if (this.engine.input.isTouchDevice) {
+      const motionControlsTitle = document.createElement('div');
+      motionControlsTitle.textContent = 'Motion Controls';
+      motionControlsTitle.style.fontSize = '18px';
+      motionControlsTitle.style.textAlign = 'center';
+      motionControlsTitle.style.marginBottom = '10px';
+      motionControlsTitle.style.marginTop = '15px';
+      motionControlsTitle.style.fontWeight = 'bold';
+      container.appendChild(motionControlsTitle);
+      
+      // Create toggle button for motion controls
+      const toggleContainer = document.createElement('div');
+      toggleContainer.style.display = 'flex';
+      toggleContainer.style.justifyContent = 'center';
+      toggleContainer.style.alignItems = 'center';
+      toggleContainer.style.marginBottom = '15px';
+      
+      const toggleLabel = document.createElement('div');
+      toggleLabel.textContent = 'Use device tilt for controls';
+      toggleLabel.style.marginRight = '10px';
+      toggleContainer.appendChild(toggleLabel);
+      
+      const toggleSwitch = document.createElement('div');
+      toggleSwitch.style.width = '44px';
+      toggleSwitch.style.height = '24px';
+      toggleSwitch.style.backgroundColor = '#1c1e21';
+      toggleSwitch.style.borderRadius = '12px';
+      toggleSwitch.style.position = 'relative';
+      toggleSwitch.style.cursor = 'pointer';
+      
+      const toggleIndicator = document.createElement('div');
+      toggleIndicator.style.width = '18px';
+      toggleIndicator.style.height = '18px';
+      toggleIndicator.style.backgroundColor = 'white';
+      toggleIndicator.style.borderRadius = '50%';
+      toggleIndicator.style.position = 'absolute';
+      toggleIndicator.style.top = '3px';
+      toggleIndicator.style.left = '3px';
+      toggleIndicator.style.transition = 'all 0.2s';
+      toggleSwitch.appendChild(toggleIndicator);
+      
+      // Initialize state based on current settings
+      let motionControlsEnabled = false;
+      
+      // Update toggle state
+      const updateToggleState = (enabled) => {
+        if (enabled) {
+          toggleIndicator.style.left = '23px';
+          toggleSwitch.style.backgroundColor = '#4285f4';
+        } else {
+          toggleIndicator.style.left = '3px';
+          toggleSwitch.style.backgroundColor = '#1c1e21';
+        }
+      };
+      
+      // Handle toggle click
+      toggleSwitch.addEventListener('click', () => {
+        motionControlsEnabled = !motionControlsEnabled;
+        updateToggleState(motionControlsEnabled);
+        
+        // Toggle motion controls in the player system
+        if (this.engine.systems.player && this.engine.systems.player.input) {
+          this.engine.systems.player.input.toggleMotionControls(motionControlsEnabled);
+        }
+      });
+      
+      toggleContainer.appendChild(toggleSwitch);
+      container.appendChild(toggleContainer);
+    }
+    
     // Close button
     const closeButton = document.createElement('div');
     closeButton.textContent = '✕';
