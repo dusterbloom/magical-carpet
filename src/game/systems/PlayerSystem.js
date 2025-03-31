@@ -29,10 +29,17 @@ export class PlayerSystem {
     await this.models.initialize();
     await this.spells.initialize();
     
-    // Set up touch controls for mobile devices
+    // Set up touch controls for mobile devices, but keep them hidden until game starts
     if (this.engine.input.isTouchDevice) {
       console.log('Setting up touch controls for mobile device');
       this.input.setupTouchControls();
+      
+      // Only show controls immediately if game has already started
+      // (i.e., the player joined after intro screen was dismissed)
+      if (this.engine.gameStarted) {
+        console.log('Game already started, showing mobile controls immediately');
+        this.input.showMobileControls();
+      }
     }
     
     // Listen for network events

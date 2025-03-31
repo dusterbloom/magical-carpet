@@ -211,6 +211,9 @@ export class PlayerInput {
     console.log('Setting up touch controls UI elements');
     const input = this.engine.input;
     
+    // Store UI elements in a collection for easy access
+    this.mobileControlElements = [];
+    
     // Debug overlay for mobile input
     this.createDebugOverlay();
     
@@ -225,7 +228,9 @@ export class PlayerInput {
     joystickContainer.style.background = 'rgba(255, 255, 255, 0.3)';
     joystickContainer.style.border = '2px solid rgba(255, 255, 255, 0.5)';
     joystickContainer.style.zIndex = '1000';
+    joystickContainer.style.display = 'none'; // Initially hidden until game starts
     document.body.appendChild(joystickContainer);
+    this.mobileControlElements.push(joystickContainer);
     
     const joystick = document.createElement('div');
     joystick.style.position = 'absolute';
@@ -250,14 +255,17 @@ export class PlayerInput {
     spaceButton.style.display = 'flex';
     spaceButton.style.alignItems = 'center';
     spaceButton.style.justifyContent = 'center';
-    spaceButton.style.fontSize = '36px';
-    spaceButton.textContent = '↑'; // Up arrow symbol
+    spaceButton.style.fontSize = '28px';
+    spaceButton.innerHTML = '🚀'; // Rocket emoji
+    // Controls already centered
     spaceButton.style.pointerEvents = 'auto';
     spaceButton.style.color = 'white';
     spaceButton.style.boxShadow = '0 0 15px rgba(30, 144, 255, 0.5)';
     spaceButton.style.zIndex = '1000';
     spaceButton.style.userSelect = 'none';
+    spaceButton.style.display = 'none'; // Initially hidden until game starts
     document.body.appendChild(spaceButton);
+    this.mobileControlElements.push(spaceButton);
     
     // Initialize joystick state
     this.joystick = {
@@ -272,8 +280,24 @@ export class PlayerInput {
     
     // Update joystick container rect on resize
     window.addEventListener('resize', () => {
-      this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+      // Update joystick container rect when visible
+      if (joystickContainer.style.display !== 'none') {
+        this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+      }
     });
+    
+    // Also update the rect when container becomes visible
+    const updateJoystickRect = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          if (joystickContainer.style.display !== 'none') {
+            this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+          }
+        }
+      });
+    });
+    
+    updateJoystickRect.observe(joystickContainer, { attributes: true });
     
     // Handle space button events - works exactly like spacebar
     spaceButton.addEventListener('touchstart', () => {
@@ -479,7 +503,9 @@ export class PlayerInput {
     debugToggle.textContent = 'D';
     debugToggle.style.zIndex = '2001';
     debugToggle.style.userSelect = 'none';
+    debugToggle.style.display = 'none'; // Initially hidden until game starts
     document.body.appendChild(debugToggle);
+    this.mobileControlElements.push(debugToggle);
     
     // Toggle debug display on click
     debugToggle.addEventListener('touchstart', (e) => {
@@ -487,7 +513,26 @@ export class PlayerInput {
       this.debugOverlay.style.display = this.debugOverlay.style.display === 'none' ? 'block' : 'none';
     });
     
-    // Start with debug visible
+    // Start with debug hidden
+    this.debugOverlay.style.display = 'none';
+    this.mobileControlElements.push(this.debugOverlay);
+  }
+  
+  /**
+   * Show mobile controls after game starts
+   */
+  showMobileControls() {
+    console.log('Showing mobile controls');
+    if (this.mobileControlElements) {
+      this.mobileControlElements.forEach(element => {
+        if (element === this.debugOverlay) {
+          // Keep debug overlay hidden initially
+          return;
+        }
+        element.style.display = element === this.debugOverlay ? 'none' : 'block';
+      });
+    }
+    // Start debug overlay updates
     this.updateDebugOverlay();
   }
   

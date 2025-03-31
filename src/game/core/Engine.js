@@ -17,6 +17,7 @@ import { WaterSystem } from "../systems/WaterSystem";
 import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
+import { IntroScreen } from "../ui/screens/IntroScreen";
 
 // ShorelineEffect removed
 
@@ -32,6 +33,7 @@ export class Engine {
     this.isVisible = true;
     this.maxDeltaTime = 1/15; // Cap at 15 FPS equivalent
     this.devicePixelRatio = Math.min(window.devicePixelRatio, 2);
+    this.gameStarted = false; // Flag to track if the game has started
     
     // Create performance monitor
     this.performanceMonitor = new PerformanceMonitor();
@@ -135,6 +137,18 @@ export class Engine {
     // Start game loop
     this.isRunning = true;
     this.animate();
+    
+    // Initialize intro screen
+    this.introScreen = new IntroScreen(this);
+    
+    // Set callback for when play button is clicked
+    this.introScreen.onPlay(() => {
+      console.log("Game started from intro screen");
+      this.gameStarted = true;
+    });
+    
+    // Show intro screen
+    this.introScreen.show();
 
     console.log("Engine initialized successfully");
   }

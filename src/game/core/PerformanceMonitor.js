@@ -103,7 +103,7 @@ export class PerformanceMonitor {
    */
   addSystemTime(system, time) {
     if (!this.metrics.systemTimes[system]) {
-      console.warn(`System "${system}" not found in metrics tracking`);
+      // console.warn(`System "${system}" not found in metrics tracking`);
       return;
     }
     

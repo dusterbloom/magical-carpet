@@ -29,6 +29,7 @@ export class IntroScreen {
     this.container.style.justifyContent = 'center';
     this.container.style.alignItems = 'center';
     this.container.style.zIndex = '1000';
+    this.container.style.pointerEvents = 'auto';
     this.container.style.fontFamily = '"Helvetica Neue", Helvetica, sans-serif';
     this.container.style.color = 'white';
     
@@ -80,6 +81,7 @@ export class IntroScreen {
     playButton.style.border = 'none';
     playButton.style.borderRadius = '30px';
     playButton.style.cursor = 'pointer';
+    playButton.style.pointerEvents = 'auto';
     playButton.style.fontWeight = 'bold';
     playButton.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.5)';
     playButton.style.transition = 'all 0.3s';
@@ -95,17 +97,41 @@ export class IntroScreen {
       playButton.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.5)';
     });
     
-    // Click event
-    playButton.addEventListener('click', () => {
-      this.hide();
-      // Show time UI when game starts
-      if (this.engine.systems.ui && this.engine.systems.ui.showTimeControls) {
-        this.engine.systems.ui.showTimeControls();
-      }
-      if (this.onPlayCallback) {
-        this.onPlayCallback();
-      }
-    });
+    // Click events for both mouse and touch
+    playButton.addEventListener('click', handlePlayButtonPress);
+    playButton.addEventListener('touchend', handlePlayButtonPress);
+    
+    const self = this;
+    function handlePlayButtonPress(event) {
+      // Prevent default to avoid double events
+      event.preventDefault();
+      console.log('Start Journey clicked');
+      self.hide();
+      
+      // Delay showing controls until the exit animation completes
+      setTimeout(() => {
+        // Show time UI when game starts
+        if (self.engine.systems.ui && self.engine.systems.ui.showTimeControls) {
+          self.engine.systems.ui.showTimeControls();
+        }
+        
+        // Show mobile controls if on mobile device
+        if (self.engine.input.isTouchDevice && 
+            self.engine.systems.player && 
+            self.engine.systems.player.input) {
+          console.log('Showing mobile controls from intro screen');
+          self.engine.systems.player.input.showMobileControls();
+        }
+        
+        // Call the play callback to start the game
+        if (self.onPlayCallback) {
+          console.log('Calling play callback');
+          self.onPlayCallback();
+        } else {
+          console.warn('No play callback set for IntroScreen');
+        }
+      }, 500); // Match the 500ms transition from hide()
+    }
     
     // Create server status indicator with green text for readability
     const serverStatus = document.createElement('div');

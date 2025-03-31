@@ -286,6 +286,7 @@ export class UISystem {
     toggleButton.style.alignItems = 'center';
     toggleButton.style.cursor = 'pointer';
     toggleButton.style.zIndex = '1001';
+    toggleButton.style.pointerEvents = 'auto';
     toggleButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.3)';
     toggleButton.style.pointerEvents = 'auto';
     toggleButton.innerHTML = '⏱️';
