@@ -8,8 +8,8 @@ export class UISystem {
   async initialize() {
     this.createBaseUI();
     this.createManaDisplay();
-    this.createHealthDisplay();
-    this.createSpellsUI();
+    // this.createHealthDisplay();
+    // this.createSpellsUI();
     this.createMinimapUI();
     this.createTimeControls();
     
