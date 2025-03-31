@@ -134,33 +134,58 @@ export class SunSystem {
     this.sunSphere.material.opacity = 0.9 * belowHorizonFactor;
     this.sunGlow.material.opacity = 0.2 * belowHorizonFactor;
     
-    // Determine color based on height and time
+    this.updateSunLight(timeOfDay);
+      
+    // Determine color based on height and time for the sun sphere
     if (altitude > -300) {
       if (horizonProximity > 0.3) {
         // Sunrise/sunset colors
         const color = timeOfDay < 0.5 ? 0xffaa33 : 0xff7733;
         this.sunSphere.material.color.setHex(color);
         this.sunGlow.material.color.setHex(color);
-        this.sunLight.color.setHex(color);
-        this.sunLight.intensity = 1.0;
       } else {
         // Daytime - yellow
         this.sunSphere.material.color.setHex(0xffff00);
         this.sunGlow.material.color.setHex(0xffff80);
-        this.sunLight.color.setHex(0xffffcc);
-        this.sunLight.intensity = 1.2;
       }
       
       // Scale at horizon
       const scale = 1.0 + (horizonProximity * 0.2);
       this.sunSphere.scale.set(scale, scale, 1);
-      
-      // Ambient light based on height
-      this.ambientLight.intensity = 0.3 + (1 - horizonProximity) * 0.4;
+    }
+  }
+  
+  updateSunLight(timeOfDay) {
+    // Update the sun light position based on the computed sunPosition
+    this.sunLight.position.copy(this.sunPosition);
+    
+    const altitude = this.sunPosition.y;
+    const horizonProximity = Math.max(0, 1 - Math.abs(altitude) / 1500);
+    
+    if (timeOfDay > 0.25 && timeOfDay < 0.35) {
+      // Sunrise: warm hues and increased brightness
+      this.sunLight.color.setHex(0xffaa33);
+      this.sunLight.intensity = 1.0;
+      this.ambientLight.color.setHex(0xffddaa);
+      this.ambientLight.intensity = 0.4 + 0.3 * ((timeOfDay - 0.25) / 0.1);
+    } else if (timeOfDay > 0.65 && timeOfDay < 0.75) {
+      // Sunset: warm, fading light
+      this.sunLight.color.setHex(0xff7733);
+      this.sunLight.intensity = 1.0;
+      this.ambientLight.color.setHex(0xffccaa);
+      this.ambientLight.intensity = 0.4 + 0.3 * (1 - ((timeOfDay - 0.65) / 0.1));
+    } else if (timeOfDay > 0.35 && timeOfDay < 0.65) {
+      // Daytime: bright and clear
+      this.sunLight.color.setHex(0xffffcc);
+      this.sunLight.intensity = 1.2;
+      this.ambientLight.color.setHex(0xaaccff);
+      this.ambientLight.intensity = 0.7;
     } else {
-      // Night - hide sun
-      this.sunLight.intensity = 0.1;
-      this.ambientLight.intensity = 0.1;
+      // Night: dark and cooler-toned
+      this.sunLight.color.setHex(0x223344);
+      this.sunLight.intensity = 0.05;
+      this.ambientLight.color.setHex(0x001122);
+      this.ambientLight.intensity = altitude > -300 ? Math.max(0.05, 0.3 + (1 - horizonProximity) * 0.2) : 0.05;
     }
   }
   

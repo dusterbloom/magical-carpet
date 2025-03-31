@@ -277,7 +277,7 @@ export class StarSystem {
       if (this.starField.material) {
         // Use smoothstep for a gradual fade-in transition
         const fadeValue = this.smoothstep(0.05, 0.3, nightFactor);
-        const baseOpacity = fadeValue;
+        const baseOpacity = fadeValue * 0.8; // Reduced max opacity
         this.starField.material.opacity = baseOpacity + flickerRegular;
       }
     }
@@ -290,7 +290,7 @@ export class StarSystem {
       if (this.horizonStarField.material) {
         // Use smoothstep for a gradual fade-in transition
         const fadeValue = this.smoothstep(0.03, 0.25, nightFactor);
-        const baseOpacity = fadeValue;
+        const baseOpacity = fadeValue * 0.7; // Reduced max opacity
         this.horizonStarField.material.opacity = baseOpacity + flickerHorizon;
       }
     }

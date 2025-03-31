@@ -27,12 +27,15 @@ export class SkySystem {
     this.sky.scale.setScalar(30000);
     this.scene.add(this.sky);
     
-    // Configure sky parameters
+    // Initial sky parameters
     const uniforms = this.sky.material.uniforms;
     uniforms['turbidity'].value = 8;
     uniforms['rayleigh'].value = 1;
     uniforms['mieCoefficient'].value = 0.025;
     uniforms['mieDirectionalG'].value = 0.999;
+    
+    // Store original background color
+    this.originalBackgroundColor = new THREE.Color(0x88ccff);
     
     // Set renderer tone mapping exposure
     this.engine.renderer.toneMappingExposure = 0.6;
@@ -69,58 +72,68 @@ export class SkySystem {
     const nightFactor = this.atmosphereSystem.getNightFactor();
     let fogColor;
     
-    // Update sky material properties based on time of day
+    // Update sky shader parameters based on time of day
     const uniforms = this.sky.material.uniforms;
+    const sunPosition = this.atmosphereSystem.getSunPosition();
     
-    // Update fog color based on time of day
-    if (timeOfDay < 0.25) {
-      // Night to sunrise transition
+    // Update sun position in sky shader (this is key for sky coloration)
+    uniforms['sunPosition'].value.copy(sunPosition.normalize());
+    
+    // Adjust background color based on time of day
+    if (nightFactor > 0) {
+      // Night background color - very dark blue
+      const bgColor = new THREE.Color(0x000014);
+      bgColor.lerp(this.originalBackgroundColor, 1 - nightFactor);
+      this.engine.renderer.setClearColor(bgColor);
+    } else {
+      // Day background color (original)
+      this.engine.renderer.setClearColor(this.originalBackgroundColor);
+    }
+    
+    // Adjust sky parameters and fog color based on time of day
+    if (timeOfDay < 0.25) { // Night to sunrise
       const t = timeOfDay / 0.25;
       fogColor = new THREE.Color(0x000010).lerp(new THREE.Color(0xff9933), t);
       
       // Night sky parameters
-      const sunriseProgress = timeOfDay / 0.25; // 0 at midnight, 1 at sunrise
-      uniforms['turbidity'].value = 8 * sunriseProgress + 0.5;
-      uniforms['rayleigh'].value = 1 * sunriseProgress + 0.2;
-      uniforms['mieCoefficient'].value = 0.025 * sunriseProgress + 0.001;
-    } else if (timeOfDay < 0.5) {
-      // Sunrise to noon
+      this.engine.renderer.toneMappingExposure = 0.1 + t * 0.4;
+      uniforms['turbidity'].value = 0.5 + t * 7.5;
+      uniforms['rayleigh'].value = 0.05 + t * 0.95;
+      uniforms['mieCoefficient'].value = 0.001 + t * 0.024;
+      
+    } else if (timeOfDay < 0.5) { // Sunrise to noon
       const t = (timeOfDay - 0.25) / 0.25;
-      fogColor = new THREE.Color(0xff9933).lerp(new THREE.Color(0x89cff0), t);
+      fogColor = new THREE.Color(0xff9933).lerp(new THREE.Color(0x88ccff), t);
       
-      // Morning sky parameters
+      this.engine.renderer.toneMappingExposure = 0.6;
       uniforms['turbidity'].value = 8;
-      uniforms['rayleigh'].value = 1 * t + 0.5;
+      uniforms['rayleigh'].value = 1 + t * 0.5;
       uniforms['mieCoefficient'].value = 0.025;
-    } else if (timeOfDay < 0.75) {
-      // Noon to sunset
+      
+    } else if (timeOfDay < 0.75) { // Noon to sunset
       const t = (timeOfDay - 0.5) / 0.25;
-      fogColor = new THREE.Color(0x89cff0).lerp(new THREE.Color(0xff9933), t);
+      fogColor = new THREE.Color(0x88ccff).lerp(new THREE.Color(0xff9933), t);
       
-      // Afternoon sky parameters
-      uniforms['turbidity'].value = 8;
-      uniforms['rayleigh'].value = 1;
+      this.engine.renderer.toneMappingExposure = 0.6;
+      uniforms['turbidity'].value = 8 + t * 2;
+      uniforms['rayleigh'].value = 1.5 - t * 0.5;
       uniforms['mieCoefficient'].value = 0.025;
-    } else {
-      // Sunset to night
+      
+    } else { // Sunset to night
       const t = (timeOfDay - 0.75) / 0.25;
       fogColor = new THREE.Color(0xff9933).lerp(new THREE.Color(0x000010), t);
       
-      // Evening sky parameters
-      const nightProgress = (timeOfDay - 0.75) / 0.25; // 0 at sunset, 1 at midnight
-      uniforms['turbidity'].value = 8 * (1 - nightProgress) + 0.5;
-      uniforms['rayleigh'].value = 1 * (1 - nightProgress) + 0.2;
-      uniforms['mieCoefficient'].value = 0.025 * (1 - nightProgress) + 0.001;
+      // Evening -> night transition
+      this.engine.renderer.toneMappingExposure = 0.6 - t * 0.5;
+      uniforms['turbidity'].value = 10 - t * 9.5;
+      uniforms['rayleigh'].value = 1 - t * 0.95;
+      uniforms['mieCoefficient'].value = 0.025 - t * 0.024;
     }
-    
-    // Adjust renderer exposure based on time of day
-    const baseExposure = 0.6;
-    const exposureRange = 0.4;
-    this.engine.renderer.toneMappingExposure = baseExposure - nightFactor * exposureRange;
     
     // Update fog
     if (this.scene.fog) {
-      this.scene.fog.color = fogColor;
+      this.scene.fog.color.copy(fogColor);
     }
   }
 }
+
