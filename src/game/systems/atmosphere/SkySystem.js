@@ -56,14 +56,14 @@ export class SkySystem {
       color: 0xffff00,
       side: THREE.FrontSide,
       transparent: false,
-      opacity: 0.91,
+      opacity: 0.1,
       // depthWrite: false,
       // depthTest: false
     });
     
     this.directSun = new THREE.Mesh(sunGeometry, sunMaterial);
     this.directSun.position.set(0, 10000, 0);
-    this.directSun.renderOrder = 10001;
+    this.directSun.renderOrder = 98;
     this.scene.add(this.directSun);
     
     // Add a small, subtle glow
@@ -73,8 +73,8 @@ export class SkySystem {
       transparent: true,
       opacity: 0.2,
       side: THREE.DoubleSide,
-      depthWrite: false,
-      depthTest: false
+      // depthWrite: false,
+      // depthTest: false
     });
     
     this.sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);

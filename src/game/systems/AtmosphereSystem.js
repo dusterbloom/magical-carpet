@@ -299,7 +299,7 @@ createVolumetricClouds() {
     const sunMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       side: THREE.FrontSide,
-      transparent: true,
+      transparent: false,
       opacity: 0.1,
       
       // depthWrite: true, // Don't write to depth buffer to prevent clipping
@@ -307,7 +307,7 @@ createVolumetricClouds() {
     });
     
     this.sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
-    this.sunSphere.renderOrder = 10000; // Render after sky
+    this.sunSphere.renderOrder = 97; // Render after sky
     
     // Create the sun in world space, not as a child of anything
     this.scene.add(this.sunSphere);

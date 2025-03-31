@@ -44,7 +44,7 @@ export class SunSystem {
     const sunMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       transparent: false,
-      opacity: 1,
+      opacity: 0.81,
       side: THREE.FrontSide,
       // depthWrite: false, 
       // Use depth test but with a custom depth function that always passes
