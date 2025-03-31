@@ -11,7 +11,7 @@ export class UISystem {
     this.createHealthDisplay();
     this.createSpellsUI();
     this.createMinimapUI();
-    // this.createTimeControls();
+    this.createTimeControls();
     
     console.log("UI system initialized");
   }

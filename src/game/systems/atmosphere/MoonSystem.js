@@ -92,10 +92,37 @@ export class MoonSystem {
     const moonPhase = this.atmosphereSystem.getMoonPhase();
     const moonIllumination = this.atmosphereSystem.getMoonIllumination();
     
-    // Calculate moon position with slight variation from being exactly opposite to sun
-    // This creates more natural moon rise/set cycles that vary with the lunar month
-    const timeOffset = 0.5 + (moonPhase * 0.1 - 0.05); // Varies between 0.45 and 0.55
-    const moonAngle = ((timeOfDay + timeOffset) % 1.0) * Math.PI * 2;
+    // Define moon rise time (21:30 = 0.896 of day)
+    const moonRiseTime = 0.896;
+    // Define moonset time (approx 12 hours later, looping if needed)
+    const moonSetTime = (moonRiseTime + 0.5) % 1.0;
+    
+    // Calculate time-based progress for moon's travel
+    let moonProgress;
+    if (moonRiseTime < moonSetTime) {
+      // Simple case: rise and set within same day
+      if (timeOfDay >= moonRiseTime && timeOfDay <= moonSetTime) {
+        moonProgress = (timeOfDay - moonRiseTime) / (moonSetTime - moonRiseTime);
+      } else {
+        moonProgress = -1; // Moon below horizon
+      }
+    } else {
+      // Complex case: moon rises today, sets tomorrow
+      if (timeOfDay >= moonRiseTime || timeOfDay <= moonSetTime) {
+        // Calculate progress wrapping around midnight
+        if (timeOfDay >= moonRiseTime) {
+          moonProgress = (timeOfDay - moonRiseTime) / ((1.0 - moonRiseTime) + moonSetTime);
+        } else {
+          moonProgress = ((1.0 - moonRiseTime) + timeOfDay) / ((1.0 - moonRiseTime) + moonSetTime);
+        }
+      } else {
+        moonProgress = -1; // Moon below horizon
+      }
+    }
+    
+    // Calculate moon angle based on progress (0 to PI)
+    // Only valid when moonProgress is between 0 and 1
+    const moonAngle = (moonProgress >= 0) ? moonProgress * Math.PI : 0;
     
     // Modify height based on moon phase
     // Moon is higher in sky during full moon, lower during new moon
@@ -106,21 +133,48 @@ export class MoonSystem {
     const radius = 9000; // Slightly smaller than sun distance
     const height = 5000 * heightFactor;
     
-    // Calculate y position to make moon rise and set
-    let y = Math.sin(moonAngle) * height;
+    // Only calculate position if moon is visible in the sky
+    let x = 0, y = 0, z = 0;
     
-    // Calculate horizontal positions (x and z)
-    let x = Math.cos(moonAngle) * radius;
-    let z = Math.sin(moonAngle * 0.7) * radius * 0.5;
+    if (moonProgress >= 0) {
+      // Calculate y position to make moon rise and set (sine curve from 0 to PI)
+      y = Math.sin(moonAngle) * height;
+      
+      // Calculate horizontal positions (x and z)
+      // Moon rises in the east (positive x) and sets in the west (negative x)
+      x = Math.cos(moonAngle) * radius;
+      
+      // Add some slight north/south variation based on moon phase
+      // This creates a more varied path across the sky
+      z = Math.sin(moonPhase * Math.PI * 2) * radius * 0.2;
+    } else {
+      // Moon is below the horizon, position it there
+      y = -height * 0.5; // Below horizon
+      
+      // Position in the direction it would rise from or set to
+      if (timeOfDay < moonRiseTime && timeOfDay > moonSetTime) {
+        // Before moonrise, after moonset - position it in the east (where it will rise)
+        x = radius;
+      } else {
+        // After moonrise, before moonset - shouldn't happen, but position in west
+        x = -radius;
+      }
+      z = Math.sin(moonPhase * Math.PI * 2) * radius * 0.2;
+    }
     
     this.moonPosition.set(x, y, z);
     
-    // Only make moon visible when it's above the horizon
-    // Horizon is roughly at y=0
-    const isAboveHorizon = y > 0;
+    // Moon is above horizon when the calculated progress is valid and resulting y position is positive
+    const isAboveHorizon = moonProgress >= 0 && y > 0;
     
-    // Moon is visible at night when above horizon
-    this.moonMesh.visible = isAboveHorizon && nightFactor > 0.05;
+    // Check for occlusion with terrain or other elements
+    // For now, simply use a height-based check to avoid having the moon
+    // appear to set inside visible terrain chunks
+    const occlusionHeight = 300; // Minimum height above terrain for moon to be visible
+    const isOccluded = y > 0 && y < occlusionHeight;
+    
+    // Moon is visible when above horizon, not occluded, and dark enough
+    this.moonMesh.visible = isAboveHorizon && !isOccluded && nightFactor > 0.05;
     
     // If visible, update position
     if (this.moonMesh.visible) {
