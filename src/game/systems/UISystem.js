@@ -272,85 +272,181 @@ export class UISystem {
    * Create time control UI elements
    */
   createTimeControls() {
-    // Create container for time controls
+    // Create toggle button for time controls
+    const toggleButton = document.createElement('div');
+    toggleButton.style.position = 'absolute';
+    toggleButton.style.top = '70px';
+    toggleButton.style.right = '20px';
+    toggleButton.style.width = '40px';
+    toggleButton.style.height = '40px';
+    toggleButton.style.backgroundColor = 'rgba(45, 48, 52, 0.9)';
+    toggleButton.style.borderRadius = '50%';
+    toggleButton.style.display = 'flex';
+    toggleButton.style.justifyContent = 'center';
+    toggleButton.style.alignItems = 'center';
+    toggleButton.style.cursor = 'pointer';
+    toggleButton.style.zIndex = '1001';
+    toggleButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.3)';
+    toggleButton.style.pointerEvents = 'auto';
+    toggleButton.innerHTML = '⏱️';
+    toggleButton.style.fontSize = '20px';
+    
+    // Create container for time controls using modern UI style based on mockup
     const container = document.createElement('div');
     container.style.position = 'absolute';
-    container.style.top = '10px';
-    container.style.left = '10px';
-    container.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    container.style.padding = '10px';
-    container.style.borderRadius = '5px';
+    container.style.top = '120px'; // Positioned below the toggle button
+    container.style.right = '20px';
+    container.style.backgroundColor = 'rgba(45, 48, 52, 0.9)';
+    container.style.padding = '15px';
+    container.style.borderRadius = '10px';
     container.style.color = 'white';
     container.style.fontFamily = 'Arial, sans-serif';
     container.style.zIndex = '1000';
     container.style.pointerEvents = 'auto';
+    container.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+    container.style.width = '240px';
+    container.style.display = 'none'; // Initially hidden
+    
+    // Toggle visibility
+    toggleButton.addEventListener('click', () => {
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        toggleButton.style.backgroundColor = 'rgba(65, 68, 72, 0.9)';
+      } else {
+        container.style.display = 'none';
+        toggleButton.style.backgroundColor = 'rgba(45, 48, 52, 0.9)';
+      }
+    });
     
     // Time display
-    const timeLabel = document.createElement('div');
-    timeLabel.textContent = 'Current Time:';
-    container.appendChild(timeLabel);
-    
     const timeDisplay = document.createElement('div');
     timeDisplay.style.fontSize = '24px';
-    timeDisplay.style.marginBottom = '10px';
+    timeDisplay.style.textAlign = 'center';
+    timeDisplay.style.marginBottom = '15px';
     timeDisplay.textContent = '00:00';
     container.appendChild(timeDisplay);
     this.elements.timeDisplay = timeDisplay;
     
-    // Time presets
-    const presetLabel = document.createElement('div');
-    presetLabel.textContent = 'Presets:';
-    container.appendChild(presetLabel);
+    // Create a section title for Presets
+    const presetTitle = document.createElement('div');
+    presetTitle.textContent = 'Presets';
+    presetTitle.style.fontSize = '18px';
+    presetTitle.style.textAlign = 'center';
+    presetTitle.style.marginBottom = '10px';
+    presetTitle.style.fontWeight = 'bold';
+    container.appendChild(presetTitle);
     
+    // Time presets with icons
     const presets = [
-      { label: 'Midnight', hour: 0, minute: 0 },
-      { label: 'Sunrise', hour: 6, minute: 0 },
-      { label: 'Noon', hour: 12, minute: 0 },
-      { label: 'Sunset', hour: 18, minute: 0 }
+      { label: 'Midnight', hour: 0, minute: 0, icon: '🌙' },
+      { label: 'Sunrise', hour: 6, minute: 0, icon: '🌅' },
+      { label: 'Noon', hour: 12, minute: 0, icon: '☀️' },
+      { label: 'Sunset', hour: 18, minute: 0, icon: '🌇' }
     ];
     
     const presetContainer = document.createElement('div');
-    presetContainer.style.display = 'flex';
-    presetContainer.style.gap = '5px';
-    presetContainer.style.marginBottom = '10px';
+    presetContainer.style.display = 'grid';
+    presetContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    presetContainer.style.gap = '8px';
+    presetContainer.style.marginBottom = '15px';
     
     presets.forEach(preset => {
-      const button = document.createElement('button');
-      button.textContent = preset.label;
-      button.style.flex = '1';
-      button.style.padding = '5px';
+      const button = document.createElement('div');
+      button.style.display = 'flex';
+      button.style.flexDirection = 'column';
+      button.style.alignItems = 'center';
+      button.style.justifyContent = 'center';
+      button.style.backgroundColor = '#1c1e21';
+      button.style.borderRadius = '8px';
+      button.style.padding = '8px';
+      button.style.cursor = 'pointer';
+      button.style.transition = 'all 0.2s';
+      
+      // Icon
+      const icon = document.createElement('div');
+      icon.textContent = preset.icon;
+      icon.style.fontSize = '24px';
+      icon.style.marginBottom = '4px';
+      button.appendChild(icon);
+      
+      // Label below icon
+      if (preset.label !== 'Sunrise' && preset.label !== 'Sunset') {
+        const label = document.createElement('div');
+        label.textContent = preset.label;
+        label.style.fontSize = '10px';
+        button.appendChild(label);
+      }
+      
+      // Hover effect
+      button.addEventListener('mouseover', () => {
+        button.style.backgroundColor = '#2c2e31';
+        button.style.transform = 'translateY(-2px)';
+      });
+      
+      button.addEventListener('mouseout', () => {
+        button.style.backgroundColor = '#1c1e21';
+        button.style.transform = 'translateY(0)';
+      });
+      
+      // Click handler
       button.addEventListener('click', () => {
         const atmosphereSystem = this.engine.systems.atmosphere;
         if (atmosphereSystem) {
           atmosphereSystem.setTime(preset.hour, preset.minute);
         }
       });
+      
       presetContainer.appendChild(button);
     });
     
     container.appendChild(presetContainer);
     
-    // Time scale control
-    const timeScaleLabel = document.createElement('div');
-    timeScaleLabel.textContent = 'Time Scale:';
-    container.appendChild(timeScaleLabel);
+    // Time scale title
+    const timeScaleTitle = document.createElement('div');
+    timeScaleTitle.textContent = 'Time Scale';
+    timeScaleTitle.style.fontSize = '18px';
+    timeScaleTitle.style.textAlign = 'center';
+    timeScaleTitle.style.marginBottom = '10px';
+    timeScaleTitle.style.fontWeight = 'bold';
+    container.appendChild(timeScaleTitle);
     
+    // Time scale buttons with updated values
     const timeScaleContainer = document.createElement('div');
-    timeScaleContainer.style.display = 'flex';
-    timeScaleContainer.style.gap = '5px';
+    timeScaleContainer.style.display = 'grid';
+    timeScaleContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    timeScaleContainer.style.gap = '8px';
+    timeScaleContainer.style.marginBottom = '15px';
     
+    // Updated scales according to mockup (replaced 720x with 120x)
     const scales = [
       { label: 'Real', value: 1 },
+      { label: '2x', value: 2 },
       { label: '60x', value: 60 },
-      { label: '360x', value: 360 },
-      { label: '720x', value: 720 }
+      { label: '120x', value: 120 }
     ];
     
     scales.forEach(scale => {
-      const button = document.createElement('button');
+      const button = document.createElement('div');
       button.textContent = scale.label;
-      button.style.flex = '1';
-      button.style.padding = '5px';
+      button.style.backgroundColor = '#1c1e21';
+      button.style.borderRadius = '8px';
+      button.style.padding = '8px';
+      button.style.textAlign = 'center';
+      button.style.cursor = 'pointer';
+      button.style.transition = 'all 0.2s';
+      
+      // Hover effect
+      button.addEventListener('mouseover', () => {
+        button.style.backgroundColor = '#2c2e31';
+        button.style.transform = 'translateY(-2px)';
+      });
+      
+      button.addEventListener('mouseout', () => {
+        button.style.backgroundColor = '#1c1e21';
+        button.style.transform = 'translateY(0)';
+      });
+      
+      // Click handler
       button.addEventListener('click', () => {
         const atmosphereSystem = this.engine.systems.atmosphere;
         if (atmosphereSystem) {
@@ -358,61 +454,121 @@ export class UISystem {
           console.log(`Time scale set to ${scale.value}x`);
         }
       });
+      
       timeScaleContainer.appendChild(button);
     });
     
     container.appendChild(timeScaleContainer);
     
-    // Custom time setter
-    const customTimeLabel = document.createElement('div');
-    customTimeLabel.textContent = 'Set Custom Time:';
-    customTimeLabel.style.marginTop = '10px';
-    container.appendChild(customTimeLabel);
+    // Custom time title
+    const customTimeTitle = document.createElement('div');
+    customTimeTitle.textContent = 'Custom Time';
+    customTimeTitle.style.fontSize = '18px';
+    customTimeTitle.style.textAlign = 'center';
+    customTimeTitle.style.marginBottom = '10px';
+    customTimeTitle.style.fontWeight = 'bold';
+    container.appendChild(customTimeTitle);
     
-    const customTimeContainer = document.createElement('div');
-    customTimeContainer.style.display = 'flex';
-    customTimeContainer.style.gap = '5px';
-    customTimeContainer.style.marginTop = '5px';
+    // Custom time slider
+    const sliderContainer = document.createElement('div');
+    sliderContainer.style.position = 'relative';
+    sliderContainer.style.width = '100%';
+    sliderContainer.style.height = '30px';
+    sliderContainer.style.backgroundColor = '#1c1e21';
+    sliderContainer.style.borderRadius = '15px';
+    sliderContainer.style.marginBottom = '15px';
     
-    const hourInput = document.createElement('input');
-    hourInput.type = 'number';
-    hourInput.min = 0;
-    hourInput.max = 23;
-    hourInput.value = 12;
-    hourInput.style.width = '50px';
-    customTimeContainer.appendChild(hourInput);
+    const sliderTrack = document.createElement('div');
+    sliderTrack.style.position = 'absolute';
+    sliderTrack.style.top = '50%';
+    sliderTrack.style.left = '10px';
+    sliderTrack.style.right = '10px';
+    sliderTrack.style.height = '4px';
+    sliderTrack.style.transform = 'translateY(-50%)';
+    sliderTrack.style.backgroundColor = '#3c3e41';
+    sliderTrack.style.borderRadius = '2px';
+    sliderContainer.appendChild(sliderTrack);
     
-    const separator = document.createElement('span');
-    separator.textContent = ':';
-    separator.style.display = 'flex';
-    separator.style.alignItems = 'center';
-    customTimeContainer.appendChild(separator);
+    const sliderThumb = document.createElement('div');
+    sliderThumb.style.position = 'absolute';
+    sliderThumb.style.top = '50%';
+    sliderThumb.style.left = '10px';
+    sliderThumb.style.width = '20px';
+    sliderThumb.style.height = '20px';
+    sliderThumb.style.transform = 'translate(0, -50%)';
+    sliderThumb.style.backgroundColor = 'white';
+    sliderThumb.style.borderRadius = '50%';
+    sliderThumb.style.cursor = 'pointer';
+    sliderThumb.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.3)';
+    sliderContainer.appendChild(sliderThumb);
     
-    const minuteInput = document.createElement('input');
-    minuteInput.type = 'number';
-    minuteInput.min = 0;
-    minuteInput.max = 59;
-    minuteInput.value = 0;
-    minuteInput.style.width = '50px';
-    customTimeContainer.appendChild(minuteInput);
+    // Make slider interactive
+    let isDragging = false;
+    const trackWidth = sliderTrack.clientWidth;
     
-    const setButton = document.createElement('button');
-    setButton.textContent = 'Set';
-    setButton.style.marginLeft = '5px';
-    setButton.addEventListener('click', () => {
-      const hour = parseInt(hourInput.value, 10);
-      const minute = parseInt(minuteInput.value, 10);
+    sliderThumb.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      e.preventDefault(); // Prevent text selection
+    });
+    
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const rect = sliderTrack.getBoundingClientRect();
+      const trackStart = rect.left + 10; // 10px padding
+      const trackEnd = rect.right - 10; // 10px padding
+      const trackLength = trackEnd - trackStart;
+      
+      let position = e.clientX - trackStart;
+      position = Math.max(0, Math.min(position, trackLength));
+      
+      const percentage = position / trackLength;
+      sliderThumb.style.left = `${percentage * 100}%`;
+      
+      // Calculate time based on position
+      const hour = Math.floor(percentage * 24);
+      const minute = Math.floor((percentage * 24 * 60) % 60);
       
       const atmosphereSystem = this.engine.systems.atmosphere;
       if (atmosphereSystem) {
         atmosphereSystem.setTime(hour, minute);
       }
     });
-    customTimeContainer.appendChild(setButton);
     
-    container.appendChild(customTimeContainer);
+    container.appendChild(sliderContainer);
+    
+    // Close button
+    const closeButton = document.createElement('div');
+    closeButton.textContent = '✕';
+    closeButton.style.position = 'absolute';
+    closeButton.style.top = '8px';
+    closeButton.style.right = '12px';
+    closeButton.style.fontSize = '14px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.opacity = '0.7';
+    closeButton.addEventListener('mouseover', () => {
+      closeButton.style.opacity = '1';
+    });
+    closeButton.addEventListener('mouseout', () => {
+      closeButton.style.opacity = '0.7';
+    });
+    closeButton.addEventListener('click', () => {
+      container.style.display = 'none';
+      toggleButton.style.backgroundColor = 'rgba(45, 48, 52, 0.9)';
+    });
+    container.appendChild(closeButton);
     
     // Add to document
+    this.container.appendChild(toggleButton);
     this.container.appendChild(container);
+    
+    // Show current time in toggle button
+    // Continuously update the time in the toggle button tooltip
+    toggleButton.title = "Time Controls";
   }
 }
+

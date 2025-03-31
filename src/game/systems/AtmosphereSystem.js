@@ -664,6 +664,14 @@ createVolumetricClouds() {
     }
     return 0; // Daytime
   }
+  
+  // Set time to a specific hour and minute
+  setTime(hour, minute) {
+    // Convert hour and minute to a value between 0 and 1
+    // where 0 is midnight and 0.5 is noon
+    this.timeOfDay = (hour + minute / 60) / 24;
+    console.log(`Time set to ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} (${this.timeOfDay.toFixed(4)})`); 
+  }
 
   // Update stars visibility based on time of day
   updateStarsVisibility(nightFactor) {
