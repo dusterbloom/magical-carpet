@@ -1,25 +1,22 @@
 {
-  "name": "magical-vibe-carpet",
-  "private": true,
-  "version": "0.1.0",
+  "name": "magical-carpet",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@three.ez/instanced-mesh": "^latest_version",
-    "@funtech-inc/use-shader-fx": "^0.3.5",
-    "@react-three/drei": "^9.92.7",
-    "@react-three/fiber": "^8.15.12",
-    "@types/three": "^0.160.0",
-    "simplex-noise": "^4.0.1",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
-    "three": "^0.174.0"
+    "three": "^0.160.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "vite": "^4.4.5"
+    "vite": "^5.0.8"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

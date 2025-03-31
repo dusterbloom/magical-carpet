@@ -1,5 +1,7 @@
 import { io } from 'socket.io-client';
 import { EventEmitter } from '../../utils/EventEmitter';
+import { IntroScreen } from '../ui/screens/IntroScreen';
+import { PlayerList } from '../ui/components/PlayerList';
 
 export class NetworkManager extends EventEmitter {
   constructor(engine) {
@@ -10,13 +12,34 @@ export class NetworkManager extends EventEmitter {
     this.localPlayerId = null;
     this.serverTimeDiff = 0;
     this.ping = 0;
+    this.isConnected = false;
+    
+    // Create UI components
+    this.introScreen = new IntroScreen(engine);
+    this.playerList = new PlayerList(engine);
+    
+    // Set up development mode for local testing
+    this.isDev = import.meta.env.DEV;
+    this.useSimulation = this.isDev && import.meta.env.VITE_USE_NETWORK_SIMULATION === 'true';
   }
   
   async initialize() {
-    // In a real implementation, this would connect to your actual server
-    const serverUrl = import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin;
+    // Initialize and show intro screen
+    this.introScreen.initialize();
+    this.introScreen.show();
     
-    this.socket = io(serverUrl, {
+    // Set up play button callback
+    this.introScreen.onPlay(() => {
+      this.connect();
+    });
+    
+    // Set up server URL
+    this.serverUrl = this.isDev 
+      ? 'http://localhost:4000' 
+      : (import.meta.env.VITE_SERVER_URL || window.location.origin);
+    
+    // Create socket but don't connect yet
+    this.socket = io(this.serverUrl, {
       autoConnect: false,
       reconnection: true,
       reconnectionDelay: 1000,
@@ -24,31 +47,56 @@ export class NetworkManager extends EventEmitter {
       timeout: 10000
     });
     
+    // Set up socket event listeners
     this.setupEventListeners();
     
-    // For now, we'll simulate connection success locally
-    // In a real implementation, this would be triggered by the server
-    setTimeout(() => {
-      this.localPlayerId = 'player_' + Math.floor(Math.random() * 10000);
-      this.emit('connected', { id: this.localPlayerId });
-      
-      // Simulate other players joining
-      this.handlePlayerJoin({ id: 'player_ai_1', name: 'Magic Bot 1', x: 10, y: 5, z: 20 });
-      this.handlePlayerJoin({ id: 'player_ai_2', name: 'Magic Bot 2', x: -15, y: 7, z: -5 });
-      
-      console.log("Network simulation initialized");
-    }, 500);
+    // Update intro screen status
+    this.introScreen.updateServerStatus('Server ready. Click Start to play!', 'success');
+    
+    // If in simulation mode, connect automatically after a short delay
+    if (this.useSimulation) {
+      console.log("Using network simulation mode");
+      setTimeout(() => {
+        this.simulateConnection();
+      }, 500);
+    }
+    
+    console.log("Network manager initialized");
   }
   
   setupEventListeners() {
     this.socket.on('connect', () => {
       console.log('Connected to server');
+      this.isConnected = true;
+      this.introScreen.updateServerStatus('Connected to server', 'success');
       this.emit('connected');
+      
+      // Request player ID from server
+      this.socket.emit('request_id');
     });
     
     this.socket.on('disconnect', () => {
       console.log('Disconnected from server');
+      this.isConnected = false;
+      this.introScreen.updateServerStatus('Disconnected from server. Reconnecting...', 'error');
       this.emit('disconnected');
+    });
+    
+    this.socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      this.introScreen.updateServerStatus('Server connection error. Please try again.', 'error');
+    });
+    
+    this.socket.on('player_id', (data) => {
+      this.localPlayerId = data.id;
+      console.log('Received player ID:', this.localPlayerId);
+      this.emit('connected', { id: this.localPlayerId });
+      
+      // Hide intro screen after successful connection
+      this.introScreen.hide();
+      
+      // Show player list
+      this.playerList.show();
     });
     
     this.socket.on('player_join', (data) => {
@@ -67,17 +115,71 @@ export class NetworkManager extends EventEmitter {
       this.handleGameState(data);
     });
     
+    // Handle server ping response
     this.socket.on('pong', (latency) => {
       this.ping = latency;
+      this.playerList.updatePing(latency);
     });
+    
+    // Set up ping interval
+    setInterval(() => {
+      if (this.isConnected) {
+        const start = Date.now();
+        this.socket.emit('ping', () => {
+          const latency = Date.now() - start;
+          this.ping = latency;
+          this.playerList.updatePing(latency);
+        });
+      }
+    }, 5000);
   }
   
   connect() {
-    // In a real implementation, this would connect to the actual server
-    // this.socket.connect();
+    if (this.useSimulation) {
+      this.simulateConnection();
+      return;
+    }
     
-    // For now we'll just simulate connection locally
-    // This was done in initialize for simplicity
+    // Connect to real server
+    this.introScreen.updateServerStatus('Connecting to server...', 'info');
+    this.socket.connect();
+  }
+  
+  simulateConnection() {
+    console.log("Simulating network connection");
+    this.introScreen.updateServerStatus('Connected to simulation server', 'success');
+    
+    setTimeout(() => {
+      // Simulate receiving player ID
+      this.localPlayerId = 'player_' + Math.floor(Math.random() * 10000);
+      console.log('Simulated player ID:', this.localPlayerId);
+      
+      // Emit connected event
+      this.isConnected = true;
+      this.emit('connected', { id: this.localPlayerId });
+      
+      // Hide intro screen
+      this.introScreen.hide();
+      
+      // Show player list
+      this.playerList.show();
+      
+      // Add local player
+      const localPlayer = {
+        id: this.localPlayerId,
+        name: 'Player',
+        x: 0,
+        y: 0,
+        z: 0
+      };
+      this.handlePlayerJoin(localPlayer);
+      
+      // Simulate other players joining
+      this.handlePlayerJoin({ id: 'player_ai_1', name: 'Magic Bot 1', x: 10, y: 5, z: 20 });
+      this.handlePlayerJoin({ id: 'player_ai_2', name: 'Magic Bot 2', x: -15, y: 7, z: -5 });
+      
+      console.log("Network simulation initialized");
+    }, 500);
   }
   
   disconnect() {
@@ -89,11 +191,13 @@ export class NetworkManager extends EventEmitter {
   // Player event handlers
   handlePlayerJoin(data) {
     this.players.set(data.id, data);
+    this.playerList.updatePlayerList(Array.from(this.players.values()), this.localPlayerId);
     this.emit('player_join', data);
   }
   
   handlePlayerLeave(data) {
     this.players.delete(data.id);
+    this.playerList.updatePlayerList(Array.from(this.players.values()), this.localPlayerId);
     this.emit('player_leave', data);
   }
   
@@ -111,32 +215,42 @@ export class NetworkManager extends EventEmitter {
   
   // Send player updates to server
   sendPlayerUpdate(data) {
-    // In a real implementation, this would send to the server
-    // this.socket.emit('player_update', data);
+    if (this.useSimulation) {
+      // For simulation, handle locally
+      if (this.localPlayerId) {
+        data.id = this.localPlayerId;
+        this.handlePlayerUpdate(data);
+      }
+      return;
+    }
     
-    // For now, we'll simulate local update
-    if (this.localPlayerId) {
-      data.id = this.localPlayerId;
-      this.handlePlayerUpdate(data);
+    // Send to real server
+    if (this.isConnected) {
+      this.socket.emit('player_update', data);
     }
   }
   
   // Send player actions to server
   sendPlayerAction(action, data) {
-    // In a real implementation, this would send to the server
-    // this.socket.emit('player_action', { action, ...data });
+    if (this.useSimulation) {
+      // For simulation, handle locally
+      this.emit('player_action', { 
+        playerId: this.localPlayerId,
+        action, 
+        ...data 
+      });
+      return;
+    }
     
-    // For now, we'll simulate locally
-    this.emit('player_action', { 
-      playerId: this.localPlayerId,
-      action, 
-      ...data 
-    });
+    // Send to real server
+    if (this.isConnected) {
+      this.socket.emit('player_action', { action, ...data });
+    }
   }
   
   update(delta) {
-    // Simulate network updates for AI players
-    if (Math.random() < 0.05) {
+    // If in simulation mode, simulate network updates for AI players
+    if (this.useSimulation && Math.random() < 0.05) {
       this.players.forEach((player, id) => {
         if (id !== this.localPlayerId) {
           // Simple random movement for AI players

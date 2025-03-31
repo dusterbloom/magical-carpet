@@ -37,7 +37,9 @@ export class PlayerSystem {
     
     // Listen for network events
     this.engine.systems.network.on('connected', (data) => {
-      this.createLocalPlayer(data.id);
+      if (data && data.id) {
+        this.createLocalPlayer(data.id);
+      }
     });
     
     this.engine.systems.network.on('player_join', (data) => {
