@@ -54,6 +54,16 @@ createWater() {
     console.log(`Mobile device: Creating water with ${waterQuality} quality`);
   }
   
+  // If MobileLODManager is available, check if water reflections should be enabled
+  if (this.engine.systems.mobileLOD && 
+      this.engine.settings && 
+      this.engine.settings.isMobile) {
+    if (!this.engine.systems.mobileLOD.currentWaterReflectionEnabled) {
+      waterQuality = 'low';
+      console.log(`Mobile LOD Manager disabled water reflections for performance`);
+    }
+  }
+  
   // Configure water based on quality setting (only for mobile)
   let textureSize = 2048;
   let distortionScale = 0.8;
@@ -208,8 +218,28 @@ update(deltaTime) {
         const safeThreshold = sunSystem.HORIZON_LEVEL + 200;
         const isSunHighEnough = sunPos.y > safeThreshold;
         
+        // Check distance from camera for LOD if MobileLODManager is available
+        let enableReflections = isSunHighEnough;
+        
+        if (this.engine.systems.mobileLOD && 
+            this.engine.settings && 
+            this.engine.settings.isMobile) {
+          // Get distance-based water reflection settings
+          const distanceThresholds = this.engine.systems.mobileLOD.getLODDistances().water;
+          const player = this.engine.systems.player?.localPlayer;
+          
+          if (player) {
+            const playerDistance = this.water.position.distanceTo(player.position);
+            
+            // Only enable high-quality water reflections for nearby water
+            if (playerDistance > distanceThresholds.reflection) {
+              enableReflections = false;
+            }
+          }
+        }
+        
         // Use SunSystem's enableReflections method
-        sunSystem.enableReflections(isSunHighEnough);
+        sunSystem.enableReflections(enableReflections);
         
         // Call original render function
         if (this._originalOnBeforeRender) {
@@ -220,44 +250,70 @@ update(deltaTime) {
   }
   
   // Check performance and update quality if needed - but ONLY on mobile
-  if (this.engine.settings && this.engine.settings.isMobile && 
-      this.engine.performanceMonitor && this._waterQuality) {
+  if (this.engine.settings && this.engine.settings.isMobile) {
     const currentQuality = this._waterQuality;
-    const report = this.engine.performanceMonitor.generateReport();
+    let shouldUpdateQuality = false;
+    let newQuality = currentQuality;
     
-    // If FPS drops below threshold, check if we need to update water quality
-    // More aggressive for mobile - force low quality on very poor performance
-    if (report.current.fps < 15) { // Lowered from 20
-      const newQuality = 'low'; // Always set to low for poor performance mobile
+    // Check if MobileLODManager wants to change water quality
+    if (this.engine.systems.mobileLOD) {
+      const reflectionEnabled = this.engine.systems.mobileLOD.currentWaterReflectionEnabled;
       
-      console.log(`Mobile: Very low FPS detected (${report.current.fps.toFixed(1)}), setting water quality to low`);
-      
-      // Recreate water with lower quality
-      if (this.engine.settings) {
-        this.engine.settings.setQuality('water', newQuality);
-        
-        // Remove existing water
-        if (this.water) {
-          this.scene.remove(this.water);
-          this.water.geometry.dispose();
-          this.water.material.dispose();
-        }
-        
-        // Create new water with updated quality
-        this.createWater();
+      if (!reflectionEnabled && currentQuality !== 'low') {
+        newQuality = 'low';
+        shouldUpdateQuality = true;
+        console.log('MobileLOD Manager: Downgrading water quality to improve performance');
+      } else if (reflectionEnabled && currentQuality === 'low') {
+        newQuality = 'medium';
+        shouldUpdateQuality = true;
+        console.log('MobileLOD Manager: Upgrading water quality as performance allows');
       }
     }
     
-    // If FPS still extremely low after applying low quality settings, disable water entirely
-    if (report.current.fps < 10 && this._waterQuality === 'low' && this.water && this.water.visible) {
-      console.log(`Mobile: Emergency performance mode - making water invisible`);
-      // Hide water entirely without removing it
-      this.water.visible = false;
+    // Also check direct performance metrics for very low FPS situations
+    if (this.engine.performanceMonitor && this._waterQuality) {
+      const report = this.engine.performanceMonitor.generateReport();
+      
+      // If FPS drops below threshold, check if we need to update water quality
+      // More aggressive for mobile - force low quality on very poor performance
+      if (report.current.fps < 15) { // Lowered from 20
+        newQuality = 'low'; // Always set to low for poor performance mobile
+        shouldUpdateQuality = true;
+        console.log(`Mobile: Very low FPS detected (${report.current.fps.toFixed(1)}), setting water quality to low`);
+      }
     }
-    // If FPS recovers, make water visible again
-    else if (report.current.fps > 20 && this._waterQuality === 'low' && this.water && !this.water.visible) {
-      console.log(`Mobile: Performance recovered - making water visible again`);
-      this.water.visible = true;
+      
+    // Apply quality changes if needed
+    if (shouldUpdateQuality && newQuality !== currentQuality) {
+      // Remove existing water
+      if (this.water) {
+        this.scene.remove(this.water);
+        this.water.geometry.dispose();
+        this.water.material.dispose();
+      }
+      
+      // Update settings
+      if (this.engine.settings) {
+        this.engine.settings.setQuality('water', newQuality);
+      }
+      
+      // Create new water with updated quality
+      this.createWater();
+    }
+    
+    // If FPS still extremely low after applying low quality settings, disable water entirely
+    if (this.engine.performanceMonitor) {
+      const report = this.engine.performanceMonitor.generateReport();
+      if (report.current.fps < 10 && this._waterQuality === 'low' && this.water && this.water.visible) {
+        console.log(`Mobile: Emergency performance mode - making water invisible`);
+        // Hide water entirely without removing it
+        this.water.visible = false;
+      }
+      // If FPS recovers, make water visible again
+      else if (report.current.fps > 20 && this._waterQuality === 'low' && this.water && !this.water.visible) {
+        console.log(`Mobile: Performance recovered - making water visible again`);
+        this.water.visible = true;
+      }
     }
   }
 }

@@ -24,6 +24,11 @@ export class VegetationSystem {
       low: 1200    // Use low detail up to 1200 units away (reduced from 1600)
     };
     
+    // If MobileLODManager exists, use its distance settings
+    if (engine.systems.mobileLOD) {
+      // We'll update LOD distances in initialize method after mobileLOD is initialized
+    }
+    
     // Frustum culling support
     this.frustum = new THREE.Frustum();
     this.projScreenMatrix = new THREE.Matrix4();
@@ -87,6 +92,18 @@ export class VegetationSystem {
     
     // Initialize instanced meshes for each tree type and LOD level
     this.initializeInstancedMeshes();
+    
+    // Get LOD distances from MobileLODManager if available
+    if (this.engine.systems.mobileLOD) {
+      this.lodDistances = this.engine.systems.mobileLOD.getLODDistances().vegetation;
+      console.log(`Using mobile-optimized LOD distances: ${JSON.stringify(this.lodDistances)}`);
+      
+      // Set density from MobileLODManager if on mobile
+      if (this.engine.settings && this.engine.settings.isMobile) {
+        this.densityScale = this.engine.systems.mobileLOD.currentVegetationDensity;
+        console.log(`Using mobile vegetation density: ${this.densityScale}`);
+      }
+    }
     
     console.log("VegetationSystem initialized");
   }
@@ -844,6 +861,12 @@ export class VegetationSystem {
     
     const cameraPosition = camera.position;
     
+    // Get current LOD distances - potentially updated by MobileLODManager
+    let currentLODDistances = this.lodDistances;
+    if (this.engine.systems.mobileLOD && this.engine.settings && this.engine.settings.isMobile) {
+      currentLODDistances = this.engine.systems.mobileLOD.getLODDistances().vegetation;
+    }
+    
     // Process each tree type and check LOD levels
     for (let type = 0; type < this.treeMatrices.length; type++) {
       for (let lod = 0; lod < this.treeMatrices[type].length; lod++) {
@@ -863,11 +886,20 @@ export class VegetationSystem {
           // Calculate distance to camera
           const distanceToCamera = position.distanceTo(cameraPosition);
           
+          // Check if should be culled by MobileLODManager
+          if (this.engine.systems.mobileLOD && 
+              this.engine.settings && 
+              this.engine.settings.isMobile && 
+              this.engine.systems.mobileLOD.shouldCull(position, cameraPosition, currentLODDistances.low)) {
+            this.removeTreeInstance(type, lod, i);
+            continue;
+          }
+          
           // Determine appropriate LOD level based on distance
           let targetLOD;
-          if (distanceToCamera < this.lodDistances.high) {
+          if (distanceToCamera < currentLODDistances.high) {
             targetLOD = 0; // High detail
-          } else if (distanceToCamera < this.lodDistances.medium) {
+          } else if (distanceToCamera < currentLODDistances.medium) {
             targetLOD = 1; // Medium detail
           } else {
             targetLOD = 2; // Low detail
@@ -882,7 +914,7 @@ export class VegetationSystem {
           
           // Check if tree is within frustum or too far away
           // This can be further optimized with bounding spheres
-          if (distanceToCamera > this.lodDistances.low) {
+          if (distanceToCamera > currentLODDistances.low) {
             // Remove trees that are too far away
             this.removeTreeInstance(type, lod, i);
           } else if (this.frustum) {
@@ -935,6 +967,23 @@ export class VegetationSystem {
    * Update density scale based on performance metrics
    */
   updateDensityScale() {
+    // If MobileLODManager is available and on mobile, let it control vegetation density
+    if (this.engine.systems.mobileLOD && 
+        this.engine.settings && 
+        this.engine.settings.isMobile) {
+      
+      // Check if density scale needs updating from MobileLODManager
+      const mobileDensity = this.engine.systems.mobileLOD.currentVegetationDensity;
+      if (mobileDensity !== this.densityScale) {
+        console.log(`Updating vegetation density from MobileLODManager: ${mobileDensity.toFixed(2)}`);
+        this.densityScale = mobileDensity;
+      }
+      
+      return;
+    }
+    
+    // For non-mobile devices, use the original density scaling algorithm
+    
     // Skip if no performance monitor available or too soon since last adjustment
     if (!this.performanceMonitor || 
         Date.now() - this.lastDensityAdjustment < this.densityAdjustmentInterval) {

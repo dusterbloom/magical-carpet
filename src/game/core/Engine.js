@@ -5,6 +5,7 @@ import { InputManager } from "./InputManager";
 import { AssetManager } from "./AssetManager";
 import { PerformanceMonitor } from "./PerformanceMonitor";
 import { Settings } from "./settings/Settings";
+import { MobileLODManager } from "./MobileLODManager";
 import { NetworkManager } from "../systems/NetworkManager";
 import { WorldSystem } from "../systems/WorldSystem";
 import { PlayerSystem } from "../systems/PlayerSystem";
@@ -86,6 +87,7 @@ export class Engine {
     // Create systems in correct order (dependencies first)
    
     this.systems.network = new NetworkManager(this);
+    this.systems.mobileLOD = new MobileLODManager(this);
     this.systems.world = new WorldSystem(this);
     this.systems.water = new WaterSystem(this);
     this.systems.vegetation = new VegetationSystem(this);
@@ -103,6 +105,7 @@ export class Engine {
     const initOrder = [
       
       "network",
+      "mobileLOD", // Initialize LOD manager first to prepare for other systems
       "world", // Base terrain must be initialized first
       "water", // Water system should be initialized after terrain
       "vegetation", // Vegetation needs terrain to place trees
@@ -151,6 +154,7 @@ export class Engine {
     // Update systems in correct order
     const updateOrder = [
       "network",
+      "mobileLOD", // Update LOD manager first to adapt to performance
       "world",
       "water",
       "vegetation",
