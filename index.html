@@ -11,7 +11,7 @@
       overflow: hidden;
       width: 100vw;
       height: 100vh;
-      background: #E5D3B3;
+      background: #0e3857;
       font-family: "Helvetica Neue", Helvetica, sans-serif;
     }
     #loading {
@@ -21,8 +21,9 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      color: #8B4513;
-      background: linear-gradient(45deg, #D9C09F, #F0E6D2);
+      color: #FFFFFF;
+      background: url("/assets/bg.png") no-repeat center center;
+      background-size: cover;
       z-index: 1000;
     }
     canvas {
@@ -32,12 +33,13 @@
 </head>
 <body>
   <div id="loading">
-    <div>
-      <h1>Vibe Carpet</h1>
-      <div id="progress-bar" style="width: 300px; height: 20px; background: rgba(200, 113, 55, 0.3); border-radius: 10px; overflow: hidden;">
-        <div id="progress" style="width: 0%; height: 100%; background: #A05A2C; transition: width 0.3s;"></div>
+    <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+      <img src="/assets/crescent.png" style="width: 140px; height: auto; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));">
+      <h1 style="font-size: 42px; font-weight: bold; color: #FFFFFF; text-shadow: 0 0 10px rgba(255, 215, 0, 0.7); margin-bottom: 20px;">Vibe Carpet</h1>
+      <div id="progress-bar" style="width: 300px; height: 20px; background: rgba(0, 80, 150, 0.5); border-radius: 10px; overflow: hidden; margin-bottom: 20px;">
+        <div id="progress" style="width: 0%; height: 100%; background: #C87137; transition: width 0.3s;"></div>
       </div>
-      <p id="loading-text">Preparing your carpet ride...</p>
+      <p id="loading-text" style="color: #FFFFFF; text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);">Preparing your carpet ride...</p>
     </div>
   </div>
   <div id="ui-container"></div>
