@@ -20,6 +20,10 @@ export class PlayerInput {
       yaw: 0.08     // Controls left/right turning
     };
     
+    // Mobile-specific settings
+    this.isMobile = this.engine.input.isTouchDevice;
+    this.mobileAutoForward = true;  // Auto-forward for mobile
+    
     // Touch altitude control state
     this.touchAltitude = { up: false, down: false };
   }
@@ -75,11 +79,54 @@ export class PlayerInput {
     // Apply rotation damping
     player.bankAngle *= this.rotationDamping;
     
+    // Handle joystick input for mobile
+    if (this.joystick && this.joystick.active) {
+      // Use joystick X axis for left/right steering
+      if (Math.abs(this.joystick.position.x) > 0.1) { // Add a small deadzone
+        player.rotation.y -= this.joystick.position.x * 0.05;
+        
+        // Apply banking effect
+        const targetBankAngle = -this.joystick.position.x * 0.5;
+        player.bankAngle = THREE.MathUtils.lerp(
+          player.bankAngle,
+          targetBankAngle,
+          0.1
+        );
+      }
+      
+      // Use joystick Y axis for up/down movement (altitude control)
+      if (Math.abs(this.joystick.position.y) > 0.1) {
+        // Negative Y is up (pulling joystick toward bottom of screen)
+        // Positive Y is down (pushing joystick toward top of screen)
+        physics.applyAltitudeChange(player, -this.joystick.position.y * 30 * delta);
+        
+        // Update player pitch based on joystick Y position (look up/down)
+        const targetPitch = this.joystick.position.y * 0.5; // Up to 0.5 radians (about 30 degrees)
+        player.rotation.x = THREE.MathUtils.lerp(
+          player.rotation.x,
+          targetPitch,
+          0.1
+        );
+        
+        // Update contrail system based on altitude change
+        if (this.engine.systems.carpetTrail && this.joystick.position.y < -0.3) {
+          this.engine.systems.carpetTrail.setSpaceBarState(true);
+        } else if (this.engine.systems.carpetTrail) {
+          this.engine.systems.carpetTrail.setSpaceBarState(false);
+        }
+      }
+    }
+    
     // Throttle control with smoother acceleration
     if (input.isKeyDown('KeyW')) {
       this.currentThrottle = Math.min(1.0, this.currentThrottle + this.throttleSpeed * delta);
     } else if (input.isKeyDown('KeyS')) {
       this.currentThrottle = Math.max(0.0, this.currentThrottle - this.throttleSpeed * delta);
+    }
+    
+    // Auto-forward for mobile
+    if (this.isMobile && this.mobileAutoForward && this.currentThrottle < 0.5) {
+      this.currentThrottle = 0.5; // Keep a constant base speed for mobile
     }
     
     // Calculate forward movement based on throttle with smoother acceleration
@@ -102,11 +149,11 @@ export class PlayerInput {
     if (spacePressed) verticalForce += 1;
     if (input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight')) verticalForce -= 1;
     
-    // Handle touch altitude controls
+    // Handle touch altitude controls from turbo button
     if (this.touchAltitude.up) verticalForce += 1;
     if (this.touchAltitude.down) verticalForce -= 1;
     
-    // Update contrail system based on space key state
+    // Update contrail system based on space key or turbo button
     if (this.engine.systems.carpetTrail) {
       this.engine.systems.carpetTrail.setSpaceBarState(spacePressed || this.touchAltitude.up);
     }
@@ -116,9 +163,11 @@ export class PlayerInput {
     }
     
     // Apply natural falling when not using vertical controls
-    if (verticalForce === 0) {
+    if (verticalForce === 0 && (!this.joystick || !this.joystick.active || Math.abs(this.joystick.position.y) <= 0.1)) {
       physics.applyAltitudeChange(player, -5 * delta); // Gentle falling
     }
+    
+    // Contrail system is already updated above
     
     // Handle device motion controls if enabled
     if (this.motionControlsEnabled && input.deviceMotionEnabled && input.initialOrientation) {
@@ -159,78 +208,56 @@ export class PlayerInput {
   }
   
   setupTouchControls() {
+    console.log('Setting up touch controls UI elements');
     const input = this.engine.input;
     
-    // Create virtual joystick for mobile
+    // Debug overlay for mobile input
+    this.createDebugOverlay();
+    
+    // Create virtual joystick for mobile - now on the right side
     const joystickContainer = document.createElement('div');
-    joystickContainer.style.position = 'absolute';
+    joystickContainer.style.position = 'fixed';
     joystickContainer.style.bottom = '20px';
-    joystickContainer.style.left = '20px';
-    joystickContainer.style.width = '120px';
-    joystickContainer.style.height = '120px';
-    joystickContainer.style.borderRadius = '60px';
-    joystickContainer.style.background = 'rgba(255, 255, 255, 0.2)';
+    joystickContainer.style.right = '20px'; // Changed from left to right
+    joystickContainer.style.width = '150px';
+    joystickContainer.style.height = '150px';
+    joystickContainer.style.borderRadius = '75px';
+    joystickContainer.style.background = 'rgba(255, 255, 255, 0.3)';
+    joystickContainer.style.border = '2px solid rgba(255, 255, 255, 0.5)';
+    joystickContainer.style.zIndex = '1000';
     document.body.appendChild(joystickContainer);
     
     const joystick = document.createElement('div');
     joystick.style.position = 'absolute';
-    joystick.style.top = '35px';
-    joystick.style.left = '35px';
+    joystick.style.top = '50px';
+    joystick.style.left = '50px';
     joystick.style.width = '50px';
     joystick.style.height = '50px';
     joystick.style.borderRadius = '25px';
-    joystick.style.background = 'rgba(255, 255, 255, 0.5)';
+    joystick.style.background = 'rgba(255, 255, 255, 0.7)';
+    joystick.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
     joystickContainer.appendChild(joystick);
     
-    // Create altitude controls
-    const altUpButton = document.createElement('div');
-    altUpButton.style.position = 'absolute';
-    altUpButton.style.bottom = '150px';
-    altUpButton.style.right = '20px';
-    altUpButton.style.width = '60px';
-    altUpButton.style.height = '60px';
-    altUpButton.style.borderRadius = '30px';
-    altUpButton.style.background = 'rgba(255, 255, 255, 0.5)';
-    altUpButton.style.display = 'flex';
-    altUpButton.style.alignItems = 'center';
-    altUpButton.style.justifyContent = 'center';
-    altUpButton.style.fontSize = '24px';
-    altUpButton.textContent = '↑';
-    altUpButton.style.pointerEvents = 'auto';
-    document.body.appendChild(altUpButton);
-    
-    const altDownButton = document.createElement('div');
-    altDownButton.style.position = 'absolute';
-    altDownButton.style.bottom = '80px';
-    altDownButton.style.right = '20px';
-    altDownButton.style.width = '60px';
-    altDownButton.style.height = '60px';
-    altDownButton.style.borderRadius = '30px';
-    altDownButton.style.background = 'rgba(255, 255, 255, 0.5)';
-    altDownButton.style.display = 'flex';
-    altDownButton.style.alignItems = 'center';
-    altDownButton.style.justifyContent = 'center';
-    altDownButton.style.fontSize = '24px';
-    altDownButton.textContent = '↓';
-    altDownButton.style.pointerEvents = 'auto';
-    document.body.appendChild(altDownButton);
-    
-    // Create fire button
-    const fireButton = document.createElement('div');
-    fireButton.style.position = 'absolute';
-    fireButton.style.bottom = '80px';
-    fireButton.style.right = '100px';
-    fireButton.style.width = '80px';
-    fireButton.style.height = '80px';
-    fireButton.style.borderRadius = '40px';
-    fireButton.style.background = 'rgba(255, 0, 0, 0.5)';
-    fireButton.style.display = 'flex';
-    fireButton.style.alignItems = 'center';
-    fireButton.style.justifyContent = 'center';
-    fireButton.style.fontSize = '16px';
-    fireButton.textContent = 'FIRE';
-    fireButton.style.pointerEvents = 'auto';
-    document.body.appendChild(fireButton);
+    // Create space button (acts like spacebar for altitude)
+    const spaceButton = document.createElement('div');
+    spaceButton.style.position = 'fixed';
+    spaceButton.style.bottom = '20px';
+    spaceButton.style.left = '20px'; // Left side
+    spaceButton.style.width = '80px';
+    spaceButton.style.height = '80px';
+    spaceButton.style.borderRadius = '40px';
+    spaceButton.style.background = 'rgba(30, 144, 255, 0.7)'; // Blue color like spacebar function
+    spaceButton.style.display = 'flex';
+    spaceButton.style.alignItems = 'center';
+    spaceButton.style.justifyContent = 'center';
+    spaceButton.style.fontSize = '36px';
+    spaceButton.textContent = '↑'; // Up arrow symbol
+    spaceButton.style.pointerEvents = 'auto';
+    spaceButton.style.color = 'white';
+    spaceButton.style.boxShadow = '0 0 15px rgba(30, 144, 255, 0.5)';
+    spaceButton.style.zIndex = '1000';
+    spaceButton.style.userSelect = 'none';
+    document.body.appendChild(spaceButton);
     
     // Initialize joystick state
     this.joystick = {
@@ -239,7 +266,7 @@ export class PlayerInput {
       startPosition: { x: 0, y: 0 },
       container: {
         rect: joystickContainer.getBoundingClientRect(),
-        radius: 60
+        radius: 75
       }
     };
     
@@ -248,26 +275,15 @@ export class PlayerInput {
       this.joystick.container.rect = joystickContainer.getBoundingClientRect();
     });
     
-    // Handle altitude button events
-    altUpButton.addEventListener('touchstart', () => {
+    // Handle space button events - works exactly like spacebar
+    spaceButton.addEventListener('touchstart', () => {
       this.touchAltitude.up = true;
+      spaceButton.style.background = 'rgba(0, 119, 255, 0.8)'; // Highlight when active
     });
     
-    altUpButton.addEventListener('touchend', () => {
+    spaceButton.addEventListener('touchend', () => {
       this.touchAltitude.up = false;
-    });
-    
-    altDownButton.addEventListener('touchstart', () => {
-      this.touchAltitude.down = true;
-    });
-    
-    altDownButton.addEventListener('touchend', () => {
-      this.touchAltitude.down = false;
-    });
-    
-    // Handle fire button events
-    fireButton.addEventListener('touchstart', () => {
-      this.playerSystem.spells.castSpell();
+      spaceButton.style.background = 'rgba(30, 144, 255, 0.7)'; // Back to normal color
     });
     
     this.setupJoystickEvents(input, joystick);
@@ -295,8 +311,19 @@ export class PlayerInput {
   }
   
   setupJoystickEvents(input, joystickElement) {
+    console.log('Setting up joystick event handlers');
+    
+    // Create a dedicated handler to track which touch ID is controlling the joystick
+    let joystickTouchId = null;
+    
     // Handle touch events for joystick
     input.on('touchstart', (event) => {
+      // Prevent default to avoid scrolling
+      event.preventDefault();
+      
+      // Don't process if we already have an active touch for the joystick
+      if (joystickTouchId !== null) return;
+      
       for (let i = 0; i < event.touches.length; i++) {
         const touch = event.touches[i];
         const touchX = touch.clientX;
@@ -310,55 +337,195 @@ export class PlayerInput {
           touchY >= containerRect.top &&
           touchY <= containerRect.bottom
         ) {
+          joystickTouchId = touch.identifier; // Store the touch ID
           this.joystick.active = true;
           this.joystick.startPosition.x = touchX;
           this.joystick.startPosition.y = touchY;
+          
+          console.log('Joystick activated with touch ID:', joystickTouchId);
           break;
         }
       }
     });
     
     input.on('touchmove', (event) => {
-      if (this.joystick.active) {
+      // Prevent default to avoid scrolling
+      event.preventDefault();
+      
+      if (this.joystick.active && joystickTouchId !== null) {
+        // Find our specific touch by ID
+        let foundTouch = false;
+        
         for (let i = 0; i < event.touches.length; i++) {
           const touch = event.touches[i];
-          const touchX = touch.clientX;
-          const touchY = touch.clientY;
           
-          const containerRect = this.joystick.container.rect;
-          const centerX = containerRect.left + containerRect.width / 2;
-          const centerY = containerRect.top + containerRect.height / 2;
-          
-          // Calculate joystick position
-          let dx = touchX - centerX;
-          let dy = touchY - centerY;
-          
-          // Limit to container radius
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const maxDistance = this.joystick.container.radius;
-          
-          if (distance > maxDistance) {
-            dx = dx * (maxDistance / distance);
-            dy = dy * (maxDistance / distance);
+          if (touch.identifier === joystickTouchId) {
+            foundTouch = true;
+            const touchX = touch.clientX;
+            const touchY = touch.clientY;
+            
+            const containerRect = this.joystick.container.rect;
+            const centerX = containerRect.left + containerRect.width / 2;
+            const centerY = containerRect.top + containerRect.height / 2;
+            
+            // Calculate joystick position
+            let dx = touchX - centerX;
+            let dy = touchY - centerY;
+            
+            // Limit to container radius
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const maxDistance = this.joystick.container.radius;
+            
+            if (distance > maxDistance) {
+              dx = dx * (maxDistance / distance);
+              dy = dy * (maxDistance / distance);
+            }
+            
+            // Update joystick position
+            joystickElement.style.transform = `translate(${dx}px, ${dy}px)`;
+            
+            // Store normalized joystick position (-1 to 1)
+            this.joystick.position.x = dx / maxDistance;
+            this.joystick.position.y = dy / maxDistance;
+            
+            break;
           }
-          
-          // Update joystick position
-          joystickElement.style.transform = `translate(${dx}px, ${dy}px)`;
-          
-          // Store normalized joystick position (-1 to 1)
-          this.joystick.position.x = dx / maxDistance;
-          this.joystick.position.y = dy / maxDistance;
-          
-          break;
+        }
+        
+        // If we didn't find our touch, it may have been canceled
+        if (!foundTouch) {
+          this.resetJoystick(joystickElement);
+          joystickTouchId = null;
         }
       }
     });
     
     input.on('touchend', (event) => {
-      this.joystick.active = false;
-      this.joystick.position.x = 0;
-      this.joystick.position.y = 0;
-      joystickElement.style.transform = 'translate(0px, 0px)';
+      // Prevent default
+      event.preventDefault();
+      
+      // Check if our joystick touch ended
+      for (let i = 0; i < event.changedTouches.length; i++) {
+        const touch = event.changedTouches[i];
+        
+        if (touch.identifier === joystickTouchId) {
+          this.resetJoystick(joystickElement);
+          joystickTouchId = null;
+          console.log('Joystick released');
+          break;
+        }
+      }
     });
+    
+    // Also handle touchcancel event
+    input.on('touchcancel', (event) => {
+      // Prevent default
+      event.preventDefault();
+      
+      // Check if our joystick touch was canceled
+      for (let i = 0; i < event.changedTouches.length; i++) {
+        const touch = event.changedTouches[i];
+        
+        if (touch.identifier === joystickTouchId) {
+          this.resetJoystick(joystickElement);
+          joystickTouchId = null;
+          console.log('Joystick touch canceled');
+          break;
+        }
+      }
+    });
+  }
+  
+  resetJoystick(joystickElement) {
+    this.joystick.active = false;
+    this.joystick.position.x = 0;
+    this.joystick.position.y = 0;
+    joystickElement.style.transform = 'translate(0px, 0px)';
+  }
+  
+  createDebugOverlay() {
+    // Create debug overlay to show mobile input status
+    const debugOverlay = document.createElement('div');
+    debugOverlay.id = 'mobile-debug-overlay';
+    debugOverlay.style.position = 'fixed';
+    debugOverlay.style.top = '10px';
+    debugOverlay.style.left = '10px';
+    debugOverlay.style.background = 'rgba(0, 0, 0, 0.5)';
+    debugOverlay.style.color = 'white';
+    debugOverlay.style.padding = '10px';
+    debugOverlay.style.borderRadius = '5px';
+    debugOverlay.style.fontFamily = 'monospace';
+    debugOverlay.style.fontSize = '12px';
+    debugOverlay.style.zIndex = '2000';
+    debugOverlay.style.pointerEvents = 'none'; // Don't capture touch events
+    document.body.appendChild(debugOverlay);
+    
+    // Store for updating
+    this.debugOverlay = debugOverlay;
+    
+    // Add toggle to enable/disable the debug overlay
+    const debugToggle = document.createElement('div');
+    debugToggle.style.position = 'fixed';
+    debugToggle.style.top = '10px';
+    debugToggle.style.right = '10px';
+    debugToggle.style.width = '40px';
+    debugToggle.style.height = '40px';
+    debugToggle.style.borderRadius = '20px';
+    debugToggle.style.background = 'rgba(255, 255, 255, 0.5)';
+    debugToggle.style.display = 'flex';
+    debugToggle.style.alignItems = 'center';
+    debugToggle.style.justifyContent = 'center';
+    debugToggle.style.fontSize = '18px';
+    debugToggle.textContent = 'D';
+    debugToggle.style.zIndex = '2001';
+    debugToggle.style.userSelect = 'none';
+    document.body.appendChild(debugToggle);
+    
+    // Toggle debug display on click
+    debugToggle.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.debugOverlay.style.display = this.debugOverlay.style.display === 'none' ? 'block' : 'none';
+    });
+    
+    // Start with debug visible
+    this.updateDebugOverlay();
+  }
+  
+  updateDebugOverlay() {
+    if (!this.debugOverlay) return;
+    
+    const input = this.engine.input;
+    const player = this.playerSystem.localPlayer;
+    
+    if (!player) {
+      this.debugOverlay.textContent = 'Player not initialized';
+      return;
+    }
+    
+    const joystickInfo = this.joystick ? 
+      `Joystick: ${this.joystick.active ? 'Active' : 'Inactive'} (${this.joystick.position.x.toFixed(2)}, ${this.joystick.position.y.toFixed(2)})` : 
+      'Joystick: Not initialized';
+    
+    const motionInfo = `Motion Controls: ${this.motionControlsEnabled ? 'Enabled' : 'Disabled'}`;
+    const orientationInfo = input.deviceOrientation ? 
+      `Orientation: α:${input.deviceOrientation.alpha.toFixed(0)}° β:${input.deviceOrientation.beta.toFixed(0)}° γ:${input.deviceOrientation.gamma.toFixed(0)}°` : 
+      'Orientation: Not available';
+    
+    const playerInfo = `Position: (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)}, ${player.position.z.toFixed(0)})`;
+    const velocityInfo = `Velocity: (${player.velocity.x.toFixed(1)}, ${player.velocity.y.toFixed(1)}, ${player.velocity.z.toFixed(1)})`;
+    
+    this.debugOverlay.innerHTML = [
+      `<div>Mobile Controls Debug</div>`,
+      `<div>${joystickInfo}</div>`,
+      `<div>${motionInfo}</div>`,
+      `<div>${orientationInfo}</div>`,
+      `<div>${playerInfo}</div>`,
+      `<div>${velocityInfo}</div>`,
+      `<div>Throttle: ${this.currentThrottle.toFixed(2)}</div>`,
+      `<div>Touch Alt: Up=${this.touchAltitude.up} Down=${this.touchAltitude.down}</div>`
+    ].join('<br>');
+    
+    // Schedule next update
+    requestAnimationFrame(() => this.updateDebugOverlay());
   }
 }

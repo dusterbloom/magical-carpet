@@ -29,6 +29,12 @@ export class PlayerSystem {
     await this.models.initialize();
     await this.spells.initialize();
     
+    // Set up touch controls for mobile devices
+    if (this.engine.input.isTouchDevice) {
+      console.log('Setting up touch controls for mobile device');
+      this.input.setupTouchControls();
+    }
+    
     // Listen for network events
     this.engine.systems.network.on('connected', (data) => {
       this.createLocalPlayer(data.id);
@@ -167,9 +173,21 @@ export class PlayerSystem {
   updateCamera() {
     if (!this.localPlayer) return;
     
-    // Define camera offset and target distances
-    const cameraOffset = new THREE.Vector3(0, 10, -25); // Adjusted: higher and further back
-    const lookAheadDistance = new THREE.Vector3(0, 5, 25); // Adjusted: look further ahead
+    // Check if we're on mobile
+    const isMobile = this.engine.input.isTouchDevice;
+    
+    // Different camera settings for mobile vs desktop
+    let cameraOffset, lookAheadDistance;
+    
+    if (isMobile) {
+      // Mobile: more third-person view but with mouse-like controls 
+      cameraOffset = new THREE.Vector3(0, 12, -20); // Higher and closer
+      lookAheadDistance = new THREE.Vector3(0, 3, 30); // Look further ahead
+    } else {
+      // Desktop: third-person view
+      cameraOffset = new THREE.Vector3(0, 10, -25); // Higher and further back
+      lookAheadDistance = new THREE.Vector3(0, 5, 25); // Standard look ahead
+    }
     
     // Create quaternion from player's full rotation (pitch and yaw)
     const quaternion = new THREE.Quaternion();

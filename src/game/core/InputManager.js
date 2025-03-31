@@ -31,12 +31,15 @@ export class InputManager {
     
     // Touch events for mobile
     if (this.isTouchDevice) {
+      console.log('Touch device detected, setting up touch event handlers');
       window.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
       window.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
       window.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+      window.addEventListener('touchcancel', this.onTouchCancel.bind(this), { passive: false });
       
       // Add device orientation event listener for motion controls
       if (this.deviceMotionAvailable) {
+        console.log('Device orientation available, setting up orientation event handler');
         window.addEventListener('deviceorientation', this.onDeviceOrientation.bind(this));
       }
     }
@@ -85,7 +88,10 @@ export class InputManager {
   }
   
   onTouchStart(event) {
+    // Prevent default behaviors like scrolling
     event.preventDefault();
+    
+    console.log('Touch start detected', event.touches.length, 'touches');
     
     for (let i = 0; i < event.changedTouches.length; i++) {
       const touch = event.changedTouches[i];
@@ -103,6 +109,8 @@ export class InputManager {
   
   onTouchEnd(event) {
     event.preventDefault();
+    
+    console.log('Touch end detected', event.changedTouches.length, 'touches');
     
     for (let i = 0; i < event.changedTouches.length; i++) {
       const touch = event.changedTouches[i];
@@ -124,6 +132,19 @@ export class InputManager {
     }
     
     this.emit('touchmove', event);
+  }
+  
+  onTouchCancel(event) {
+    event.preventDefault();
+    
+    console.log('Touch cancel detected', event.changedTouches.length, 'touches');
+    
+    for (let i = 0; i < event.changedTouches.length; i++) {
+      const touch = event.changedTouches[i];
+      delete this.touches[touch.identifier];
+    }
+    
+    this.emit('touchcancel', event);
   }
   
   // Event system
@@ -175,11 +196,26 @@ export class InputManager {
   
   // Device orientation handling for motion controls
   onDeviceOrientation(event) {
-    if (!this.deviceMotionEnabled) return;
-    
+    // Always update the values, even if not enabled
     this.deviceOrientation.alpha = event.alpha || 0; // Z-axis rotation
     this.deviceOrientation.beta = event.beta || 0;   // X-axis rotation
     this.deviceOrientation.gamma = event.gamma || 0; // Y-axis rotation
+    
+    // Log the first few orientation events to help with debugging
+    if (!this._orientationLogged) {
+      console.log('Device orientation event:', {
+        alpha: event.alpha,
+        beta: event.beta,
+        gamma: event.gamma
+      });
+      this._orientationLogged = true;
+      
+      // Enable device motion by default on mobile
+      if (this.isTouchDevice && !this.deviceMotionEnabled) {
+        console.log('Auto-enabling device motion for mobile');
+        this.setDeviceMotionEnabled(true);
+      }
+    }
     
     if (!this.initialOrientation && this.deviceMotionEnabled) {
       // Set initial orientation for calibration
@@ -201,23 +237,38 @@ export class InputManager {
   
   // Method to enable/disable device motion controls
   setDeviceMotionEnabled(enabled) {
+    console.log('Setting device motion enabled:', enabled);
+    
     // Request permission for device orientation on iOS
     if (enabled && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      console.log('Requesting iOS device orientation permission');
       DeviceOrientationEvent.requestPermission()
         .then(permissionState => {
           if (permissionState === 'granted') {
+            console.log('iOS device orientation permission granted');
             this.deviceMotionEnabled = enabled;
             this.calibrateDeviceOrientation();
           } else {
             console.warn('Device orientation permission denied');
           }
         })
-        .catch(console.error);
+        .catch(err => {
+          console.error('Error requesting device orientation permission:', err);
+          // Fall back to standard orientation API
+          this.deviceMotionEnabled = enabled;
+          if (enabled) {
+            this.calibrateDeviceOrientation();
+          }
+        });
     } else {
+      // For non-iOS devices or when disabling
       this.deviceMotionEnabled = enabled;
       if (enabled) {
         this.calibrateDeviceOrientation();
       }
     }
+    
+    // Return the current state
+    return this.deviceMotionEnabled;
   }
 }
