@@ -88,8 +88,14 @@ export class PlayerInput {
     
     // Vertical movement (Space/Shift) - more gradual
     let verticalForce = 0;
-    if (input.isKeyDown('Space')) verticalForce += 1;
+    let spacePressed = input.isKeyDown('Space');
+    if (spacePressed) verticalForce += 1;
     if (input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight')) verticalForce -= 1;
+    
+    // Update contrail system based on space key state
+    if (this.engine.systems.carpetTrail) {
+      this.engine.systems.carpetTrail.setSpaceBarState(spacePressed);
+    }
     
     if (verticalForce !== 0) {
       physics.applyAltitudeChange(player, 30 * verticalForce * delta);

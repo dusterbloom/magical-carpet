@@ -5,90 +5,73 @@ export class CarpetTrailSystem {
     this.engine = engine;
     this.scene = engine.scene;
     
-    // Trail particles
-    this.trailParticles = [];
-    this.maxParticles = 200;
-    this.particleLifespan = 2.0; // seconds
-    this.emissionRate = 10; // particles per second
+    // Contrail system
+    this.leftContrailPoints = [];
+    this.rightContrailPoints = [];
+    this.maxContrailPoints = 150;
+    this.leftContrailLine = null;
+    this.rightContrailLine = null;
+    this.contrailMaterial = null;
+    this.emissionRate = 20; // points per second - increased for continuity
+    this.minSpeedForEmission = 5; // Minimum speed to emit contrails - reduced threshold
+    this.contrailLifespan = 8.0; // seconds - increased for longer trails
+    this.contrailFadeStart = 4.0; // when contrails start to fade
     this.timeSinceLastEmission = 0;
+    this.contrailWidth = 0.6; // width of the contrail - reduced from 1.5
     
-    // Ribbon trail
-    this.ribbonPoints = [];
-    this.maxRibbonPoints = 50;
-    this.ribbonMesh = null;
-    this.ribbonMaterial = null;
-    this.ribbonUpdateFrequency = 0.1; // seconds
-    this.timeSinceLastRibbonUpdate = 0;
-    this.minPointsForRibbon = 2; // Minimum points needed for a valid ribbon
+    // Player input state
+    this.spaceBarPressed = false;
     
-    // Motion lines
-    this.motionLines = [];
-    this.maxMotionLines = 12;
-    this.motionLineLifespan = 0.5; // seconds
-    this.motionLineEmissionRate = 20; // lines per second
-    this.timeSinceLastMotionLine = 0;
+    // Carpet dimensions for contrail positioning
+    this.carpetWidth = 5;  // Based on the BoxGeometry in PlayerModels.js
+    this.carpetLength = 8; // Based on the BoxGeometry in PlayerModels.js
+  }
+  
+  /**
+   * Set space bar state (for boost trail)
+   */
+  setSpaceBarState(pressed) {
+    this.spaceBarPressed = pressed;
+    // No clearing - trails will fade naturally
+  }
+  
+  /**
+   * Calculate lifespan based on speed
+   * Faster speeds = longer-lasting trails
+   */
+  getSpeedAdjustedLifespan(speed) {
+    const baseLifespan = 4.0; // base seconds
+    const maxLifespan = 8.0;  // maximum seconds
+    const speedFactor = Math.min(1.0, speed / 100); // normalize speed to 0-1 range
     
-    // Steam effect
-    this.steamParticles = [];
-    this.maxSteamParticles = 100;
-    this.steamLifespan = 3.0; // seconds
-    this.steamEmissionRate = 5; // particles per second
-    this.timeSinceLastSteam = 0;
+    return baseLifespan + (maxLifespan - baseLifespan) * speedFactor;
   }
   
   /**
    * Reset trail when tab regains focus or on error
    */
   resetTrail() {
-    console.log('Resetting carpet trail system');
+    console.log('Resetting carpet contrail system');
     
-    // Clear ribbon points
-    this.ribbonPoints = [];
+    // Clear contrail points
+    this.leftContrailPoints = [];
+    this.rightContrailPoints = [];
     
-    // Remove ribbon mesh if it exists
-    if (this.ribbonMesh) {
-      this.scene.remove(this.ribbonMesh);
-      if (this.ribbonMesh.geometry) this.ribbonMesh.geometry.dispose();
-      this.ribbonMesh = null;
+    // Remove contrail lines if they exist
+    if (this.leftContrailLine) {
+      this.scene.remove(this.leftContrailLine);
+      if (this.leftContrailLine.geometry) this.leftContrailLine.geometry.dispose();
+      this.leftContrailLine = null;
+    }
+    
+    if (this.rightContrailLine) {
+      this.scene.remove(this.rightContrailLine);
+      if (this.rightContrailLine.geometry) this.rightContrailLine.geometry.dispose();
+      this.rightContrailLine = null;
     }
     
     // Reset timers
     this.timeSinceLastEmission = 0;
-    this.timeSinceLastRibbonUpdate = 0;
-    this.timeSinceLastMotionLine = 0;
-    this.timeSinceLastSteam = 0;
-    
-    // Optionally, clear all particles and lines
-    this.clearAllEffects();
-  }
-  
-  /**
-   * Clear all visual effects
-   */
-  clearAllEffects() {
-    // Clear trail particles
-    this.trailParticles.forEach(particle => {
-      this.scene.remove(particle);
-      if (particle.geometry) particle.geometry.dispose();
-      if (particle.material) particle.material.dispose();
-    });
-    this.trailParticles = [];
-    
-    // Clear motion lines
-    this.motionLines.forEach(line => {
-      this.scene.remove(line);
-      if (line.geometry) line.geometry.dispose();
-      if (line.material) line.material.dispose();
-    });
-    this.motionLines = [];
-    
-    // Clear steam particles
-    this.steamParticles.forEach(particle => {
-      this.scene.remove(particle);
-      if (particle.geometry) particle.geometry.dispose();
-      if (particle.material) particle.material.dispose();
-    });
-    this.steamParticles = [];
   }
   
   /**
@@ -104,353 +87,299 @@ export class CarpetTrailSystem {
   initialize() {
     console.log("Initializing CarpetTrailSystem");
     
-    // Create particle material
-    this.particleMaterial = new THREE.MeshBasicMaterial({
-      color: 0x80ffff,
-      transparent: true,
-      opacity: 0.7,
-      side: THREE.DoubleSide
-    });
-    
-    // Create ribbon material
-    this.ribbonMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      transparent: true,
-      opacity: 0.3,
-      side: THREE.DoubleSide
-    });
-    
-    // Create motion line material
-    this.motionLineMaterial = new THREE.LineBasicMaterial({
+    // Create contrail material
+    this.contrailMaterial = new THREE.LineBasicMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.6
+      opacity: 0.8,
+      linewidth: 10
     });
     
-    // Create steam material
-    this.steamMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.4,
-      side: THREE.DoubleSide
-    });
+    // Ensure contrails start emitting immediately
+    this.timeSinceLastEmission = 999; // Force immediate emission on first update
   }
   
-  createParticle(position) {
-    // Create a small sphere for the particle
-    const geometry = new THREE.SphereGeometry(0.1, 4, 4);
-    const material = this.particleMaterial.clone();
-    const particle = new THREE.Mesh(geometry, material);
-    
-    // Set position and add some random offset
-    particle.position.copy(position);
-    particle.position.x += (Math.random() - 0.5) * 0.5;
-    particle.position.y += (Math.random() - 0.5) * 0.2;
-    particle.position.z += (Math.random() - 0.5) * 0.5;
-    
-    // Set particle properties
-    particle.userData = {
-      lifetime: 0,
-      maxLifetime: this.particleLifespan,
-      initialScale: 0.1 + Math.random() * 0.2,
-      velocity: new THREE.Vector3(
-        (Math.random() - 0.5) * 0.5,
-        Math.random() * 0.2 - 0.05,
-        (Math.random() - 0.5) * 0.5
-      )
-    };
-    
-    // Add to scene and array
-    this.scene.add(particle);
-    this.trailParticles.push(particle);
-    
-    return particle;
-  }
-  
-  updateRibbonTrail(position) {
+  /**
+   * Add a new point to the contrail system
+   */
+  addContrailPoints(playerPosition, playerRotation, playerVelocity, speed) {
     try {
-      // Validate position
-      if (!position || position.x === undefined || isNaN(position.x) ||
-          position.y === undefined || isNaN(position.y) ||
-          position.z === undefined || isNaN(position.z)) {
-        console.warn('Invalid position for ribbon trail:', position);
+      // Validate position and rotation
+      if (!playerPosition || !playerRotation || isNaN(playerPosition.x)) {
+        console.warn('Invalid position for contrail:', playerPosition);
         return;
       }
       
-      // Add new point to the ribbon
-      this.ribbonPoints.push(position.clone());
+      // Create rotation matrix to orient the contrail points correctly
+      const rotationMatrix = new THREE.Matrix4().makeRotationY(playerRotation.y);
       
-      // Keep ribbon at max length
-      if (this.ribbonPoints.length > this.maxRibbonPoints) {
-        this.ribbonPoints.shift();
-      }
-      
-      // Need at least 2 points to create a ribbon
-      if (this.ribbonPoints.length < this.minPointsForRibbon) return;
-      
-      // Remove old ribbon if it exists
-      if (this.ribbonMesh) {
-        this.scene.remove(this.ribbonMesh);
-        this.ribbonMesh.geometry.dispose();
-      }
-      
-      // Validate all points in the ribbon
-      const validPoints = this.ribbonPoints.filter(point => 
-        point && point.x !== undefined && !isNaN(point.x) &&
-        point.y !== undefined && !isNaN(point.y) &&
-        point.z !== undefined && !isNaN(point.z)
+      // Calculate contrail origin points (bottom left and right corners of carpet)
+      const leftOrigin = new THREE.Vector3(
+        -this.carpetWidth/2, 
+        -0.25,  // Bottom of carpet
+        -this.carpetLength/2
       );
       
-      // Skip if we don't have enough valid points
-      if (validPoints.length < this.minPointsForRibbon) {
-        console.warn('Not enough valid points for ribbon trail');
-        return;
-      }
+      const rightOrigin = new THREE.Vector3(
+        this.carpetWidth/2, 
+        -0.25,  // Bottom of carpet
+        -this.carpetLength/2
+      );
       
-      // Use only valid points
-      this.ribbonPoints = validPoints;
+      // Apply rotation
+      leftOrigin.applyMatrix4(rotationMatrix);
+      rightOrigin.applyMatrix4(rotationMatrix);
       
-      // Create ribbon using a tube geometry
-      const curve = new THREE.CatmullRomCurve3(this.ribbonPoints);
-      const geometry = new THREE.TubeGeometry(curve, this.ribbonPoints.length * 2, 0.2, 8, false);
+      // Add to player position
+      const leftPoint = playerPosition.clone().add(leftOrigin);
+      const rightPoint = playerPosition.clone().add(rightOrigin);
       
-      // Create new ribbon mesh
-      this.ribbonMesh = new THREE.Mesh(geometry, this.ribbonMaterial);
-      this.scene.add(this.ribbonMesh);
-    } catch (error) {
-      console.error('Error updating ribbon trail:', error);
-      // Reset ribbon points in case of error
-      this.ribbonPoints = [];
-    }
-  }
-  
-  createMotionLine(position, velocity) {
-    try {
-      // Validate position and velocity
-      if (!position || !velocity || 
-          isNaN(position.x) || isNaN(position.y) || isNaN(position.z) ||
-          isNaN(velocity.x) || isNaN(velocity.y) || isNaN(velocity.z)) {
-        return null;
-      }
-      
-      // Skip if velocity is too low
-      const speed = velocity.length();
-      if (speed < 10) return null;
-      
-      // Create line points based on velocity
-      const direction = velocity.clone().normalize();
-      const points = [
-        position.clone(),
-        position.clone().sub(direction.multiplyScalar(1 + Math.random() * 2))
-      ];
-      
-      // Create line geometry
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const line = new THREE.Line(geometry, this.motionLineMaterial.clone());
-      
-      // Set line properties
-      line.userData = {
-        lifetime: 0,
-        maxLifetime: this.motionLineLifespan
+      // Store emission point with speed info
+      const timestamp = performance.now() / 1000; // Convert to seconds
+      const emissionData = {
+        position: leftPoint,
+        timestamp: timestamp,
+        speed: speed // Store speed at emission time
       };
       
-      // Add to scene and array
-      this.scene.add(line);
-      this.motionLines.push(line);
+      // Add to contrail points
+      this.leftContrailPoints.push(emissionData);
       
-      return line;
+      // Right contrail with same data structure
+      this.rightContrailPoints.push({
+        position: rightPoint,
+        timestamp: timestamp,
+        speed: speed
+      });
+      
+      // Keep contrails at max length
+      while (this.leftContrailPoints.length > this.maxContrailPoints) {
+        this.leftContrailPoints.shift();
+      }
+      
+      while (this.rightContrailPoints.length > this.maxContrailPoints) {
+        this.rightContrailPoints.shift();
+      }
+      
+      // Update contrail visuals
+      this.updateContrailLines(speed);
     } catch (error) {
-      console.error('Error creating motion line:', error);
-      return null;
+      console.error('Error adding contrail points:', error);
     }
   }
   
-  createSteamParticle(position) {
-    // Create a cloud-like shape for steam
-    const geometry = new THREE.PlaneGeometry(0.5, 0.5);
-    const material = this.steamMaterial.clone();
-    const particle = new THREE.Mesh(geometry, material);
-    
-    // Always face camera
-    particle.lookAt(this.engine.camera.position);
-    
-    // Set position slightly below the carpet
-    particle.position.copy(position);
-    particle.position.y -= 0.8;
-    particle.position.x += (Math.random() - 0.5) * 0.8;
-    particle.position.z += (Math.random() - 0.5) * 0.8;
-    
-    // Set particle properties
-    particle.userData = {
-      lifetime: 0,
-      maxLifetime: this.steamLifespan,
-      initialScale: 0.3 + Math.random() * 0.9,
-      velocity: new THREE.Vector3(
-        (Math.random() - 0.5) * 0.2,
-        0.2 + Math.random() * 0.4,  // Steam rises
-        (Math.random() - 0.5) * 0.2
-      )
-    };
-    
-    // Random rotation
-    particle.rotation.z = Math.random() * Math.PI * 2;
-    
-    // Add to scene and array
-    this.scene.add(particle);
-    this.steamParticles.push(particle);
-    
-    return particle;
+  /**
+   * Update the visual representation of the contrails
+   */
+  updateContrailLines(currentSpeed) {
+    try {
+      // Current time for age-based fading
+      const currentTime = performance.now() / 1000;
+      
+      // Get lifespan based on speed
+      const lifespan = this.getSpeedAdjustedLifespan(currentSpeed);
+      const fadeStart = lifespan / 2; // fade starts halfway through lifespan
+      
+      // Filter out points that are too old and prepare positions/colors
+      const leftPositions = [];
+      const leftColors = [];
+      const rightPositions = [];
+      const rightColors = [];
+      
+      // Process left contrail
+      for (const point of this.leftContrailPoints) {
+        const age = currentTime - point.timestamp;
+        const pointLifespan = this.getSpeedAdjustedLifespan(point.speed || 0);
+        
+        // Skip if too old - using dynamic lifespan
+        if (age > pointLifespan) continue;
+        
+        // Add position
+        leftPositions.push(point.position.x, point.position.y, point.position.z);
+        
+        // Calculate opacity based on age
+        let opacity = 1.0;
+        const pointFadeStart = pointLifespan / 2;
+        if (age > pointFadeStart) {
+          opacity = 1.0 - ((age - pointFadeStart) / (pointLifespan - pointFadeStart));
+        }
+        opacity = Math.max(0, Math.min(1, opacity)); // Clamp between 0 and 1
+        
+        // Add color with opacity
+        leftColors.push(1, 1, 1, opacity);
+      }
+      
+      // Process right contrail
+      for (const point of this.rightContrailPoints) {
+        const age = currentTime - point.timestamp;
+        const pointLifespan = this.getSpeedAdjustedLifespan(point.speed || 0);
+        
+        // Skip if too old - using dynamic lifespan
+        if (age > pointLifespan) continue;
+        
+        // Add position
+        rightPositions.push(point.position.x, point.position.y, point.position.z);
+        
+        // Calculate opacity based on age
+        let opacity = 1.0;
+        const pointFadeStart = pointLifespan / 2;
+        if (age > pointFadeStart) {
+          opacity = 1.0 - ((age - pointFadeStart) / (pointLifespan - pointFadeStart));
+        }
+        opacity = Math.max(0, Math.min(1, opacity)); // Clamp between 0 and 1
+        
+        // Add color with opacity
+        rightColors.push(1, 1, 1, opacity);
+      }
+      
+      // Remove old lines
+      if (this.leftContrailLine) {
+        this.scene.remove(this.leftContrailLine);
+        this.leftContrailLine.geometry.dispose();
+      }
+      
+      if (this.rightContrailLine) {
+        this.scene.remove(this.rightContrailLine);
+        this.rightContrailLine.geometry.dispose();
+      }
+      
+      // Create new lines if we have enough points
+      if (leftPositions.length >= 6) { // At least 2 points
+        // Create geometry for the line
+        const leftGeometry = new THREE.BufferGeometry();
+        leftGeometry.setAttribute('position', new THREE.Float32BufferAttribute(leftPositions, 3));
+        
+        // Extract Vector3 points for curve creation
+        const leftPoints = [];
+        for (let i = 0; i < leftPositions.length; i += 3) {
+          leftPoints.push(new THREE.Vector3(
+            leftPositions[i],
+            leftPositions[i + 1],
+            leftPositions[i + 2]
+          ));
+        }
+        
+        // Create smooth curve
+        const leftCurve = new THREE.CatmullRomCurve3(leftPoints);
+        
+        // Create tube geometry for the curve
+        const tubeGeometry = new THREE.TubeGeometry(
+          leftCurve,
+          leftPoints.length * 2, // more segments for smoother curve
+          this.contrailWidth, // radius
+          8, // radiusSegments
+          false // closed
+        );
+        
+        // Create material with fading
+        const leftMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide
+        });
+        
+        // Create tube mesh
+        this.leftContrailLine = new THREE.Mesh(tubeGeometry, leftMaterial);
+        this.scene.add(this.leftContrailLine);
+      }
+      
+      if (rightPositions.length >= 6) { // At least 2 points
+        // Create geometry for the line  
+        const rightGeometry = new THREE.BufferGeometry();
+        rightGeometry.setAttribute('position', new THREE.Float32BufferAttribute(rightPositions, 3));
+        
+        // Extract Vector3 points for curve creation
+        const rightPoints = [];
+        for (let i = 0; i < rightPositions.length; i += 3) {
+          rightPoints.push(new THREE.Vector3(
+            rightPositions[i],
+            rightPositions[i + 1],
+            rightPositions[i + 2]
+          ));
+        }
+        
+        // Create smooth curve
+        const rightCurve = new THREE.CatmullRomCurve3(rightPoints);
+        
+        // Create tube geometry for the curve
+        const rightTubeGeometry = new THREE.TubeGeometry(
+          rightCurve,
+          rightPoints.length * 2, // more segments for smoother curve
+          this.contrailWidth, // radius
+          8, // radiusSegments
+          false // closed
+        );
+        
+        // Create material with fading
+        const rightMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide
+        });
+        
+        // Create tube mesh
+        this.rightContrailLine = new THREE.Mesh(rightTubeGeometry, rightMaterial);
+        this.scene.add(this.rightContrailLine);
+      }
+    } catch (error) {
+      console.error('Error updating contrail lines:', error);
+    }
   }
   
   update(delta) {
     const player = this.engine.systems.player?.localPlayer;
     if (!player) return;
     
-    // Get player position and velocity
+    // Get player position, rotation, and velocity
     const position = player.position.clone();
-    position.y -= 0.7; // Emit from bottom of carpet
+    const rotation = player.rotation.clone();
     const velocity = player.velocity.clone();
     const speed = velocity.length();
     
-    // Update emission timers
+    // Update emission timer
     this.timeSinceLastEmission += delta;
-    this.timeSinceLastRibbonUpdate += delta;
-    this.timeSinceLastMotionLine += delta;
-    this.timeSinceLastSteam += delta;
     
-    // Emit trail particles when moving
-    if (speed > 5 && this.timeSinceLastEmission > 1 / this.emissionRate) {
-      this.createParticle(position);
-      this.timeSinceLastEmission = 0;
-    }
-    
-    // Update ribbon trail
-    if (this.timeSinceLastRibbonUpdate > this.ribbonUpdateFrequency) {
-      this.updateRibbonTrail(position);
-      this.timeSinceLastRibbonUpdate = 0;
-    }
-    
-    // Emit motion lines when moving fast
-    if (speed > 10 && this.timeSinceLastMotionLine > 1 / this.motionLineEmissionRate) {
-      this.createMotionLine(position, velocity);
-      this.timeSinceLastMotionLine = 0;
-    }
-    
-    // Emit steam particles
-    if (this.timeSinceLastSteam > 1 / this.steamEmissionRate) {
-      this.createSteamParticle(position);
-      this.timeSinceLastSteam = 0;
-    }
-    
-    // Update existing particles
-    this.updateParticles(delta);
-    this.updateMotionLines(delta);
-    this.updateSteamParticles(delta);
-    
-    // Make sure ribbon updates to face camera
-    if (this.ribbonMesh) {
-      this.ribbonMesh.lookAt(this.engine.camera.position);
-    }
-  }
-  
-  updateParticles(delta) {
-    // Update trail particles
-    for (let i = this.trailParticles.length - 1; i >= 0; i--) {
-      const particle = this.trailParticles[i];
-      particle.userData.lifetime += delta;
+    // Only emit contrail points when space bar is pressed AND moving fast enough
+    if (this.spaceBarPressed && speed > this.minSpeedForEmission) {
+      // Ensure continuous emission with reasonable frequency
+      // Minimum emission rate regardless of speed to prevent gaps
+      const baseRate = this.emissionRate;
+      const speedFactor = 0.5 + speed / 100;
+      const emissionInterval = 1.0 / (baseRate * speedFactor);
+      // Cap the interval to prevent too sparse emissions at low speeds
+      const maxInterval = 1.0 / 10; // At least 10 points per second
+      const finalInterval = Math.min(emissionInterval, maxInterval);
       
-      // Update position based on velocity
-      particle.position.add(particle.userData.velocity);
-      
-      // Fade out particle based on lifetime
-      const lifeRatio = particle.userData.lifetime / particle.userData.maxLifetime;
-      particle.material.opacity = 0.5 * (1 - lifeRatio);
-      
-      // Scale particle down over time
-      const scale = particle.userData.initialScale * (1 - lifeRatio * 0.5);
-      particle.scale.set(scale, scale, scale);
-      
-      // Remove particle if it's too old
-      if (particle.userData.lifetime >= particle.userData.maxLifetime) {
-        this.scene.remove(particle);
-        particle.geometry.dispose();
-        particle.material.dispose();
-        this.trailParticles.splice(i, 1);
+      if (this.timeSinceLastEmission > finalInterval) {
+        this.addContrailPoints(position, rotation, velocity, speed);
+        this.timeSinceLastEmission = 0;
       }
     }
     
-    // Remove excess particles if we have too many
-    while (this.trailParticles.length > this.maxParticles) {
-      const particle = this.trailParticles.shift();
-      this.scene.remove(particle);
-      particle.geometry.dispose();
-      particle.material.dispose();
-    }
+    // Clean up expired contrail points
+    this.cleanupExpiredPoints();
+    
+    // Always update the visual representation of the contrails
+    // This ensures fading works even when not emitting new points
+    this.updateContrailLines(speed);
   }
   
-  updateMotionLines(delta) {
-    // Update motion lines
-    for (let i = this.motionLines.length - 1; i >= 0; i--) {
-      const line = this.motionLines[i];
-      line.userData.lifetime += delta;
-      
-      // Fade out line based on lifetime
-      const lifeRatio = line.userData.lifetime / line.userData.maxLifetime;
-      line.material.opacity = 0.6 * (1 - lifeRatio);
-      
-      // Remove line if it's too old
-      if (line.userData.lifetime >= line.userData.maxLifetime) {
-        this.scene.remove(line);
-        line.geometry.dispose();
-        line.material.dispose();
-        this.motionLines.splice(i, 1);
-      }
-    }
+  cleanupExpiredPoints() {
+    // Current time
+    const currentTime = performance.now() / 1000;
     
-    // Remove excess lines if we have too many
-    while (this.motionLines.length > this.maxMotionLines) {
-      const line = this.motionLines.shift();
-      this.scene.remove(line);
-      line.geometry.dispose();
-      line.material.dispose();
-    }
-  }
-  
-  updateSteamParticles(delta) {
-    // Update steam particles
-    for (let i = this.steamParticles.length - 1; i >= 0; i--) {
-      const particle = this.steamParticles[i];
-      particle.userData.lifetime += delta;
-      
-      // Update position based on velocity
-      particle.position.add(particle.userData.velocity.clone().multiplyScalar(delta));
-      
-      // Fade out particle based on lifetime
-      const lifeRatio = particle.userData.lifetime / particle.userData.maxLifetime;
-      particle.material.opacity = 0.4 * (1 - lifeRatio);
-      
-      // Grow particle over time
-      const scale = particle.userData.initialScale * (1 + lifeRatio);
-      particle.scale.set(scale, scale, scale);
-      
-      // Make sure particle always faces camera
-      particle.lookAt(this.engine.camera.position);
-      
-      // Remove particle if it's too old
-      if (particle.userData.lifetime >= particle.userData.maxLifetime) {
-        this.scene.remove(particle);
-        particle.geometry.dispose();
-        particle.material.dispose();
-        this.steamParticles.splice(i, 1);
-      }
-    }
+    // Remove expired points from left contrail
+    this.leftContrailPoints = this.leftContrailPoints.filter(point => {
+      const pointLifespan = this.getSpeedAdjustedLifespan(point.speed || 0);
+      return (currentTime - point.timestamp) <= pointLifespan;
+    });
     
-    // Remove excess particles if we have too many
-    while (this.steamParticles.length > this.maxSteamParticles) {
-      const particle = this.steamParticles.shift();
-      this.scene.remove(particle);
-      particle.geometry.dispose();
-      particle.material.dispose();
-    }
+    // Remove expired points from right contrail
+    this.rightContrailPoints = this.rightContrailPoints.filter(point => {
+      const pointLifespan = this.getSpeedAdjustedLifespan(point.speed || 0);
+      return (currentTime - point.timestamp) <= pointLifespan;
+    });
   }
 }
