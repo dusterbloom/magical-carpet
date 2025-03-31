@@ -22,14 +22,14 @@ export class IntroScreen {
     this.container.style.left = '0';
     this.container.style.width = '100%';
     this.container.style.height = '100%';
-    this.container.style.backgroundColor = 'rgba(18, 0, 82, 0.95)';
-    this.container.style.backgroundImage = 'linear-gradient(45deg, #120052, #7b2cbf)';
+    this.container.style.backgroundColor = '#E5D3B3';
+    this.container.style.backgroundImage = 'linear-gradient(45deg, #D9C09F, #F0E6D2)';
     this.container.style.display = 'flex';
     this.container.style.flexDirection = 'column';
     this.container.style.justifyContent = 'center';
     this.container.style.alignItems = 'center';
     this.container.style.zIndex = '1000';
-    this.container.style.fontFamily = 'Arial, sans-serif';
+    this.container.style.fontFamily = '"Helvetica Neue", Helvetica, sans-serif';
     this.container.style.color = 'white';
     
     // Create logo
@@ -44,25 +44,36 @@ export class IntroScreen {
     logo.style.display = 'flex';
     logo.style.justifyContent = 'center';
     logo.style.alignItems = 'center';
-    logo.style.boxShadow = '0 0 50px rgba(224, 170, 255, 0.5)';
+    logo.style.boxShadow = '0 0 50px rgba(139, 69, 19, 0.5)';
     
     // Create inner logo with a magic carpet icon
     const innerLogo = document.createElement('div');
-    innerLogo.style.width = '120px';
-    innerLogo.style.height = '120px';
-    innerLogo.style.borderRadius = '50%';
-    innerLogo.style.background = 'linear-gradient(135deg, #e0aaff, #7b2cbf)';
-    innerLogo.style.display = 'flex';
-    innerLogo.style.justifyContent = 'center';
-    innerLogo.style.alignItems = 'center';
+    // innerLogo.style.width = '120px';
+    // innerLogo.style.height = '120px';
+    // innerLogo.style.borderRadius = '50%';
+    // innerLogo.style.background = 'linear-gradient(135deg, #2255a4, #4f7cac)';
+    // innerLogo.style.display = 'flex';
+    // innerLogo.style.justifyContent = 'center';
+    // innerLogo.style.alignItems = 'center';
     
     // Add simple carpet icon
     innerLogo.innerHTML = `
-      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 18C3 16.3431 4.34315 15 6 15H18C19.6569 15 21 16.3431 21 18V18C21 19.6569 19.6569 21 18 21H6C4.34315 21 3 19.6569 3 18V18Z" fill="#e0aaff"/>
-        <path d="M5 15V9C5 6.79086 6.79086 5 9 5H15C17.2091 5 19 6.79086 19 9V15" stroke="white" stroke-width="2"/>
-        <path d="M4 18.5H20" stroke="#7b2cbf" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 2"/>
-      </svg>
+<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="70" cy="70" r="70" fill="#F5F0E6"/>
+  <g transform="translate(35, 20)">
+    <!-- Simple, clean carpet design -->
+    <rect x="10" y="10" width="50" height="80" rx="3" fill="#C87137" stroke="#A05A2C" stroke-width="1.5"/>
+    
+    <!-- Minimalist carpet patterns -->
+    <path d="M15 30 H55" stroke="#8B4513" stroke-width="1" stroke-dasharray="1 1"/>
+    <path d="M15 45 H55" stroke="#8B4513" stroke-width="1" stroke-dasharray="1 1"/>
+    <path d="M15 60 H55" stroke="#8B4513" stroke-width="1" stroke-dasharray="1 1"/>
+    <path d="M15 75 H55" stroke="#8B4513" stroke-width="1" stroke-dasharray="1 1"/>
+    
+    <!-- Rolled top -->
+    <path d="M10 10 Q35 5 60 10 V15 Q35 10 10 15 Z" fill="#A05A2C"/>
+  </g>
+</svg>
     `;
     
     logo.appendChild(innerLogo);
@@ -70,65 +81,72 @@ export class IntroScreen {
     
     // Create title
     const title = document.createElement('h1');
-    title.textContent = 'Magical Vibe Carpet';
-    title.style.fontSize = '36px';
+    title.textContent = 'Vibe Carpet';
+    title.style.fontSize = '42px';
+title.style.fontFamily = '"Helvetica Neue", Helvetica, sans-serif';
+title.style.fontWeight = 'bold';
+title.style.color = '#8B4513'; // Dark brown color to match Image 3
     title.style.marginBottom = '20px';
-    title.style.textShadow = '0 0 10px rgba(224, 170, 255, 0.7)';
+    title.style.textShadow = '0 0 10px rgba(139, 69, 19, 0.7)'; // Brown shadow matching logo
     
     // Create multiplayer indicator
     const multiplayerIndicator = document.createElement('div');
     multiplayerIndicator.textContent = 'Multiplayer Edition';
     multiplayerIndicator.style.fontSize = '18px';
     multiplayerIndicator.style.marginBottom = '40px';
-    multiplayerIndicator.style.color = '#e0aaff';
+    multiplayerIndicator.style.display = 'none'; // Hide multiplayer edition text
     
     // Create play button
     const playButton = document.createElement('button');
     playButton.textContent = 'Start Journey';
     playButton.style.padding = '15px 40px';
     playButton.style.fontSize = '20px';
-    playButton.style.backgroundColor = '#e0aaff';
-    playButton.style.color = '#120052';
+    playButton.style.backgroundColor = '#8B4513';
+    playButton.style.color = '#ffffff';
     playButton.style.border = 'none';
     playButton.style.borderRadius = '30px';
     playButton.style.cursor = 'pointer';
     playButton.style.fontWeight = 'bold';
-    playButton.style.boxShadow = '0 0 20px rgba(224, 170, 255, 0.5)';
+    playButton.style.boxShadow = '0 0 20px rgba(139, 69, 19, 0.5)';
     playButton.style.transition = 'all 0.3s';
     
     // Hover effect
     playButton.addEventListener('mouseover', () => {
       playButton.style.transform = 'scale(1.05)';
-      playButton.style.boxShadow = '0 0 30px rgba(224, 170, 255, 0.7)';
+      playButton.style.boxShadow = '0 0 30px rgba(139, 69, 19, 0.7)';
     });
     
     playButton.addEventListener('mouseout', () => {
       playButton.style.transform = 'scale(1)';
-      playButton.style.boxShadow = '0 0 20px rgba(224, 170, 255, 0.5)';
+      playButton.style.boxShadow = '0 0 20px rgba(139, 69, 19, 0.5)';
     });
     
     // Click event
     playButton.addEventListener('click', () => {
       this.hide();
+      // Show time UI when game starts
+      if (this.engine.systems.ui && this.engine.systems.ui.showTimeControls) {
+        this.engine.systems.ui.showTimeControls();
+      }
       if (this.onPlayCallback) {
         this.onPlayCallback();
       }
     });
     
-    // Create server status indicator
+    // Create server status indicator with green text for readability
     const serverStatus = document.createElement('div');
-    serverStatus.textContent = 'Connecting to server...';
+    serverStatus.style.display = 'none'; // Hide server status text completely
     serverStatus.style.marginTop = '30px';
     serverStatus.style.fontSize = '14px';
-    serverStatus.style.opacity = '0.7';
+    serverStatus.style.opacity = '0.9';
+    serverStatus.style.color = '#3a7d2d'; // Green text for better visibility on sand background
     this.serverStatus = serverStatus;
     
-    // Append all elements
+    // Append all elements (excluding server status)
     this.container.appendChild(logoContainer);
     this.container.appendChild(title);
     this.container.appendChild(multiplayerIndicator);
     this.container.appendChild(playButton);
-    this.container.appendChild(serverStatus);
     
     // Add to document
     document.body.appendChild(this.container);

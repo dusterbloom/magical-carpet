@@ -51,7 +51,7 @@ export class NetworkManager extends EventEmitter {
     this.setupEventListeners();
     
     // Update intro screen status
-    this.introScreen.updateServerStatus('Server ready. Click Start to play!', 'success');
+    // Don't show status message
     
     // If in simulation mode, connect automatically after a short delay
     if (this.useSimulation) {

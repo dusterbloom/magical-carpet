@@ -1,5 +1,8 @@
 import { Engine } from './game/core/Engine';
 
+// Update font style for the entire app
+document.documentElement.style.setProperty('--app-font', '"Helvetica Neue", Helvetica, sans-serif');
+
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -11,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await engine.initialize();
     
-    console.log('Magical Vibe Carpet initialized successfully!');
+    console.log('Vibe Carpet initialized successfully!');
     console.log('Use window.getPerformanceReport() to view performance metrics');
   } catch (error) {
     console.error('Error initializing game:', error);

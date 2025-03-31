@@ -281,7 +281,7 @@ export class UISystem {
     toggleButton.style.height = '40px';
     toggleButton.style.backgroundColor = 'rgba(45, 48, 52, 0.9)';
     toggleButton.style.borderRadius = '50%';
-    toggleButton.style.display = 'flex';
+    toggleButton.style.display = 'none'; // Initially hidden, shown after game starts
     toggleButton.style.justifyContent = 'center';
     toggleButton.style.alignItems = 'center';
     toggleButton.style.cursor = 'pointer';
@@ -640,6 +640,18 @@ export class UISystem {
     // Show current time in toggle button
     // Continuously update the time in the toggle button tooltip
     toggleButton.title = "Time Controls";
+    
+    // Save reference to toggle button for showing it later
+    this.elements.timeToggleButton = toggleButton;
+  }
+  
+  /**
+   * Show time controls after game starts
+   */
+  showTimeControls() {
+    if (this.elements.timeToggleButton) {
+      this.elements.timeToggleButton.style.display = 'flex';
+    }
   }
 }
 
