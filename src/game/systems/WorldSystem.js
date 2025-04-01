@@ -1,20 +1,23 @@
 import * as THREE from "three";
 import { createNoise2D } from "simplex-noise";
+import { System } from "../core/v2/System";
 
-export class WorldSystem {
+export class WorldSystem extends System {
   constructor(engine) {
-    this.engine = engine;
+    // Call base class constructor with engine and system ID
+    super(engine, 'world');
+    
     this.scene = engine.scene;
     
-    if (engine.renderer) {
+    if (engine.renderer?.renderer) {
       // Improve shadow mapping
-      engine.renderer.shadowMap.enabled = true;
-      engine.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      engine.renderer.renderer.shadowMap.enabled = true;
+      engine.renderer.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       
       // Improve overall rendering quality
-      engine.renderer.outputColorSpace = THREE.SRGBColorSpace;
-      engine.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      engine.renderer.toneMappingExposure = 1.1;
+      engine.renderer.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      engine.renderer.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      engine.renderer.renderer.toneMappingExposure = 1.1;
     }
 
     // Initialize maps and collections
@@ -23,20 +26,19 @@ export class WorldSystem {
 
     // World configuration
     this.chunkSize = 1024;
-    this.terrainResolution = 64;  // Increased from 32 for smoother terrain
-    this.maxHeight = 400;  // Increased significantly for dramatic mountains
-    this.minHeight = -50;  // Much deeper valleys for contrast
-    // Water level removed
+    this.terrainResolution = 64;
+    this.maxHeight = 400;
+    this.minHeight = -50;
     this.viewDistance = 6;
     
     // Terrain parameters
     this.terrainParams = {
-      baseScale: 0.0015,       // Reduced for larger, smoother terrain features
-      detailScale: 0.01,        // Adjusted for better detail balance
-      mountainScale: 0.002,     // Reduced for larger, more sweeping mountains
-      baseHeight: 60,          // Increased for higher base terrain
-      mountainHeight: 180,     // Significantly increased for dramatic mountains
-      detailHeight: 15         // Moderate terrain details for natural appearance
+      baseScale: 0.0015,
+      detailScale: 0.01,
+      mountainScale: 0.002,
+      baseHeight: 60,
+      mountainHeight: 180,
+      detailHeight: 15
     };
 
     // Initialize noise generator
@@ -58,6 +60,7 @@ export class WorldSystem {
     
     // Landmarks configuration
     this.landmarks = new Map();
+  
     this.landmarkTypes = [
       {
         name: "ancient_ruins",
@@ -223,7 +226,7 @@ export class WorldSystem {
     return result;
   }
 
-  async initialize() {
+  async _initialize() {
     console.log("Initializing WorldSystem...");
     
     // Create materials and setup environment
@@ -237,11 +240,10 @@ export class WorldSystem {
     
     // Generate initial world
     this.createInitialTerrain();
-    // Water creation removed
     this.createManaNodes();
 
     if (this.engine.camera) {
-      this.engine.camera.far = 22000; // Increased from 15000
+      this.engine.camera.far = 22000;
       this.engine.camera.updateProjectionMatrix();
     }
     
@@ -2911,10 +2913,7 @@ return color;
     }
   }
 
-  update(delta, elapsed) {
-    const player = this.engine.systems.player?.localPlayer;
-    if (!player) return;
-
+  _update(delta, elapsed) {
     // Check if we need more mana nodes
     if (this.manaNodes.filter(node => !node.userData.collected).length < 10) {
       this.createManaNodes();
@@ -2929,9 +2928,7 @@ return color;
     // Animate mana nodes
     this.manaNodes.forEach((node, index) => {
       if (!node.userData.collected) {
-        // Bobbing motion
         node.position.y += Math.sin(elapsed * 2 + index * 0.5) * 0.03;
-        // Rotation
         node.rotation.y += delta * 0.5;
       }
     });

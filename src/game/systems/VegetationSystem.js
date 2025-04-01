@@ -1,28 +1,35 @@
 import * as THREE from "three";
 import { LOD } from "three";
+import { System } from "../core/v2/System";
 
-export class VegetationSystem {
+
+export class VegetationSystem extends System {
   constructor(engine) {
-    this.engine = engine;
-    this.scene = engine.scene;
-    this.worldSystem = engine.systems.world;
-    this.performanceMonitor = engine.performanceMonitor;
-    
-    // Tree models, instances and instanced meshes
-    this.treeModels = []; // Original tree models for each type
-    this.treeLODModels = []; // LOD models for each tree type
-    this.treeInstances = []; // Legacy tree instances (used during transition)
-    this.treeInstancedMeshes = []; // Instanced mesh renderers
-    this.treeMatrices = []; // Transformation matrices for instances
-    this.treeLODLevels = []; // Current LOD level for each instance
-    this.currentChunks = new Set();
-    
-    // LOD distance thresholds - reduced for better performance
-    this.lodDistances = {
-      high: 200,   // Use high detail up to 200 units (reduced from 300)
-      medium: 600, // Use medium detail up to 600 units away (reduced from 800)
-      low: 1200    // Use low detail up to 1200 units away (reduced from 1600)
-    };
+      // Call base class with system ID
+      super(engine, 'vegetation');
+      
+      // Declare dependencies
+      this.requireDependencies(['world', 'mobileLOD', 'player']);
+      
+      // Keep existing property initialization
+      this.scene = engine.scene;
+      this.performanceMonitor = engine.performanceMonitor;
+      
+      // Tree models, instances and instanced meshes (keep existing arrays)
+      this.treeModels = [];
+      this.treeLODModels = [];
+      this.treeInstances = [];
+      this.treeInstancedMeshes = [];
+      this.treeMatrices = [];
+      this.treeLODLevels = [];
+      this.currentChunks = new Set();
+      
+      // Keep existing LOD distances
+      this.lodDistances = {
+          high: 200,
+          medium: 600,
+          low: 1200
+      };
     
     // If MobileLODManager exists, use its distance settings
     if (engine.systems.mobileLOD) {
@@ -84,29 +91,29 @@ export class VegetationSystem {
     this.chunksWithTrees = new Set(); // Track which chunks have trees
   }
   
-  async initialize() {
+  async _initialize() {
     console.log("Initializing VegetationSystem...");
     
     // Create tree models with LOD
     this.createTreeModels();
     
-    // Initialize instanced meshes for each tree type and LOD level
+    // Initialize instanced meshes
     this.initializeInstancedMeshes();
     
     // Get LOD distances from MobileLODManager if available
-    if (this.engine.systems.mobileLOD) {
-      this.lodDistances = this.engine.systems.mobileLOD.getLODDistances().vegetation;
-      console.log(`Using mobile-optimized LOD distances: ${JSON.stringify(this.lodDistances)}`);
-      
-      // Set density from MobileLODManager if on mobile
-      if (this.engine.settings && this.engine.settings.isMobile) {
-        this.densityScale = this.engine.systems.mobileLOD.currentVegetationDensity;
-        console.log(`Using mobile vegetation density: ${this.densityScale}`);
-      }
+    const mobileLOD = this.engine.systems.get('mobileLOD');
+    if (mobileLOD) {
+        this.lodDistances = mobileLOD.getLODDistances().vegetation;
+        console.log(`Using mobile-optimized LOD distances: ${JSON.stringify(this.lodDistances)}`);
+        
+        if (this.engine.settings?.isMobile) {
+            this.densityScale = mobileLOD.currentVegetationDensity;
+            console.log(`Using mobile vegetation density: ${this.densityScale}`);
+        }
     }
     
     console.log("VegetationSystem initialized");
-  }
+}
   
   createTreeModels() {
     // Create materials that will be shared between LOD levels
@@ -780,26 +787,27 @@ export class VegetationSystem {
   /**
    * Update method called every frame
    */
-  update() {
-    const player = this.engine.systems.player?.localPlayer;
+  _update(deltaTime, elapsed) {
+    const player = this.engine.systems.get('player')?.localPlayer;
     if (!player) return;
     
     // Calculate current chunk
-    const chunkSize = this.worldSystem.chunkSize;
+    const worldSystem = this.engine.systems.get('world');
+    const chunkSize = worldSystem.chunkSize;
     const playerChunkX = Math.floor(player.position.x / chunkSize);
     const playerChunkZ = Math.floor(player.position.z / chunkSize);
     
     // Keep track of chunks that should have trees
     const chunksToKeep = new Set();
-    const viewDistance = this.worldSystem.viewDistance;
+    const viewDistance = worldSystem.viewDistance;
     
     // Update camera frustum for culling
     if (this.engine.camera) {
-      this.projScreenMatrix.multiplyMatrices(
-        this.engine.camera.projectionMatrix,
-        this.engine.camera.matrixWorldInverse
-      );
-      this.frustum.setFromProjectionMatrix(this.projScreenMatrix);
+        this.projScreenMatrix.multiplyMatrices(
+            this.engine.camera.projectionMatrix,
+            this.engine.camera.matrixWorldInverse
+        );
+        this.frustum.setFromProjectionMatrix(this.projScreenMatrix);
     }
     
     // Update density scale based on performance
@@ -807,50 +815,25 @@ export class VegetationSystem {
     
     // Generate trees for chunks in view distance
     for (let x = -viewDistance; x <= viewDistance; x++) {
-      for (let z = -viewDistance; z <= viewDistance; z++) {
-        const distance = Math.sqrt(x * x + z * z);
-        if (distance <= viewDistance) {
-          const chunkX = playerChunkX + x;
-          const chunkZ = playerChunkZ + z;
-          const chunkKey = `${chunkX},${chunkZ}`;
-          
-          chunksToKeep.add(chunkKey);
-          this.generateTreesForChunk(chunkX, chunkZ);
+        for (let z = -viewDistance; z <= viewDistance; z++) {
+            const distance = Math.sqrt(x * x + z * z);
+            if (distance <= viewDistance) {
+                const chunkX = playerChunkX + x;
+                const chunkZ = playerChunkZ + z;
+                const chunkKey = `${chunkX},${chunkZ}`;
+                
+                chunksToKeep.add(chunkKey);
+                this.generateTreesForChunk(chunkX, chunkZ);
+            }
         }
-      }
     }
     
-    // Clean up chunks that are too far away
-    const chunksToRemove = [];
-    for (const chunkKey of this.chunksWithTrees) {
-      if (!chunksToKeep.has(chunkKey)) {
-        chunksToRemove.push(chunkKey);
-      }
-    }
-    
-    // Remove trees from chunks that are out of range
-    for (const chunkKey of chunksToRemove) {
-      this.chunksWithTrees.delete(chunkKey);
-    }
-    
-    // Process instanced trees - update LOD levels and culling
+    // Update tree instances LOD and culling
     this.updateTreeInstancesLOD();
     
-    // Legacy cleanup for backward compatibility during transition
-    if (this.treeInstances.length > 0) {
-      this.treeInstances = this.treeInstances.filter(tree => {
-        const treeChunkX = Math.floor(tree.position.x / chunkSize);
-        const treeChunkZ = Math.floor(tree.position.z / chunkSize);
-        const treeChunkKey = `${treeChunkX},${treeChunkZ}`;
-        
-        if (!chunksToKeep.has(treeChunkKey)) {
-          this.scene.remove(tree);
-          return false;
-        }
-        return true;
-      });
-    }
-  }
+    // Clean up chunks that are too far away
+    this.cleanupDistantChunks(chunksToKeep);
+}
   
   /**
    * Update LOD levels for all tree instances based on distance from camera

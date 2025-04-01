@@ -1,14 +1,19 @@
+// src/game/systems/MinimapSystem.js
 import * as THREE from "three";
+import { System } from '../core/v2/System';
 
-export class MinimapSystem {
+export class MinimapSystem extends System {
   constructor(engine) {
-    this.engine = engine;
+    super(engine, 'minimap'); // Register with system ID 'minimap'
+    
+    // Require dependencies
+    this.requireDependencies(['world', 'player', 'landmarks']);
+    
     this.canvas = null;
     this.context = null;
     this.size = 150;             // Size in pixels
-    this.range = 10000;            // World units to show on map
+    this.range = 10000;          // World units to show on map
     this.minimapContainer = null;
-    this.initialized = false;
     this.lastUpdate = 0;         // For throttling updates
     this.updateInterval = 1/30;  // Update at 30fps max
     
@@ -35,6 +40,45 @@ export class MinimapSystem {
       playerNames: true // Show player names on minimap
     };
   }
+
+  async _initialize() {
+    try {
+      console.log("Initializing MinimapSystem...");
+      
+      // Create canvas for the minimap
+      this.canvas = document.createElement('canvas');
+      this.context = this.canvas.getContext('2d');
+      this.canvas.width = this.size;
+      this.canvas.height = this.size;
+      this.canvas.style.borderRadius = '50%'; // Circular map
+      
+      // Create container for the minimap
+      this.createContainer();
+      
+      console.log("MinimapSystem initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize MinimapSystem:", error);
+      throw error;
+    }
+  }
+
+  _update(deltaTime) {
+    // Throttle updates to improve performance
+    this.lastUpdate += deltaTime;
+    if (this.lastUpdate < this.updateInterval) return;
+    this.lastUpdate = 0;
+    
+    // Clear the canvas
+    this.clear();
+    
+    // Draw map elements in order
+    this.drawTerrain();
+    this.drawLandmarks();
+    this.drawMana();
+    this.drawPlayers();
+    this.drawCompassRose();
+  }
+
 
   async initialize() {
     console.log("Initializing MinimapSystem...");

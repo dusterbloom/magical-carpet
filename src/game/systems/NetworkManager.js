@@ -1,12 +1,16 @@
 import { io } from 'socket.io-client';
+import { System } from '../core/v2/System';
 import { EventEmitter } from '../../utils/EventEmitter';
 import { IntroScreen } from '../ui/screens/IntroScreen';
 import { PlayerList } from '../ui/components/PlayerList';
 
-export class NetworkManager extends EventEmitter {
+export class NetworkManager extends System {
   constructor(engine) {
-    super();
-    this.engine = engine;
+    super(engine, 'network'); // Register with system ID 'network'
+    
+    // Initialize event emitter functionality
+    this.eventEmitter = new EventEmitter();
+    
     this.socket = null;
     this.players = new Map();
     this.localPlayerId = null;
@@ -22,6 +26,83 @@ export class NetworkManager extends EventEmitter {
     this.isDev = import.meta.env.DEV;
     this.useSimulation = this.isDev && import.meta.env.VITE_USE_NETWORK_SIMULATION === 'true';
   }
+  
+  async _initialize() {
+    try {
+      console.log("Initializing NetworkManager...");
+      
+      // Initialize and show intro screen
+      await this.introScreen.initialize();
+      this.introScreen.show();
+      
+      // Set up play button callback
+      this.introScreen.onPlay(() => {
+        this.connect();
+      });
+      
+      // Set up server URL
+      this.serverUrl = this.isDev 
+        ? 'http://localhost:4000' 
+        : (import.meta.env.VITE_SERVER_URL || window.location.origin);
+      
+      // Create socket but don't connect yet
+      this.socket = io(this.serverUrl, {
+        autoConnect: false,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000
+      });
+      
+      // Set up socket event listeners
+      this.setupEventListeners();
+      
+      // If in simulation mode, connect automatically after a short delay
+      if (this.useSimulation) {
+        console.log("Using network simulation mode");
+        setTimeout(() => {
+          this.simulateConnection();
+        }, 500);
+      }
+      
+      console.log("NetworkManager initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize NetworkManager:", error);
+      throw error;
+    }
+  }
+
+  _update(deltaTime) {
+    // If in simulation mode, simulate network updates for AI players
+    if (this.useSimulation && Math.random() < 0.05) {
+      this.players.forEach((player, id) => {
+        if (id !== this.localPlayerId) {
+          // Simple random movement for AI players
+          const update = {
+            id,
+            x: player.x + (Math.random() - 0.5) * 0.5,
+            y: player.y + (Math.random() - 0.5) * 0.1,
+            z: player.z + (Math.random() - 0.5) * 0.5
+          };
+          this.handlePlayerUpdate(update);
+        }
+      });
+    }
+  }
+
+  // Event emitter methods
+  on(event, callback) {
+    this.eventEmitter.on(event, callback);
+  }
+
+  off(event, callback) {
+    this.eventEmitter.off(event, callback);
+  }
+
+  emit(event, data) {
+    this.eventEmitter.emit(event, data);
+  }
+
   
   async initialize() {
     // Initialize and show intro screen

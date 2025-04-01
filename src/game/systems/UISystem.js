@@ -1,27 +1,52 @@
+import { System } from '../core/v2/System';
 import { useGameState, GameStates } from '../state/gameState';
 
-export class UISystem {
+export class UISystem extends System {
   constructor(engine) {
-    this.engine = engine;
+    super(engine, 'ui'); // Register with system ID 'ui'
+    
+    // Require any dependencies
+    this.requireDependencies(['player', 'atmosphere']);
+    
     this.container = document.getElementById('ui-container');
     this.elements = {};
     this.unsubscribeState = null;
   }
   
-  async initialize() {
-    this.createBaseUI();
-    this.createManaDisplay();
-    // this.createHealthDisplay();
-    // this.createSpellsUI();
-    this.createMinimapUI();
-    this.createTimeControls();
+  async _initialize() {
+    try {
+      console.log("Initializing UISystem");
+      
+      this.createBaseUI();
+      this.createManaDisplay();
+      // this.createHealthDisplay();
+      // this.createSpellsUI();
+      this.createMinimapUI();
+      this.createTimeControls();
+      
+      // Subscribe to game state changes
+      this.unsubscribeState = useGameState.subscribe(
+        this.handleStateChange.bind(this)
+      );
+      
+      console.log("UISystem initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize UISystem:", error);
+      throw error;
+    }
+  }
+  
+  _update(deltaTime) {
+    // Update UI elements that need continuous updates
     
-    // Subscribe to game state changes
-    this.unsubscribeState = useGameState.subscribe(
-      this.handleStateChange.bind(this)
-    );
+    // Update health display if local player exists
+    if (this.engine.systems.player && this.engine.systems.player.localPlayer) {
+      const player = this.engine.systems.player.localPlayer;
+      this.updateHealthDisplay(player.health, player.maxHealth);
+    }
     
-    console.log("UI system initialized");
+    // Update time display if atmosphere system exists
+    this.updateTimeDisplay();
   }
   
   /**

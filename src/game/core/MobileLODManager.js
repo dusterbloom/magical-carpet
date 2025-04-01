@@ -15,40 +15,40 @@ export class MobileLODManager {
     // Base LOD distances that will be scaled based on device performance
     this.baseLODDistances = {
       terrain: {
-        high: 1500, // Use high detail up to this distance
-        medium: 3000, // Use medium detail up to this distance
-        low: 6000 // Use low detail up to this distance (beyond = ultra-low)
+        high: 1500,
+        medium: 3000,
+        low: 6000
       },
       vegetation: {
-        high: 150, // Use high detail up to this distance
-        medium: 400, // Use medium detail up to this distance
-        low: 900 // Use low detail up to this distance (beyond = culled)
+        high: 150,
+        medium: 400,
+        low: 900
       },
       water: {
-        reflection: 1000, // Max distance for reflections
-        highDetail: 500, // Use high detail water effects within this distance
-        mediumDetail: 1500 // Use medium detail water effects within this distance
+        reflection: 1000,
+        highDetail: 500,
+        mediumDetail: 1500
       }
     };
     
-    // Scaling factors to apply to LOD distances based on device performance
-    // More powerful devices can use higher detail at greater distances
-    this.distanceScalingFactor = 1.0;
+    // Initialize all the properties and settings
+    this.initializeProperties();
+  }
+
+  initializeProperties() {
+    this.distanceScalingFactor = this.isMobile ? 0.5 : 1.0;
+    this.lastAdjustmentTime = 0;
+    this.adjustmentInterval = 5000;
+    this.targetFPS = 30;
+    this.qualityLevel = this.isMobile ? 1 : 2;
+    this.timeAtCurrentQuality = 0;
+    this.lastQualityChangeTime = 0;
+    
     
     // Mobile-specific scaling (reduced distances = earlier LOD transitions)
     if (this.isMobile) {
       this.distanceScalingFactor = 0.5; // Start with 50% of standard distances
     }
-    
-    // Performance tracking for dynamic adjustment
-    this.lastAdjustmentTime = 0;
-    this.adjustmentInterval = 5000; // Check every 5 seconds
-    this.targetFPS = 30; // Target framerate for mobile
-
-    // Quality level state variables for hysteresis
-    this.qualityLevel = this.isMobile ? 1 : 2; // 0=Low, 1=Medium, 2=High
-    this.timeAtCurrentQuality = 0; // Time spent at current quality level in ms
-    this.lastQualityChangeTime = 0; // When the last quality change occurred
     
     // Hysteresis thresholds - minimum time at a quality level before changing
     this.minTimeBeforeIncrease = 10000; // 10 seconds before increasing quality
@@ -115,10 +115,7 @@ export class MobileLODManager {
     console.log("MobileLODManager initialized");
     return true;
   }
-  
-  /**
-   * Update method called every frame
-   */
+
   update(deltaTime) {
     // Skip if not on mobile
     if (!this.isMobile) return;
@@ -127,19 +124,16 @@ export class MobileLODManager {
     if (!this.initialBenchmarkComplete) {
       const benchmarkElapsed = Date.now() - this.benchmarkStartTime;
       if (benchmarkElapsed < this.benchmarkDuration) {
-        // During benchmark, collect FPS samples
         const report = this.engine.performanceMonitor.generateReport();
         this.benchmarkFpsSamples.push(report.current.fps);
       } else {
-        // Benchmark complete, apply findings
         this.finalizeInitialBenchmark();
       }
     }
     
-    // Increment time at current quality level
-    this.timeAtCurrentQuality += deltaTime * 1000; // Convert to ms
+    // Regular update logic
+    this.timeAtCurrentQuality += deltaTime * 1000;
     
-    // Periodically check if we need to adjust LOD settings
     const now = Date.now();
     if (now - this.lastAdjustmentTime > this.adjustmentInterval) {
       this.dynamicallyAdjustLOD();
@@ -247,16 +241,18 @@ export class MobileLODManager {
     if (!this.isMobile) return;
     
     // Set renderer pixel ratio
-    if (this.engine.renderer) {
+    if (this.engine.renderer && this.engine.renderer.renderer) {
       // Use lower pixel ratio on mobile for better performance
       // The visual quality impact is minor compared to the performance gain
       const optimalPixelRatio = Math.min(window.devicePixelRatio, 2);
-      this.engine.renderer.setPixelRatio(optimalPixelRatio * 0.8);
+      this.engine.renderer.renderer.setPixelRatio(optimalPixelRatio * 0.8);
       
       // Reduce shadow map size on mobile
-      if (this.engine.renderer.shadowMap) {
-        this.engine.renderer.shadowMap.type = THREE.BasicShadowMap; // Use simpler shadows
+      if (this.engine.renderer.renderer.shadowMap) {
+        this.engine.renderer.renderer.shadowMap.type = THREE.BasicShadowMap; // Use simpler shadows
       }
+    } else {
+      console.warn('Renderer not available for mobile optimizations');
     }
     
     // Reduce draw distance on mobile
