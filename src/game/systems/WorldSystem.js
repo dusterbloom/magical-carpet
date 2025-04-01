@@ -1605,163 +1605,6 @@ return color;
     return true;
   }
 
-  // computeSmoothedNormals(geometry, startX, startZ) {
-  //   const positions = geometry.attributes.position;
-  //   const vertexCount = positions.count;
-  //   const tempNormals = [];
-    
-  //   // First, compute normal for each face and accumulate to vertices
-  //   for (let i = 0; i < vertexCount; i++) {
-  //     tempNormals[i] = new THREE.Vector3(0, 0, 0);
-  //   }
-    
-  //   const indices = geometry.index ? geometry.index.array : null;
-  //   let triangleCount;
-    
-  //   if (indices) {
-  //     triangleCount = indices.length / 3;
-  //   } else {
-  //     triangleCount = vertexCount / 3;
-  //   }
-    
-  //   // Calculate normals for each face and accumulate
-  //   for (let i = 0; i < triangleCount; i++) {
-  //     let vA, vB, vC;
-      
-  //     if (indices) {
-  //       vA = indices[i * 3];
-  //       vB = indices[i * 3 + 1];
-  //       vC = indices[i * 3 + 2];
-  //     } else {
-  //       vA = i * 3;
-  //       vB = i * 3 + 1;
-  //       vC = i * 3 + 2;
-  //     }
-      
-  //     const pA = new THREE.Vector3().fromBufferAttribute(positions, vA);
-  //     const pB = new THREE.Vector3().fromBufferAttribute(positions, vB);
-  //     const pC = new THREE.Vector3().fromBufferAttribute(positions, vC);
-      
-  //     const cb = new THREE.Vector3().subVectors(pC, pB);
-  //     const ab = new THREE.Vector3().subVectors(pA, pB);
-  //     const normal = new THREE.Vector3().crossVectors(cb, ab).normalize();
-      
-  //     // Add face normal to each vertex normal with distance-based weighting
-  //     // This creates smoother transitions at sharp edges
-  //     tempNormals[vA].add(normal);
-  //     tempNormals[vB].add(normal);
-  //     tempNormals[vC].add(normal);
-  //   }
-    
-  //   // Second pass: identify problematic mountain peaks and smooth them more aggressively
-  //   const worldCoords = new Map();
-  //   for (let i = 0; i < vertexCount; i++) {
-  //     // Store world coordinates for each vertex
-  //     const x = positions.getX(i) + startX;
-  //     const y = positions.getY(i);
-  //     const z = positions.getZ(i) + startZ;
-  //     worldCoords.set(i, { x, y, z });
-
-  //     // Pre-normalize for initial comparison
-  //     tempNormals[i].normalize();
-  //   }
-    
-  //   // Find vertices with problematic normals (mountain peaks/sharp edges)
-  //   const problematicVertices = new Set();
-  //   for (let i = 0; i < vertexCount; i++) {
-  //     // Check if this is a mountain peak (high altitude + nearly horizontal normal)
-  //     const worldY = worldCoords.get(i).y;
-  //     const normalY = tempNormals[i].y;
-      
-  //     // Identify sharper peaks at higher elevations with more horizontal normals
-  //     if (worldY > 200 && Math.abs(normalY) < 0.5) {
-  //       problematicVertices.add(i);
-  //     }
-
-  //     // Identify extremely sharp edges regardless of height
-  //     if (Math.abs(normalY) < 0.2) {
-  //       problematicVertices.add(i);
-  //     }
-      
-  //     // Additional check for high mountain peaks with any downward facing normals
-  //     if (worldY > 340 && normalY < 0) {
-  //       problematicVertices.add(i);
-  //     }
-  //   }
-    
-  //   // Perform additional smoothing on problematic vertices
-  //   // for (const vertexIndex of problematicVertices) {
-  //   //   // Find neighboring vertices
-  //   //   const neighbors = new Set();
-  //   //   for (let i = 0; i < triangleCount; i++) {
-  //   //     let vA, vB, vC;
-        
-  //   //     if (indices) {
-  //   //       vA = indices[i * 3];
-  //   //       vB = indices[i * 3 + 1];
-  //   //       vC = indices[i * 3 + 2];
-  //   //     } else {
-  //   //       vA = i * 3;
-  //   //       vB = i * 3 + 1;
-  //   //       vC = i * 3 + 2;
-  //   //     }
-        
-  //   //     // If this vertex is part of this triangle
-  //   //     if (vA === vertexIndex || vB === vertexIndex || vC === vertexIndex) {
-  //   //       // Add all vertices from this triangle
-  //   //       neighbors.add(vA);
-  //   //       neighbors.add(vB);
-  //   //       neighbors.add(vC);
-  //   //     }
-  //   //   }
-      
-  //   //   // Calculate smoothed normal from neighbors
-  //   //   const smoothedNormal = new THREE.Vector3(0, 0, 0);
-  //   //   for (const neighborIndex of neighbors) {
-  //   //     smoothedNormal.add(tempNormals[neighborIndex].clone());
-  //   //   }
-  //   //   smoothedNormal.normalize();
-      
-  //   //   // Blend with an upward-facing normal proportional to the height
-  //   //   // Higher elevations get more upward normal blending
-  //   //   const worldY = worldCoords.get(vertexIndex).y;
-  //   //   const upNormal = new THREE.Vector3(0, 1, 0);
-      
-  //   //   // Modified height factor calculation - stronger correction at higher elevation
-
-  //   //   // Apply stronger correction when we're at high elevations
-  //   //   const heightFactor = Math.min(1, (worldY - 200) / 200) * 0.5;
-  //   //   const snowFactor = worldY > 340 ? 0.3 : 0;
-  //   //   let blendFactor = 0.5 + heightFactor + snowFactor;
-  //   //   blendFactor = Math.min(blendFactor, 0.5); // Clamp below 1.0 (e.g., 0.95)
-      
-  //   //   tempNormals[vertexIndex].copy(smoothedNormal).lerp(upNormal, blendFactor).normalize();      
-      
-  //   //   // Ensure no downward-facing normals on peaks
-  //   //   if (worldY > 340 && tempNormals[vertexIndex].y < 0.1) {
-  //   //     tempNormals[vertexIndex].y = 0.1;
-  //   //     tempNormals[vertexIndex].normalize();
-  //   //   }
-  //   // }
-    
-  //   // Final normalization of all normals
-  //   for (let i = 0; i < vertexCount; i++) {
-  //     tempNormals[i].normalize();
-  //   }
-    
-  //   // Create normal buffer attribute
-  //   const normalArray = new Float32Array(vertexCount * 3);
-    
-  //   for (let i = 0; i < vertexCount; i++) {
-  //     normalArray[i * 3] = tempNormals[i].x;
-  //     normalArray[i * 3 + 1] = tempNormals[i].y;
-  //     normalArray[i * 3 + 2] = tempNormals[i].z;
-  //   }
-    
-  //   geometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
-  // }
-
-  
   computeSmoothedNormals(geometry, startX, startZ) {
     const positions = geometry.attributes.position;
     const vertexCount = positions.count;
@@ -1882,7 +1725,7 @@ return color;
                  blendFactor += Math.min(0.4, (worldY - 300) / 150 * 0.4); // Max 0.4 added blend for height
             }
             // Make sure blendFactor never reaches 1.0
-            blendFactor = Math.min(blendFactor, 0.99); // Hard cap at 0.6
+            blendFactor = Math.min(blendFactor, 0.5); // Hard cap at 0.5
 
             // Lerp towards the 'up' vector using the calculated gentle blendFactor
             tempNormals[vertexIndex].copy(smoothedNormal).lerp(upNormal, blendFactor).normalize();
@@ -1921,6 +1764,7 @@ return color;
 
     geometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
   }
+  
   /**
    * Creates a procedural landmark at a position
    * @param {number} x - X coordinate
