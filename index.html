@@ -51,7 +51,12 @@
       if (window.gameEngine) {
         return window.gameEngine.getPerformanceReport();
       } else {
-        console.error('Game engine not initialized yet');
+        // Check if running in production - no global engine reference
+        if (!import.meta.env?.DEV) {
+          console.log('Performance monitoring only available in development mode');
+        } else {
+          console.error('Game engine not initialized yet');
+        }
         return null;
       }
     };

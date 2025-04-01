@@ -1,6 +1,63 @@
 import * as THREE from "three";
 import { Water } from 'three/examples/jsm/objects/Water.js';
 import { TextureLoader } from 'three';
+
+// Constants for water system
+const WATER_CONSTANTS = {
+  // Water geometry
+  WATER_SIZE: 10000,
+  WATER_LEVEL_OFFSET: 10,
+  
+  // Water quality settings
+  TEXTURE_SIZES: {
+    LOW: 64,
+    MEDIUM: 256,
+    HIGH: 1024,
+    HIGH_MOBILE: 512
+  },
+  
+  DISTORTION_SCALES: {
+    LOW: 0.1,
+    MEDIUM: 0.3,
+    HIGH: 0.6,
+    HIGH_MOBILE: 0.5
+  },
+  
+  ALPHA_VALUES: {
+    LOW: 0.8,
+    MEDIUM: 0.85,
+    HIGH: 0.9
+  },
+  
+  // Reflection matrix scales
+  REFLECTION_SCALES: {
+    LOW: 0.05,
+    MEDIUM: 0.3,
+    HIGH: 0.7
+  },
+  
+  // Animation speeds
+  ANIMATION_SPEEDS: {
+    DEFAULT: 0.8,
+    LOW_MOBILE: 0.3,
+    MEDIUM_MOBILE: 0.5
+  },
+  
+  // FPS thresholds
+  FPS_THRESHOLDS: {
+    VERY_LOW: 10,
+    LOW: 15,
+    RECOVER: 20
+  },
+  
+  // Colors
+  WATER_COLOR: 0x0066aa,
+  SUN_COLOR: 0xffffff,
+  
+  // Texture settings
+  NORMAL_MAP_REPEAT: 32,
+  CLIP_BIAS: 0.001
+};
 /**
  * Water system that integrates with the terrain's ocean beds
  */
@@ -23,20 +80,27 @@ export class WaterSystem {
    * Initialize the water system
    */
   async initialize() {
-    console.log("Initializing WaterSystem...");
-    
-    // Get the minimum height from world system if available
-    if (this.engine.systems.world) {
-      // Critical: Set water level below terrain minimum but not too far
-      // This fixes the flickering by ensuring no z-fighting at shoreline
-      this.waterLevel = this.engine.systems.world.minHeight - 10;
-      console.log(`Setting water level to ${this.waterLevel} based on terrain`);
+    try {
+      console.log("Initializing WaterSystem...");
+      
+      // Get the minimum height from world system if available
+      if (this.engine.systems.world) {
+        // Critical: Set water level below terrain minimum but not too far
+        // This fixes the flickering by ensuring no z-fighting at shoreline
+        this.waterLevel = this.engine.systems.world.minHeight - WATER_CONSTANTS.WATER_LEVEL_OFFSET;
+        console.log(`Setting water level to ${this.waterLevel} based on terrain`);
+      } else {
+        console.warn("World system not available - using default water level");
+      }
+      
+      // Create water plane with simple material (best performance)
+      this.createWater();
+      
+      console.log("WaterSystem initialized");
+    } catch (error) {
+      console.error("Failed to initialize WaterSystem:", error);
+      // Still allow the game to run even if water fails - non-critical system
     }
-    
-    // Create water plane with simple material (best performance)
-    this.createWater();
-    
-    console.log("WaterSystem initialized");
   }
   
   /**
@@ -45,7 +109,8 @@ export class WaterSystem {
   
   // WaterSystem.js
 createWater() {
-  const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+  try {
+    const waterGeometry = new THREE.PlaneGeometry(WATER_CONSTANTS.WATER_SIZE, WATER_CONSTANTS.WATER_SIZE);
   
   // Get quality setting from engine if available
   let waterQuality = 'high';
@@ -65,26 +130,27 @@ createWater() {
   }
   
   // Configure water based on quality setting - applies to all devices now
-  let textureSize = 1024;  // Default high quality
-  let distortionScale = 0.8;
-  let alpha = 0.95;
+  let textureSize = WATER_CONSTANTS.TEXTURE_SIZES.HIGH;  // Default high quality
+  let distortionScale = WATER_CONSTANTS.DISTORTION_SCALES.HIGH;
+  let alpha = WATER_CONSTANTS.ALPHA_VALUES.HIGH;
   
   // Apply quality settings based on device capability and quality setting
   switch (waterQuality) {
     case 'low':
-      textureSize = 64;  // Very small texture for reflections
-      distortionScale = 0.1;  // Minimal distortion
-      alpha = 0.8;  // More transparent
+      textureSize = WATER_CONSTANTS.TEXTURE_SIZES.LOW;  // Very small texture for reflections
+      distortionScale = WATER_CONSTANTS.DISTORTION_SCALES.LOW;  // Minimal distortion
+      alpha = WATER_CONSTANTS.ALPHA_VALUES.LOW;  // More transparent
       break;
     case 'medium':
-      textureSize = 256;  // Medium texture size
-      distortionScale = 0.3;  // Moderate distortion
-      alpha = 0.85;
+      textureSize = WATER_CONSTANTS.TEXTURE_SIZES.MEDIUM;  // Medium texture size
+      distortionScale = WATER_CONSTANTS.DISTORTION_SCALES.MEDIUM;  // Moderate distortion
+      alpha = WATER_CONSTANTS.ALPHA_VALUES.MEDIUM;
       break;
     case 'high':
-      textureSize = this.engine.settings && this.engine.settings.isMobile ? 512 : 1024;  // Scaled based on device
-      distortionScale = 0.6;  // Significant distortion but not full
-      alpha = 0.9;
+      textureSize = this.engine.settings && this.engine.settings.isMobile ? 
+        WATER_CONSTANTS.TEXTURE_SIZES.HIGH_MOBILE : WATER_CONSTANTS.TEXTURE_SIZES.HIGH;  // Scaled based on device
+      distortionScale = WATER_CONSTANTS.DISTORTION_SCALES.HIGH;  // Significant distortion but not full
+      alpha = WATER_CONSTANTS.ALPHA_VALUES.HIGH;
       break;
   }
   
@@ -92,20 +158,20 @@ createWater() {
   
   // Use a color that works correctly on all devices - fix for the brown water issue
   // Medium blue that renders consistently across devices
-  const waterColor = 0x0066aa;
+  const waterColor = WATER_CONSTANTS.WATER_COLOR;
 
   const water = new Water(waterGeometry, {
     textureWidth: textureSize,
     textureHeight: textureSize,
     waterNormals: new TextureLoader().load('textures/2waternormals.jpg', function (texture) {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(32, 32); // Gentle repeat to reduce stretching
+      texture.repeat.set(WATER_CONSTANTS.NORMAL_MAP_REPEAT, WATER_CONSTANTS.NORMAL_MAP_REPEAT); // Gentle repeat to reduce stretching
     }),
     sunDirection: new THREE.Vector3(), // Will be updated in update method
-    sunColor: 0xffffff,
+    sunColor: WATER_CONSTANTS.SUN_COLOR,
     waterColor: waterColor, // Use the selected water color
     distortionScale: distortionScale,
-    clipBias: 0.001, // Moderately increased from 0.00001
+    clipBias: WATER_CONSTANTS.CLIP_BIAS, // Moderately increased from 0.00001
     fog: this.scene.fog !== undefined,
     alpha: alpha // Opacity adjusted based on quality
   });
@@ -124,24 +190,27 @@ createWater() {
     let reflectionMatrix;
     
     switch (waterQuality) {
-      case 'low':
-        // Very minimal reflection - almost zero but not completely disabled
-        reflectionMatrix = new THREE.Matrix4().makeScale(0.05, 0.05, 0.05);
-        console.log('Mobile: Using minimal reflections for low quality water');
-        break;
-        
-      case 'medium':
-        // Reduced reflection
-        reflectionMatrix = new THREE.Matrix4().makeScale(0.3, 0.3, 0.3);
-        console.log('Mobile: Using reduced reflections for medium quality water');
-        break;
-        
-      case 'high':
-        // Still slightly reduced from full reflection for mobile performance
-        reflectionMatrix = new THREE.Matrix4().makeScale(0.7, 0.7, 0.7);
-        console.log('Mobile: Using moderate reflections for high quality water');
-        break;
-    }
+    case 'low':
+    // Very minimal reflection - almost zero but not completely disabled
+    const lowScale = WATER_CONSTANTS.REFLECTION_SCALES.LOW;
+    reflectionMatrix = new THREE.Matrix4().makeScale(lowScale, lowScale, lowScale);
+    console.log('Mobile: Using minimal reflections for low quality water');
+    break;
+      
+    case 'medium':
+    // Reduced reflection
+    const medScale = WATER_CONSTANTS.REFLECTION_SCALES.MEDIUM;
+    reflectionMatrix = new THREE.Matrix4().makeScale(medScale, medScale, medScale);
+    console.log('Mobile: Using reduced reflections for medium quality water');
+      break;
+    
+    case 'high':
+    // Still slightly reduced from full reflection for mobile performance
+    const highScale = WATER_CONSTANTS.REFLECTION_SCALES.HIGH;
+        reflectionMatrix = new THREE.Matrix4().makeScale(highScale, highScale, highScale);
+          console.log('Mobile: Using moderate reflections for high quality water');
+          break;
+      }
     
     // Apply the appropriate reflection matrix
     water.material.uniforms['textureMatrix'].value = reflectionMatrix;
@@ -160,6 +229,10 @@ createWater() {
 
   this.water = water;
   this.scene.add(water);
+  } catch (error) {
+    console.error("Error creating water:", error);
+    // Allow game to continue without water
+  }
 }
 
 
@@ -175,12 +248,13 @@ update(deltaTime) {
     // Just maintain consistent reflections based on quality level
     
     // Use default animation speed for desktop, adjust for mobile only
-    let animationSpeed = 0.8;
+    let animationSpeed = WATER_CONSTANTS.ANIMATION_SPEEDS.DEFAULT;
     
     // Only adjust animation speed on mobile
     if (this.engine.settings && this.engine.settings.isMobile && this._waterQuality) {
-      animationSpeed = this._waterQuality === 'low' ? 0.3 : 
-                        this._waterQuality === 'medium' ? 0.5 : 0.8;
+      animationSpeed = this._waterQuality === 'low' ? WATER_CONSTANTS.ANIMATION_SPEEDS.LOW_MOBILE : 
+                        this._waterQuality === 'medium' ? WATER_CONSTANTS.ANIMATION_SPEEDS.MEDIUM_MOBILE : 
+                        WATER_CONSTANTS.ANIMATION_SPEEDS.DEFAULT;
     }
     
     this.water.material.uniforms['time'].value += deltaTime * animationSpeed;
@@ -352,7 +426,7 @@ update(deltaTime) {
       
       // If FPS drops below threshold, check if we need to update water quality
       // More aggressive for mobile - force low quality on very poor performance
-      if (report.current.fps < 15) { // Lowered from 20
+      if (report.current.fps < WATER_CONSTANTS.FPS_THRESHOLDS.LOW) {
         newQuality = 'low'; // Always set to low for poor performance mobile
         shouldUpdateQuality = true;
         console.log(`Mobile: Very low FPS detected (${report.current.fps.toFixed(1)}), setting water quality to low`);
@@ -407,13 +481,15 @@ update(deltaTime) {
     // If FPS still extremely low after applying low quality settings, disable water entirely
     if (this.engine.performanceMonitor) {
       const report = this.engine.performanceMonitor.generateReport();
-      if (report.current.fps < 10 && this._waterQuality === 'low' && this.water && this.water.visible) {
+      if (report.current.fps < WATER_CONSTANTS.FPS_THRESHOLDS.VERY_LOW && 
+          this._waterQuality === 'low' && this.water && this.water.visible) {
         console.log(`Mobile: Emergency performance mode - making water invisible`);
         // Hide water entirely without removing it
         this.water.visible = false;
       }
       // If FPS recovers, make water visible again
-      else if (report.current.fps > 20 && this._waterQuality === 'low' && this.water && !this.water.visible) {
+      else if (report.current.fps > WATER_CONSTANTS.FPS_THRESHOLDS.RECOVER && 
+               this._waterQuality === 'low' && this.water && !this.water.visible) {
         console.log(`Mobile: Performance recovered - making water visible again`);
         this.water.visible = true;
       }

@@ -9,8 +9,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Create and initialize game engine
     const engine = new Engine();
     
-    // Expose engine globally for debugging and performance monitoring
-    window.gameEngine = engine;
+    // Expose engine globally for debugging and performance monitoring only in development
+    if (import.meta.env.DEV) {
+      window.gameEngine = engine;
+    }
     
     await engine.initialize();
     
