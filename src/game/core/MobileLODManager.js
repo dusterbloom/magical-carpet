@@ -44,10 +44,36 @@ export class MobileLODManager {
     this.lastAdjustmentTime = 0;
     this.adjustmentInterval = 5000; // Check every 5 seconds
     this.targetFPS = 30; // Target framerate for mobile
+
+    // Quality level state variables for hysteresis
+    this.qualityLevel = this.isMobile ? 1 : 2; // 0=Low, 1=Medium, 2=High
+    this.timeAtCurrentQuality = 0; // Time spent at current quality level in ms
+    this.lastQualityChangeTime = 0; // When the last quality change occurred
+    
+    // Hysteresis thresholds - minimum time at a quality level before changing
+    this.minTimeBeforeIncrease = 10000; // 10 seconds before increasing quality
+    this.minTimeBeforeDecrease = 5000; // 5 seconds before decreasing quality
     
     this.currentTerrainLOD = "adaptive"; // Default is adaptive LOD for terrain
     this.currentVegetationDensity = 0.7; // Start with reduced vegetation density on mobile
     this.currentWaterReflectionEnabled = true; // Start with reflections enabled
+    
+    // Triangle count thresholds
+    this.triangleThresholds = {
+      critical: 500000, // Critical - force quality reduction
+      high: 400000,     // High - consider reduction if FPS is also marginal
+      medium: 300000,   // Medium - maintain current level
+      low: 200000       // Low - consider increasing quality if FPS is good
+    };
+    
+    // FPS thresholds relative to target
+    this.fpsThresholds = {
+      critical: 0.7,   // Below 70% of target FPS - force quality reduction
+      low: 0.9,        // Below 90% of target FPS - consider reduction
+      target: 1.0,     // At target FPS - maintain current level
+      good: 1.2,       // Above 120% of target FPS - consider quality increase
+      excellent: 1.5   // Above 150% of target FPS - consider aggressive improvements
+    };
     
     // Flags to track enabled optimizations
     this.optimizations = {
@@ -56,6 +82,12 @@ export class MobileLODManager {
       simplifiedShadows: this.isMobile, // Use simpler shadows on mobile
       dynamicResolutionScaling: this.isMobile // Enable dynamic resolution on mobile
     };
+    
+    // Benchmark variables
+    this.initialBenchmarkComplete = false;
+    this.benchmarkStartTime = 0;
+    this.benchmarkDuration = 2000; // 2 seconds of benchmark
+    this.benchmarkFpsSamples = [];
     
     // Reference to current LOD settings (to avoid frequent recalculations)
     this.cachedLODDistances = null;
@@ -74,6 +106,12 @@ export class MobileLODManager {
     // Apply initial optimizations based on device type
     this.applyInitialOptimizations();
     
+    // Run a short initial benchmark if mobile
+    if (this.isMobile) {
+      console.log("Starting initial FPS benchmark for better LOD calibration...");
+      this.benchmarkStartTime = Date.now();
+    }
+    
     console.log("MobileLODManager initialized");
     return true;
   }
@@ -85,6 +123,22 @@ export class MobileLODManager {
     // Skip if not on mobile
     if (!this.isMobile) return;
     
+    // Run initial benchmark if not completed yet
+    if (!this.initialBenchmarkComplete) {
+      const benchmarkElapsed = Date.now() - this.benchmarkStartTime;
+      if (benchmarkElapsed < this.benchmarkDuration) {
+        // During benchmark, collect FPS samples
+        const report = this.engine.performanceMonitor.generateReport();
+        this.benchmarkFpsSamples.push(report.current.fps);
+      } else {
+        // Benchmark complete, apply findings
+        this.finalizeInitialBenchmark();
+      }
+    }
+    
+    // Increment time at current quality level
+    this.timeAtCurrentQuality += deltaTime * 1000; // Convert to ms
+    
     // Periodically check if we need to adjust LOD settings
     const now = Date.now();
     if (now - this.lastAdjustmentTime > this.adjustmentInterval) {
@@ -94,34 +148,87 @@ export class MobileLODManager {
   }
   
   /**
+   * Finalize the initial benchmark and use data to tune LOD settings
+   */
+  finalizeInitialBenchmark() {
+    if (this.benchmarkFpsSamples.length === 0) {
+      console.log("Benchmark completed but no samples collected. Using default settings.");
+      this.initialBenchmarkComplete = true;
+      return;
+    }
+    
+    // Calculate average FPS from benchmark
+    const benchmarkFps = this.benchmarkFpsSamples.reduce((sum, fps) => sum + fps, 0) / this.benchmarkFpsSamples.length;
+    console.log(`Initial benchmark results: Average FPS = ${benchmarkFps.toFixed(1)}`);
+    
+    // Tune scaling factor based on initial performance
+    if (benchmarkFps < this.targetFPS * 0.8) {
+      // Poor initial performance, reduce scaling factor
+      this.distanceScalingFactor = Math.max(0.3, this.distanceScalingFactor * 0.8);
+      this.qualityLevel = 0; // Start at low quality
+      console.log(`Benchmark indicates lower-end device. Reducing scaling to ${this.distanceScalingFactor.toFixed(2)} and starting at low quality.`);
+    } else if (benchmarkFps > this.targetFPS * 1.5) {
+      // Excellent initial performance, increase scaling factor
+      this.distanceScalingFactor = Math.min(0.8, this.distanceScalingFactor * 1.2);
+      this.qualityLevel = 2; // Start at high quality
+      console.log(`Benchmark indicates higher-end device. Increasing scaling to ${this.distanceScalingFactor.toFixed(2)} and starting at high quality.`);
+    } else {
+      // Acceptable initial performance
+      this.qualityLevel = 1; // Start at medium quality
+      console.log(`Benchmark indicates mid-range device. Maintaining scaling at ${this.distanceScalingFactor.toFixed(2)} and starting at medium quality.`);
+    }
+    
+    // Apply the updated settings
+    this.updateQualityBasedOnLevel();
+    this.updateLODSettings();
+    
+    this.initialBenchmarkComplete = true;
+    this.lastQualityChangeTime = Date.now();
+  }
+  
+  /**
    * Detect device capabilities beyond just mobile/desktop
    */
   detectDeviceCapabilities() {
     // Only run detailed detection on mobile
     if (!this.isMobile) return;
     
+    console.log("⚠️ Mobile device detection is inherently limited and may not perfectly reflect device capabilities.");
+    console.log("Dynamic adjustments will refine settings based on actual performance during gameplay.");
+    
     // Get device pixel ratio as a rough estimate of device capability
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
+    console.log(`Device pixel ratio: ${pixelRatio.toFixed(2)} (higher generally indicates better display)`);
     
     // Check available memory if possible
     let memoryScore = 1;
     if (navigator.deviceMemory) {
       // deviceMemory is in GB, ranges from 0.25 to 8
       memoryScore = Math.min(Math.max(navigator.deviceMemory / 4, 0.5), 1.5);
+      console.log(`Device memory: ${navigator.deviceMemory}GB (score: ${memoryScore.toFixed(2)})`);
+    } else {
+      console.log("Device memory information not available");
     }
     
     // Check for specific mobile GPU hints in the user agent
     const ua = navigator.userAgent.toLowerCase();
     let gpuScore = 1;
+    let deviceCategory = "unknown";
     
     // Detect high-end mobile GPUs (very rough heuristics)
     if (ua.includes('apple')) {
       // Recent iOS devices tend to have good GPUs
       gpuScore = 1.3;
+      deviceCategory = "iOS";
     } else if (ua.includes('sm-g') || ua.includes('pixel') || ua.includes('snapdragon')) {
       // Higher-end Android devices
       gpuScore = 1.2;
+      deviceCategory = "high-end Android";
+    } else if (ua.includes('android')) {
+      deviceCategory = "standard Android";
     }
+    
+    console.log(`Device category: ${deviceCategory} (GPU score: ${gpuScore.toFixed(2)})`);
     
     // Combine factors into a capability score
     // This is a very rough estimate - ideally we'd use proper benchmarking
@@ -234,6 +341,49 @@ export class MobileLODManager {
   }
   
   /**
+   * Apply quality settings based on current quality level
+   */
+  updateQualityBasedOnLevel() {
+    switch (this.qualityLevel) {
+      case 0: // Low quality
+        this.currentTerrainLOD = "low";
+        this.currentVegetationDensity = 0.4;
+        this.currentWaterReflectionEnabled = false;
+        
+        // Enable all optimizations
+        this.optimizations.aggressiveDistanceCulling = true;
+        this.optimizations.reduced3DTextures = true;
+        this.optimizations.simplifiedShadows = true;
+        this.optimizations.dynamicResolutionScaling = true;
+        break;
+        
+      case 1: // Medium quality
+        this.currentTerrainLOD = "medium";
+        this.currentVegetationDensity = 0.6;
+        this.currentWaterReflectionEnabled = true;
+        
+        // Enable most optimizations
+        this.optimizations.aggressiveDistanceCulling = true;
+        this.optimizations.reduced3DTextures = true;
+        this.optimizations.simplifiedShadows = true;
+        this.optimizations.dynamicResolutionScaling = false;
+        break;
+        
+      case 2: // High quality
+        this.currentTerrainLOD = "adaptive";
+        this.currentVegetationDensity = 0.7;
+        this.currentWaterReflectionEnabled = true;
+        
+        // Reduce optimizations
+        this.optimizations.aggressiveDistanceCulling = false;
+        this.optimizations.reduced3DTextures = true;
+        this.optimizations.simplifiedShadows = false;
+        this.optimizations.dynamicResolutionScaling = false;
+        break;
+    }
+  }
+  
+  /**
    * Dynamically adjust LOD settings based on performance
    */
   dynamicallyAdjustLOD() {
@@ -243,87 +393,101 @@ export class MobileLODManager {
     const report = this.engine.performanceMonitor.generateReport();
     const currentFPS = report.current.fps;
     const avgFPS = report.averages.fps;
+    const avgTriangles = report.averages.triangles || 0;
     
-    console.log(`Current FPS: ${currentFPS.toFixed(1)}, Average FPS: ${avgFPS.toFixed(1)}, Triangle count: ${report.current.triangles}`);
+    const timeSinceLastChange = Date.now() - this.lastQualityChangeTime;
+    const fpsRatio = avgFPS / this.targetFPS;
     
-    // Performance is too low - make aggressive cutbacks
-    if (avgFPS < 20) {
-      console.log("Mobile performance critical - applying aggressive LOD reductions");
+    // Log current state
+    console.log(`LOD Assessment: Avg FPS: ${avgFPS.toFixed(1)}/${this.targetFPS} (${(fpsRatio * 100).toFixed(0)}%), ` +
+                `Triangles: ${avgTriangles.toFixed(0)}, ` +
+                `Quality: ${this.qualityLevel}/2, ` +
+                `Time at quality: ${(this.timeAtCurrentQuality / 1000).toFixed(1)}s`);
+    
+    // Variables to track decision factors
+    let shouldDecrease = false;
+    let shouldIncrease = false;
+    const reasons = [];
+    
+    // ----- Performance analysis -----
+    
+    // FPS-based analysis
+    if (fpsRatio < this.fpsThresholds.critical) {
+      shouldDecrease = true;
+      reasons.push(`FPS critically low (${(fpsRatio * 100).toFixed(0)}% of target)`);
+    } else if (fpsRatio < this.fpsThresholds.low) {
+      // FPS is low but not critical
+      shouldDecrease = true;
+      reasons.push(`FPS below target (${(fpsRatio * 100).toFixed(0)}% of target)`);
+    } else if (fpsRatio > this.fpsThresholds.good && avgTriangles < this.triangleThresholds.medium) {
+      // FPS is good and triangle count isn't too high
+      shouldIncrease = true;
+      reasons.push(`FPS above target (${(fpsRatio * 100).toFixed(0)}% of target) with moderate triangle count`);
+    }
+    
+    // Triangle count analysis
+    if (avgTriangles > this.triangleThresholds.critical) {
+      shouldDecrease = true;
+      reasons.push(`Triangle count critically high (${avgTriangles.toFixed(0)})`);
+    } else if (avgTriangles > this.triangleThresholds.high && fpsRatio < 1.1) {
+      // High triangle count with mediocre FPS
+      shouldDecrease = true;
+      reasons.push(`High triangle count (${avgTriangles.toFixed(0)}) with borderline FPS`);
+    } else if (avgTriangles < this.triangleThresholds.low && fpsRatio > 1.3) {
+      // Low triangle count with excellent FPS
+      shouldIncrease = true;
+      reasons.push(`Low triangle count (${avgTriangles.toFixed(0)}) with excellent FPS`);
+    }
+    
+    // ----- Apply hysteresis constraints -----
+    
+    // Prevent rapid changes by enforcing minimum time at a quality level
+    if (shouldDecrease && timeSinceLastChange < this.minTimeBeforeDecrease) {
+      console.log(`Quality decrease suggested but postponed (${(timeSinceLastChange / 1000).toFixed(1)}s < ${(this.minTimeBeforeDecrease / 1000)}s minimum time)`);
+      shouldDecrease = false;
+    }
+    
+    if (shouldIncrease && timeSinceLastChange < this.minTimeBeforeIncrease) {
+      console.log(`Quality increase suggested but postponed (${(timeSinceLastChange / 1000).toFixed(1)}s < ${(this.minTimeBeforeIncrease / 1000)}s minimum time)`);
+      shouldIncrease = false;
+    }
+    
+    // ----- Apply quality changes -----
+    
+    // Decrease quality if needed and possible
+    if (shouldDecrease && this.qualityLevel > 0) {
+      this.qualityLevel--;
+      console.log(`⬇️ Decreasing quality to ${this.qualityLevel}/2 because: ${reasons.join(", ")}`);
+      this.updateQualityBasedOnLevel();
+      this.timeAtCurrentQuality = 0;
+      this.lastQualityChangeTime = Date.now();
       
-      // Reduce terrain detail
-      this.currentTerrainLOD = "low";
-      
-      // Reduce vegetation density drastically
-      this.currentVegetationDensity = 0.4;
-      
-      // Disable water reflections
-      this.currentWaterReflectionEnabled = false;
-      
-      // Enable all optimizations
-      this.optimizations.aggressiveDistanceCulling = true;
-      this.optimizations.reduced3DTextures = true;
-      this.optimizations.simplifiedShadows = true;
-      this.optimizations.dynamicResolutionScaling = true;
-      
-      // Apply reduced resolution scaling if extremely low FPS
-      if (avgFPS < 15 && this.engine.renderer) {
+      // Apply an emergency pixel ratio reduction if FPS is critically low
+      if (fpsRatio < 0.6 && this.engine.renderer) {
         const currentPixelRatio = this.engine.renderer.getPixelRatio();
         if (currentPixelRatio > 0.6) {
-          this.engine.renderer.setPixelRatio(Math.max(0.6, currentPixelRatio * 0.9));
-          console.log(`Reducing pixel ratio to ${this.engine.renderer.getPixelRatio().toFixed(2)}`);
+          const newRatio = Math.max(0.6, currentPixelRatio * 0.9);
+          this.engine.renderer.setPixelRatio(newRatio);
+          console.log(`🚨 Emergency pixel ratio reduction to ${newRatio.toFixed(2)}`);
         }
       }
     }
-    // Performance is below target but not critical
-    else if (avgFPS < this.targetFPS) {
-      console.log("Mobile performance below target - applying moderate LOD reductions");
-      
-      // Use medium terrain detail
-      this.currentTerrainLOD = "medium";
-      
-      // Moderately reduce vegetation density
-      this.currentVegetationDensity = 0.6;
-      
-      // Keep water reflections but reduce quality
-      this.currentWaterReflectionEnabled = true;
-      
-      // Enable most optimizations
-      this.optimizations.aggressiveDistanceCulling = true;
-      this.optimizations.reduced3DTextures = true;
-      this.optimizations.simplifiedShadows = true;
+    // Increase quality if needed and possible
+    else if (shouldIncrease && this.qualityLevel < 2) {
+      this.qualityLevel++;
+      console.log(`⬆️ Increasing quality to ${this.qualityLevel}/2 because: ${reasons.join(", ")}`);
+      this.updateQualityBasedOnLevel();
+      this.timeAtCurrentQuality = 0;
+      this.lastQualityChangeTime = Date.now();
     }
-    // Performance is good - we can improve quality
-    else if (avgFPS > this.targetFPS * 1.2) {
-      console.log("Mobile performance good - gradually increasing quality");
-      
-      // Increase terrain detail
-      if (this.currentTerrainLOD === "low") {
-        this.currentTerrainLOD = "medium";
-      } else if (this.currentTerrainLOD === "medium") {
-        this.currentTerrainLOD = "adaptive";
-      }
-      
-      // Gradually increase vegetation density
-      if (this.currentVegetationDensity < 0.7) {
-        this.currentVegetationDensity = Math.min(0.7, this.currentVegetationDensity + 0.1);
-      }
-      
-      // Enable water reflections
-      this.currentWaterReflectionEnabled = true;
-      
-      // Gradually reduce optimizations if FPS is very high
-      if (avgFPS > this.targetFPS * 1.5) {
-        this.optimizations.simplified
-        
-        // Only disable aggressive distance culling if FPS is very high
-        if (avgFPS > this.targetFPS * 1.8) {
-          this.optimizations.aggressiveDistanceCulling = false;
-        }
-      }
+    else {
+      console.log(`✓ Maintaining quality level ${this.qualityLevel}/2`);
     }
     
-    // Apply updates to affected systems
-    this.updateLODSettings();
+    // Apply updates to affected systems if any changes were made
+    if (shouldDecrease || shouldIncrease) {
+      this.updateLODSettings();
+    }
   }
   
   /**
