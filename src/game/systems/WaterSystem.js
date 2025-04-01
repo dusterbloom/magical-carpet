@@ -47,11 +47,11 @@ export class WaterSystem {
 createWater() {
   const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
   
-  // Get quality setting from engine if available - only apply reduced quality on mobile
+  // Get quality setting from engine if available
   let waterQuality = 'high';
-  if (this.engine.settings && this.engine.settings.quality && this.engine.settings.isMobile) {
+  if (this.engine.settings && this.engine.settings.quality) {
     waterQuality = this.engine.settings.quality.water;
-    console.log(`Mobile device: Creating water with ${waterQuality} quality`);
+    console.log(`Creating water with ${waterQuality} quality`);
   }
   
   // If MobileLODManager is available, check if water reflections should be enabled
@@ -64,43 +64,35 @@ createWater() {
     }
   }
   
-  // Configure water based on quality setting (only for mobile)
-  let textureSize = 2048;
+  // Configure water based on quality setting - applies to all devices now
+  let textureSize = 1024;  // Default high quality
   let distortionScale = 0.8;
   let alpha = 0.95;
   
-  // Only apply reduced settings on mobile
-  if (this.engine.settings && this.engine.settings.isMobile) {
-    switch (waterQuality) {
-      case 'low':
-        textureSize = 128; // Extremely low texture
-        distortionScale = 0; // No distortion at all
-        alpha = 0.8; // More transparent
-        break;
-      case 'medium':
-        textureSize = 256; // Much smaller than before
-        distortionScale = 0.1; // Very little distortion
-        alpha = 0.85;
-        break;
-      case 'high':
-        textureSize = 512; // Half of previous
-        distortionScale = 0.2;
-        alpha = 0.9;
-        break;
-    }
-    
-    // Add a debug message about the current water quality setting
-    console.log(`Water quality on mobile: ${waterQuality}, texture size: ${textureSize}, distortion: ${distortionScale}`);
+  // Apply quality settings based on device capability and quality setting
+  switch (waterQuality) {
+    case 'low':
+      textureSize = 64;  // Very small texture for reflections
+      distortionScale = 0.1;  // Minimal distortion
+      alpha = 0.8;  // More transparent
+      break;
+    case 'medium':
+      textureSize = 256;  // Medium texture size
+      distortionScale = 0.3;  // Moderate distortion
+      alpha = 0.85;
+      break;
+    case 'high':
+      textureSize = this.engine.settings && this.engine.settings.isMobile ? 512 : 1024;  // Scaled based on device
+      distortionScale = 0.6;  // Significant distortion but not full
+      alpha = 0.9;
+      break;
   }
   
-  // Choose water color based on mobile & quality settings
-  let waterColor = 0x001e0f; // Default water color
-
-  // For mobile, use a more vibrant blue regardless of quality setting
-  if (this.engine.settings && this.engine.settings.isMobile) {
-    waterColor = 0x00aaff; // Extra vibrant blue that looks better without reflections
-    console.log('Mobile device: Using alternative water color ' + waterColor.toString(16));
-  }
+  console.log(`Water quality: ${waterQuality}, texture size: ${textureSize}, distortion: ${distortionScale}`);
+  
+  // Use a color that works correctly on all devices - fix for the brown water issue
+  // Medium blue that renders consistently across devices
+  const waterColor = 0x0066aa;
 
   const water = new Water(waterGeometry, {
     textureWidth: textureSize,
@@ -126,25 +118,36 @@ createWater() {
   this._reflectionCameraInitialized = false;
   this._waterQuality = waterQuality;
   
-  // For all mobile devices, completely disable reflections
+  // Apply quality-specific reflection settings instead of completely disabling
   if (this.engine.settings && this.engine.settings.isMobile) {
-    // Completely disable reflections by setting texture matrix to zero
-    const zeroMatrix = new THREE.Matrix4().set(
-      0, 0, 0, 0,
-      0, 0, 0, 0,
-      0, 0, 0, 0,
-      0, 0, 0, 0
-    );
-    water.material.uniforms['textureMatrix'].value = zeroMatrix;
+    // Apply appropriately scaled reflection matrix instead of zero matrix
+    let reflectionMatrix;
     
-    // Use a very vibrant blue color
-    const vividBlue = new THREE.Color(0x00ccff);
-    water.material.uniforms['waterColor'].value = vividBlue;
+    switch (waterQuality) {
+      case 'low':
+        // Very minimal reflection - almost zero but not completely disabled
+        reflectionMatrix = new THREE.Matrix4().makeScale(0.05, 0.05, 0.05);
+        console.log('Mobile: Using minimal reflections for low quality water');
+        break;
+        
+      case 'medium':
+        // Reduced reflection
+        reflectionMatrix = new THREE.Matrix4().makeScale(0.3, 0.3, 0.3);
+        console.log('Mobile: Using reduced reflections for medium quality water');
+        break;
+        
+      case 'high':
+        // Still slightly reduced from full reflection for mobile performance
+        reflectionMatrix = new THREE.Matrix4().makeScale(0.7, 0.7, 0.7);
+        console.log('Mobile: Using moderate reflections for high quality water');
+        break;
+    }
     
-    console.log('Mobile: Disabling all reflections and using vivid blue water');
+    // Apply the appropriate reflection matrix
+    water.material.uniforms['textureMatrix'].value = reflectionMatrix;
     
-    // Simplify shader for mobile
-    if (water.material) {
+    // Simplify shader for mobile if needed
+    if (water.material && waterQuality === 'low') {
       water.material.defines = water.material.defines || {};
       water.material.defines.DEPTH_EFFECT = 0;
       water.material.defines.SKY_EFFECT = 0;
@@ -168,22 +171,8 @@ createWater() {
 
 update(deltaTime) {
   if (this.water) {
-    // Force water color on mobile devices consistently every frame
-    if (this.engine.settings && this.engine.settings.isMobile && 
-        this.water.material && this.water.material.uniforms['waterColor']) {
-      this.water.material.uniforms['waterColor'].value = new THREE.Color(0x00ccff);
-      
-      // Keep reflections completely disabled
-      if (this.water.material.uniforms['textureMatrix']) {
-        const zeroMatrix = new THREE.Matrix4().set(
-          0, 0, 0, 0,
-          0, 0, 0, 0,
-          0, 0, 0, 0,
-          0, 0, 0, 0
-        );
-        this.water.material.uniforms['textureMatrix'].value.copy(zeroMatrix);
-      }
-    }
+    // No longer forcing water color - we've fixed the root cause
+    // Just maintain consistent reflections based on quality level
     
     // Use default animation speed for desktop, adjust for mobile only
     let animationSpeed = 0.8;
@@ -212,27 +201,32 @@ update(deltaTime) {
     
     // Modify reflection processing for mobile
     if (this.engine.settings && this.engine.settings.isMobile) {
-      // For all quality levels, disable reflections completely
-      const zeroMatrix = new THREE.Matrix4().set(
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0
-      );
+      // Apply reflection matrix based on current quality
+      let reflectionMatrix;
       
-      if (this.water && this.water.material) {
-        // Ensure water color is maintained
-        if (this.water.material.uniforms['waterColor']) {
-          this.water.material.uniforms['waterColor'].value = new THREE.Color(0x00ccff);
-        }
-        
-        // Disable reflections
-        if (this.water.material.uniforms['textureMatrix']) {
-          this.water.material.uniforms['textureMatrix'].value.copy(zeroMatrix);
-        }
+      switch (this._waterQuality) {
+        case 'low':
+          // Very minimal reflection
+          reflectionMatrix = new THREE.Matrix4().makeScale(0.05, 0.05, 0.05);
+          break;
+          
+        case 'medium':
+          // Reduced reflection
+          reflectionMatrix = new THREE.Matrix4().makeScale(0.3, 0.3, 0.3);
+          break;
+          
+        case 'high':
+          // Moderate reflection for mobile
+          reflectionMatrix = new THREE.Matrix4().makeScale(0.7, 0.7, 0.7);
+          break;
       }
       
-      // Skip the rest of reflection processing
+      // Apply the appropriate reflection matrix
+      if (this.water && this.water.material && this.water.material.uniforms['textureMatrix']) {
+        this.water.material.uniforms['textureMatrix'].value.copy(reflectionMatrix);
+      }
+      
+      // Skip the rest of desktop-specific reflection processing
       return;
     }
     
@@ -263,20 +257,26 @@ update(deltaTime) {
       
       // Override onBeforeRender to control the sun in water reflections
       this.water.onBeforeRender = (renderer, scene, camera) => {
-      // Force water color on mobile devices in render loop
-      if (this.engine.settings && this.engine.settings.isMobile && 
-          this.water.material && this.water.material.uniforms['waterColor']) {
-        this.water.material.uniforms['waterColor'].value = new THREE.Color(0x00ccff);
+      // For mobile devices, ensure consistent reflections based on quality
+      if (this.engine.settings && this.engine.settings.isMobile) {
+        // Apply quality-appropriate reflection matrix
+        let reflectionMatrix;
         
-        // Keep reflections completely disabled
+        switch (this._waterQuality) {
+          case 'low':
+            reflectionMatrix = new THREE.Matrix4().makeScale(0.05, 0.05, 0.05);
+            break;
+          case 'medium':
+            reflectionMatrix = new THREE.Matrix4().makeScale(0.3, 0.3, 0.3);
+            break;
+          case 'high':
+            reflectionMatrix = new THREE.Matrix4().makeScale(0.7, 0.7, 0.7);
+            break;
+        }
+        
+        // Apply the appropriate reflection matrix
         if (this.water.material.uniforms['textureMatrix']) {
-          const zeroMatrix = new THREE.Matrix4().set(
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0
-          );
-          this.water.material.uniforms['textureMatrix'].value.copy(zeroMatrix);
+          this.water.material.uniforms['textureMatrix'].value.copy(reflectionMatrix);
         }
       }
 
@@ -376,27 +376,31 @@ update(deltaTime) {
       // Create new water with updated quality
       this.createWater();
       
-      // Extra check: Force blue water color for any mobile quality
+      // Apply proper reflection settings for the new quality level
       if (this.water && this.water.material && 
           this.engine.settings && this.engine.settings.isMobile) {
         
-        // Use a very vibrant blue color
-        if (this.water.material.uniforms['waterColor']) {
-          this.water.material.uniforms['waterColor'].value = new THREE.Color(0x00ccff);
+        // Apply appropriate reflection matrix based on new quality
+        let reflectionMatrix;
+        
+        switch (newQuality) {
+          case 'low':
+            reflectionMatrix = new THREE.Matrix4().makeScale(0.05, 0.05, 0.05);
+            break;
+          case 'medium':
+            reflectionMatrix = new THREE.Matrix4().makeScale(0.3, 0.3, 0.3);
+            break;
+          case 'high':
+            reflectionMatrix = new THREE.Matrix4().makeScale(0.7, 0.7, 0.7);
+            break;
         }
         
-        // Keep reflections completely disabled
+        // Apply the reflection matrix
         if (this.water.material.uniforms['textureMatrix']) {
-          const zeroMatrix = new THREE.Matrix4().set(
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0
-          );
-          this.water.material.uniforms['textureMatrix'].value.copy(zeroMatrix);
+          this.water.material.uniforms['textureMatrix'].value.copy(reflectionMatrix);
         }
         
-        console.log('Mobile: Enforcing vivid blue water color after quality change');
+        console.log(`Mobile: Applied ${newQuality} quality water reflections after quality change`);
       }
     }
     
