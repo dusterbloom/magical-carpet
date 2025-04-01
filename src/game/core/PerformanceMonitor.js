@@ -1,203 +1,195 @@
-/**
- * PerformanceMonitor
- * 
- * Tracks and analyzes game performance metrics including:
- * - FPS (frames per second)
- * - Renderer statistics (draw calls, triangles, etc.)
- * - System execution times
- * - Memory usage
- * 
- * Provides methods to generate reports for optimization purposes.
- */
 export class PerformanceMonitor {
-  constructor() {
+  constructor(engine) {
+    this.engine = engine;
     this.metrics = {
       fps: [],
-      drawCalls: [],
-      triangles: [],
-      points: [],
-      lines: [],
-      geometries: [],
-      textures: [],
-      systemTimes: {
-        network: [],
-        world: [],
-        water: [],
-        vegetation: [],
-        atmosphere: [],
-        player: [],
-        carpetTrail: [],
-        landmarks: [],
-        ui: [],
-        minimap: [],
-        render: []
-      },
+      frameTime: [],
       memoryUsage: [],
-      lastUpdate: Date.now()
+      systemTimes: new Map()
     };
     
-    this.sampleSize = 100; // Store last 100 samples
-    this.sampleInterval = 1000; // Sample every second
+    this.sampleSize = 60;
+    this.enabled = true;
   }
-
-  /**
-   * Updates performance metrics based on renderer and engine state
-   * @param {THREE.WebGLRenderer} renderer - The Three.js renderer
-   * @param {Engine} engine - The game engine instance
-   */
-  update(renderer, engine) {
-    const now = Date.now();
-    if (now - this.metrics.lastUpdate < this.sampleInterval) return;
+  
+  startFrame() {
+    if (!this.enabled) return;
+    this.frameStartTime = performance.now();
+  }
+  
+  endFrame() {
+    if (!this.enabled || !this.frameStartTime) return;
     
-    // Get renderer stats
-    const info = renderer.info;
+    const frameTime = performance.now() - this.frameStartTime;
+    this.metrics.frameTime.push(frameTime);
+    this.metrics.fps.push(1000 / frameTime);
     
-    // Calculate FPS - use a moving average to smooth out spikes
-    // Get direct frame time from engine's delta time if available
-    let fps = 0;
-    if (engine && engine.delta > 0) {
-      fps = 1 / engine.delta; // More accurate when using engine's delta time
-    } else {
-      const elapsed = now - this.metrics.lastUpdate;
-      if (elapsed > 0) { // Avoid division by zero
-        fps = 1000 / elapsed;
+    if (this.metrics.frameTime.length > this.sampleSize) {
+      this.metrics.frameTime.shift();
+      this.metrics.fps.shift();
+    }
+    
+    if (performance.memory) {
+      this.metrics.memoryUsage.push(performance.memory.usedJSHeapSize);
+      if (this.metrics.memoryUsage.length > this.sampleSize) {
+        this.metrics.memoryUsage.shift();
       }
     }
+  }
+  
+  startSystemTimer(systemName) {
+    if (!this.enabled) return;
+    this._systemStartTimes = this._systemStartTimes || new Map();
+    this._systemStartTimes.set(systemName, performance.now());
+  }
+  
+  endSystemTimer(systemName) {
+    if (!this.enabled || !this._systemStartTimes) return;
     
-    // Cap FPS to reasonable values to avoid extreme spikes
-    fps = Math.min(Math.max(fps, 1), 120);
+    const startTime = this._systemStartTimes.get(systemName);
+    if (!startTime) return;
     
-    // Record metrics
-    this.addMetric('fps', fps);
-    this.addMetric('drawCalls', info.render.calls);
-    this.addMetric('triangles', info.render.triangles);
-    this.addMetric('points', info.render.points);
-    this.addMetric('lines', info.render.lines);
-    this.addMetric('geometries', info.memory.geometries);
-    this.addMetric('textures', info.memory.textures);
+    const duration = performance.now() - startTime;
     
-    // Record memory usage
-    if (window.performance && window.performance.memory) {
-      this.addMetric('memoryUsage', window.performance.memory.usedJSHeapSize);
+    if (!this.metrics.systemTimes.has(systemName)) {
+      this.metrics.systemTimes.set(systemName, []);
     }
     
-    this.metrics.lastUpdate = now;
-  }
-
-  /**
-   * Adds a metric value to the tracking arrays
-   * @param {string} name - Metric name
-   * @param {number} value - Metric value
-   */
-  addMetric(name, value) {
-    this.metrics[name].push(value);
-    if (this.metrics[name].length > this.sampleSize) {
-      this.metrics[name].shift();
+    const times = this.metrics.systemTimes.get(systemName);
+    times.push(duration);
+    
+    if (times.length > this.sampleSize) {
+      times.shift();
     }
   }
-
-  /**
-   * Records system execution time
-   * @param {string} system - System name
-   * @param {number} time - Execution time in milliseconds
-   */
-  addSystemTime(system, time) {
-    if (!this.metrics.systemTimes[system]) {
-      // console.warn(`System "${system}" not found in metrics tracking`);
-      return;
-    }
-    
-    this.metrics.systemTimes[system].push(time);
-    if (this.metrics.systemTimes[system].length > this.sampleSize) {
-      this.metrics.systemTimes[system].shift();
-    }
+  
+  getAverageFrameTime() {
+    if (this.metrics.frameTime.length === 0) return 0;
+    const sum = this.metrics.frameTime.reduce((a, b) => a + b, 0);
+    return sum / this.metrics.frameTime.length;
   }
-
-  /**
-   * Calculates average values for all metrics
-   * @returns {Object} Average metrics
-   */
-  getAverages() {
-    const averages = {};
-    for (const [key, values] of Object.entries(this.metrics)) {
-      if (key !== 'systemTimes' && key !== 'lastUpdate') {
-        // For FPS, use a more stable calculation - focus on recent samples and remove outliers
-        if (key === 'fps' && values.length > 0) {
-          // Sort values to identify outliers
-          const sortedValues = [...values].sort((a, b) => a - b);
-          // Remove top and bottom 10% to get rid of spikes
-          const trimStart = Math.floor(sortedValues.length * 0.1);
-          const trimEnd = Math.ceil(sortedValues.length * 0.9);
-          const trimmedValues = sortedValues.slice(trimStart, trimEnd);
-          
-          // Calculate average of trimmed values
-          averages[key] = trimmedValues.length > 0 
-            ? trimmedValues.reduce((a, b) => a + b, 0) / trimmedValues.length
-            : (values.length > 0 ? values[values.length - 1] : 0); // Fall back to latest value
-        } else {
-          // Standard average for other metrics
-          averages[key] = values.length > 0 
-            ? values.reduce((a, b) => a + b, 0) / values.length 
-            : 0;
-        }
-      }
-    }
-    
-    averages.systemTimes = {};
-    for (const [system, times] of Object.entries(this.metrics.systemTimes)) {
-      averages.systemTimes[system] = times.length > 0
-        ? times.reduce((a, b) => a + b, 0) / times.length
-        : 0;
-    }
-    
-    return averages;
+  
+  getAverageFPS() {
+    if (this.metrics.fps.length === 0) return 0;
+    const sum = this.metrics.fps.reduce((a, b) => a + b, 0);
+    return sum / this.metrics.fps.length;
   }
-
-  /**
-   * Generates a comprehensive performance report
-   * @returns {Object} Performance report with averages, current values, and peaks
-   */
-  generateReport() {
-    const averages = this.getAverages();
-    const report = {
-      averages,
-      current: {
-        fps: this.metrics.fps.length > 0 ? this.metrics.fps[this.metrics.fps.length - 1] : 0,
-        drawCalls: this.metrics.drawCalls.length > 0 ? this.metrics.drawCalls[this.metrics.drawCalls.length - 1] : 0,
-        triangles: this.metrics.triangles.length > 0 ? this.metrics.triangles[this.metrics.triangles.length - 1] : 0,
-        systemTimes: {}
-      },
-      peaks: {
-        maxDrawCalls: this.metrics.drawCalls.length > 0 ? Math.max(...this.metrics.drawCalls) : 0,
-        minFps: this.metrics.fps.length > 0 ? Math.min(...this.metrics.fps) : 0,
-      }
-    };
+  
+  getSystemReport() {
+    const report = {};
     
-    // Add current system times
-    for (const system in this.metrics.systemTimes) {
-      const times = this.metrics.systemTimes[system];
-      if (times.length > 0) {
-        report.current.systemTimes[system] = times[times.length - 1];
-        report.peaks[`max${system.charAt(0).toUpperCase() + system.slice(1)}Time`] = Math.max(...times);
-      }
+    for (const [systemName, times] of this.metrics.systemTimes.entries()) {
+      if (times.length === 0) continue;
+      
+      const sum = times.reduce((a, b) => a + b, 0);
+      const avg = sum / times.length;
+      
+      report[systemName] = {
+        averageTime: avg,
+        percentage: avg / this.getAverageFrameTime() * 100
+      };
     }
     
     return report;
   }
-  
-  /**
-   * Clears all collected metrics
-   */
-  reset() {
-    for (const key in this.metrics) {
-      if (key === 'systemTimes') {
-        for (const system in this.metrics.systemTimes) {
-          this.metrics.systemTimes[system] = [];
+
+  addSystemTime(systemName, duration) {
+    if (!this.enabled) return;
+    
+    if (!this.metrics.systemTimes.has(systemName)) {
+      this.metrics.systemTimes.set(systemName, []);
+    }
+    
+    const times = this.metrics.systemTimes.get(systemName);
+    times.push(duration);
+    
+    if (times.length > this.sampleSize) {
+      times.shift();
+    }
+  }
+
+  generateReport() {
+    const report = {
+      current: {
+        fps: this.metrics.fps[this.metrics.fps.length - 1] || 0
+      },
+      averages: {
+        fps: this.getAverageFPS(),
+        frameTime: this.getAverageFrameTime()
+      },
+      systems: this.getSystemReport()
+    };
+    
+    // Add memory metrics if available
+    if (this.metrics.memoryUsage.length > 0) {
+      report.averages.memory = this.metrics.memoryUsage[this.metrics.memoryUsage.length - 1];
+    }
+    
+    return report;
+  }
+
+    // Add compatibility method for Engine.js
+    update(renderer, engine) {
+      // This method was previously used to collect renderer stats
+      // Now we handle most of this in startFrame/endFrame
+      // but we'll keep it for compatibility
+      if (!this.enabled) return;
+      
+      // If renderer stats are available, collect them
+      if (renderer && renderer.info) {
+        const info = renderer.info;
+        if (!this.metrics.renderStats) {
+          this.metrics.renderStats = {
+            drawCalls: [],
+            triangles: [],
+            points: [],
+            lines: []
+          };
         }
-      } else if (key !== 'lastUpdate') {
-        this.metrics[key] = [];
+        
+        // Collect render stats
+        this.metrics.renderStats.drawCalls.push(info.render?.calls || 0);
+        this.metrics.renderStats.triangles.push(info.render?.triangles || 0);
+        this.metrics.renderStats.points.push(info.render?.points || 0);
+        this.metrics.renderStats.lines.push(info.render?.lines || 0);
+        
+        // Trim arrays to sample size
+        Object.values(this.metrics.renderStats).forEach(array => {
+          if (array.length > this.sampleSize) {
+            array.shift();
+          }
+        });
       }
     }
-    this.metrics.lastUpdate = Date.now();
-  }
+    
+    // Add compatibility method for MobileLODManager
+    generateReport() {
+      const report = {
+        current: {
+          fps: this.metrics.fps[this.metrics.fps.length - 1] || 0
+        },
+        averages: {
+          fps: this.getAverageFPS(),
+          frameTime: this.getAverageFrameTime()
+        },
+        systems: this.getSystemReport()
+      };
+      
+      // Add renderer stats if available
+      if (this.metrics.renderStats) {
+        const getLastValue = (array) => array[array.length - 1] || 0;
+        report.current.drawCalls = getLastValue(this.metrics.renderStats.drawCalls);
+        report.current.triangles = getLastValue(this.metrics.renderStats.triangles);
+        report.current.points = getLastValue(this.metrics.renderStats.points);
+        report.current.lines = getLastValue(this.metrics.renderStats.lines);
+      }
+      
+      // Add memory metrics if available
+      if (this.metrics.memoryUsage.length > 0) {
+        report.averages.memory = this.metrics.memoryUsage[this.metrics.memoryUsage.length - 1];
+      }
+      
+      return report;
+    }
+  
 }
