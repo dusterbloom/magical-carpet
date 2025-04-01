@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { useGameState, GameStates, selectIsPlaying } from '../../state/gameState';
 
 export class PlayerInput {
   constructor(playerSystem) {
@@ -12,6 +13,9 @@ export class PlayerInput {
     this.rotationDamping = 0.92;     // New: dampens rotation
     
     this.currentThrottle = 0;
+    
+    // Track state subscription
+    this.unsubscribeState = null;
     
     // Motion control properties
     this.motionControlsEnabled = false;
@@ -36,6 +40,14 @@ export class PlayerInput {
   
   setupInput() {
     const input = this.engine.input;
+    
+    // Subscribe to game state changes
+    this.unsubscribeState = useGameState.subscribe(
+      (state) => {
+        const isPlaying = state.currentState === GameStates.PLAYING;
+        this.setControlsActive(isPlaying);
+      }
+    );
     
     input.on('mousemove', (event) => {
       if (input.pointerLocked && this.playerSystem.localPlayer) {
@@ -221,6 +233,36 @@ export class PlayerInput {
       // IMPORTANT: Always apply forward force when using motion controls
       const motionForwardForce = player.maxSpeed * 0.5; // 50% of max speed
       physics.applyForwardForce(player, motionForwardForce * delta);
+    }
+  }
+  
+  /**
+   * Set controls active or inactive based on game state
+   */
+  setControlsActive(active) {
+    if (active) {
+      // Show mobile controls if on mobile
+      if (this.engine.input.isTouchDevice) {
+        this.showMobileControls();
+      }
+      // Enable keyboard/mouse input
+    } else {
+      // Hide mobile controls if on mobile
+      if (this.engine.input.isTouchDevice && this.mobileControlElements) {
+        this.hideMobileControls();
+      }
+      // Disable keyboard/mouse input when not playing
+    }
+  }
+  
+  /**
+   * Clean up resources when component is destroyed
+   */
+  destroy() {
+    // Clean up state subscription
+    if (this.unsubscribeState) {
+      this.unsubscribeState();
+      this.unsubscribeState = null;
     }
   }
   
@@ -584,6 +626,18 @@ export class PlayerInput {
     }
     // Start debug overlay updates
     this.updateDebugOverlay();
+  }
+  
+  /**
+   * Hide mobile controls when not in playing state
+   */
+  hideMobileControls() {
+    console.log('Hiding mobile controls');
+    if (this.mobileControlElements) {
+      this.mobileControlElements.forEach(element => {
+        element.style.display = 'none';
+      });
+    }
   }
   
   updateDebugOverlay() {

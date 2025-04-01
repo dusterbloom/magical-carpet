@@ -2,6 +2,7 @@
  * IntroScreen.js
  * Displays the game intro screen with logo, game name, and play button
  */
+import { useGameState, GameStates } from '../../state/gameState';
 export class IntroScreen {
   constructor(engine) {
     this.engine = engine;
@@ -110,18 +111,8 @@ export class IntroScreen {
       
       // Delay showing controls until the exit animation completes
       setTimeout(() => {
-        // Show time UI when game starts
-        if (self.engine.systems.ui && self.engine.systems.ui.showTimeControls) {
-          self.engine.systems.ui.showTimeControls();
-        }
-        
-        // Show mobile controls if on mobile device
-        if (self.engine.input.isTouchDevice && 
-            self.engine.systems.player && 
-            self.engine.systems.player.input) {
-          console.log('Showing mobile controls from intro screen');
-          self.engine.systems.player.input.showMobileControls();
-        }
+        // Change game state to PLAYING
+        useGameState.getState().setGameState(GameStates.PLAYING);
         
         // Call the play callback to start the game
         if (self.onPlayCallback) {

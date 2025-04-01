@@ -1,8 +1,11 @@
+import { useGameState, GameStates } from '../state/gameState';
+
 export class UISystem {
   constructor(engine) {
     this.engine = engine;
     this.container = document.getElementById('ui-container');
     this.elements = {};
+    this.unsubscribeState = null;
   }
   
   async initialize() {
@@ -13,7 +16,34 @@ export class UISystem {
     this.createMinimapUI();
     this.createTimeControls();
     
+    // Subscribe to game state changes
+    this.unsubscribeState = useGameState.subscribe(
+      this.handleStateChange.bind(this)
+    );
+    
     console.log("UI system initialized");
+  }
+  
+  /**
+   * Handle state changes
+   */
+  handleStateChange(state) {
+    // Update UI elements based on game state
+    const currentState = state.currentState;
+    switch (currentState) {
+      case GameStates.LOADING:
+        // Keep loading screen visible
+        break;
+      case GameStates.INTRO:
+        // IntroScreen handles its own visibility
+        break;
+      case GameStates.PLAYING:
+        this.showGameUI();
+        break;
+      case GameStates.PAUSED:
+        this.showPauseMenu();
+        break;
+    }
   }
   
   createBaseUI() {
@@ -647,7 +677,38 @@ export class UISystem {
   }
   
   /**
-   * Show time controls after game starts
+   * Show game UI elements when entering PLAYING state
+   */
+  showGameUI() {
+    // Show time controls
+    if (this.elements.timeToggleButton) {
+      this.elements.timeToggleButton.style.display = 'flex';
+    }
+    
+    // Show other gameplay UI elements as needed
+  }
+  
+  /**
+   * Show pause menu when entering PAUSED state
+   */
+  showPauseMenu() {
+    // TODO: Implement pause menu UI
+    console.log('Pause menu would show here');
+  }
+  
+  /**
+   * Clean up resources when component is destroyed
+   */
+  destroy() {
+    // Clean up state subscription
+    if (this.unsubscribeState) {
+      this.unsubscribeState();
+      this.unsubscribeState = null;
+    }
+  }
+  
+  /**
+   * Show time controls after game starts (kept for backwards compatibility)
    */
   showTimeControls() {
     if (this.elements.timeToggleButton) {

@@ -148,8 +148,9 @@ export class Engine {
       this.gameStarted = true;
     });
     
-    // Show intro screen
+    // Show intro screen and transition to INTRO state
     this.introScreen.show();
+    useGameState.getState().setGameState(GameStates.INTRO);
 
     console.log("Engine initialized successfully");
   }
