@@ -16,8 +16,14 @@ export class PlayerInput {
     // Motion control properties
     this.motionControlsEnabled = false;
     this.motionSensitivity = {
-      pitch: 0.05,  // Controls up/down movement
-      yaw: 0.08     // Controls left/right turning
+      pitch: 0.04,  // Controls up/down movement (reduced from 0.05)
+      yaw: 0.06     // Controls left/right turning (reduced from 0.08)
+    };
+    
+    // Add response curve parameters
+    this.motionResponseCurve = {
+      deadzone: 2.0,  // Ignore small movements (degrees)
+      maxResponse: 15.0  // Maximum input angle for full response
     };
     
     // Mobile-specific settings
@@ -171,38 +177,49 @@ export class PlayerInput {
     
     // Handle device motion controls if enabled
     if (this.motionControlsEnabled && input.deviceMotionEnabled && input.initialOrientation) {
-      const orientation = input.deviceOrientation;
-      const initial = input.initialOrientation;
+      // Use fused orientation data instead of raw orientation
+      const fusedOrientation = input.fusedOrientation;
       
-      // Calculate differences from initial orientation
-      const betaDiff = (orientation.beta - initial.beta) * this.motionSensitivity.pitch;
-      const gammaDiff = (orientation.gamma - initial.gamma) * this.motionSensitivity.yaw;
-      
-      // Map beta (forward/back tilt) to altitude changes
-      if (Math.abs(betaDiff) > 3) { // Reduced threshold from 5 to 3
-        // Forward tilt (negative beta diff) -> go down
-        // Backward tilt (positive beta diff) -> go up
-        physics.applyAltitudeChange(player, betaDiff * delta * 0.5);
+      // Apply response curve to beta (pitch control)
+      let betaResponse = 0;
+      if (Math.abs(fusedOrientation.beta) > this.motionResponseCurve.deadzone) {
+        // Calculate response with deadzone and normalization
+        const normalizedBeta = Math.sign(fusedOrientation.beta) * 
+          (Math.abs(fusedOrientation.beta) - this.motionResponseCurve.deadzone);
+        
+        // Apply non-linear response curve (quadratic) for more precision
+        betaResponse = Math.sign(normalizedBeta) * 
+          Math.min(1.0, Math.pow(Math.abs(normalizedBeta) / this.motionResponseCurve.maxResponse, 2));
+        
+        // Apply to altitude with smoother response
+        physics.applyAltitudeChange(player, betaResponse * 40 * delta);
       }
       
-      // Map gamma (left/right tilt) to turning
-      if (Math.abs(gammaDiff) > 1) { // Reduced threshold from 2 to 1
-        // Right tilt (positive gamma diff) -> turn right
-        // Left tilt (negative gamma diff) -> turn left
-        player.rotation.y -= gammaDiff * delta;
+      // Apply response curve to gamma (roll/turning control)
+      let gammaResponse = 0;
+      if (Math.abs(fusedOrientation.gamma) > this.motionResponseCurve.deadzone) {
+        // Calculate response with deadzone and normalization
+        const normalizedGamma = Math.sign(fusedOrientation.gamma) * 
+          (Math.abs(fusedOrientation.gamma) - this.motionResponseCurve.deadzone);
         
-        // Apply banking effect
-        const targetBankAngle = -gammaDiff * 0.03;
+        // Apply non-linear response curve for more precision with gentle turns
+        gammaResponse = Math.sign(normalizedGamma) * 
+          Math.min(1.0, Math.pow(Math.abs(normalizedGamma) / this.motionResponseCurve.maxResponse, 2));
+        
+        // Apply to yaw rotation with improved smoothing
+        player.rotation.y -= gammaResponse * this.motionSensitivity.yaw * 2;
+        
+        // Apply banking effect with improved response
+        const targetBankAngle = -gammaResponse * 0.5;
         player.bankAngle = THREE.MathUtils.lerp(
           player.bankAngle,
           targetBankAngle,
-          0.1
+          0.15  // Increased from 0.1 for slightly faster response
         );
       }
       
-      // IMPORTANT ADDITION: Always apply forward force when using motion controls
-      // This ensures the carpet is always moving forward
-      const motionForwardForce = player.maxSpeed * 0.5; // Use 50% of max speed
+      // IMPORTANT: Always apply forward force when using motion controls
+      const motionForwardForce = player.maxSpeed * 0.5; // 50% of max speed
       physics.applyForwardForce(player, motionForwardForce * delta);
     }
   }
@@ -468,6 +485,39 @@ export class PlayerInput {
   }
   
   createDebugOverlay() {
+    // Create calibration button
+    const calibrateButton = document.createElement('div');
+    calibrateButton.style.position = 'fixed';
+    calibrateButton.style.top = '20px';
+    calibrateButton.style.left = '20px';
+    calibrateButton.style.width = '50px';
+    calibrateButton.style.height = '50px';
+    calibrateButton.style.borderRadius = '25px';
+    calibrateButton.style.background = 'rgba(255, 255, 255, 0.7)';
+    calibrateButton.style.display = 'flex';
+    calibrateButton.style.alignItems = 'center';
+    calibrateButton.style.justifyContent = 'center';
+    calibrateButton.style.fontSize = '24px';
+    calibrateButton.innerHTML = '📱'; // Phone emoji
+    calibrateButton.style.zIndex = '1000';
+    calibrateButton.style.display = 'none'; // Initially hidden
+    document.body.appendChild(calibrateButton);
+    this.mobileControlElements.push(calibrateButton);
+
+    // Handle calibration button click
+    calibrateButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (this.motionControlsEnabled) {
+        this.engine.input.calibrateDeviceOrientation();
+        
+        // Visual feedback
+        calibrateButton.style.background = 'rgba(0, 255, 0, 0.7)';
+        setTimeout(() => {
+          calibrateButton.style.background = 'rgba(255, 255, 255, 0.7)';
+        }, 500);
+      }
+    });
+    
     // Create debug overlay to show mobile input status
     const debugOverlay = document.createElement('div');
     debugOverlay.id = 'mobile-debug-overlay';
@@ -555,6 +605,10 @@ export class PlayerInput {
     const orientationInfo = input.deviceOrientation ? 
       `Orientation: α:${input.deviceOrientation.alpha.toFixed(0)}° β:${input.deviceOrientation.beta.toFixed(0)}° γ:${input.deviceOrientation.gamma.toFixed(0)}°` : 
       'Orientation: Not available';
+      
+    const fusedInfo = input.fusedOrientation ? 
+      `Fused: α:${input.fusedOrientation.alpha.toFixed(0)}° β:${input.fusedOrientation.beta.toFixed(0)}° γ:${input.fusedOrientation.gamma.toFixed(0)}°` : 
+      'Fused: Not available';
     
     const playerInfo = `Position: (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)}, ${player.position.z.toFixed(0)})`;
     const velocityInfo = `Velocity: (${player.velocity.x.toFixed(1)}, ${player.velocity.y.toFixed(1)}, ${player.velocity.z.toFixed(1)})`;
@@ -564,6 +618,7 @@ export class PlayerInput {
       `<div>${joystickInfo}</div>`,
       `<div>${motionInfo}</div>`,
       `<div>${orientationInfo}</div>`,
+      `<div>${fusedInfo}</div>`,
       `<div>${playerInfo}</div>`,
       `<div>${velocityInfo}</div>`,
       `<div>Throttle: ${this.currentThrottle.toFixed(2)}</div>`,

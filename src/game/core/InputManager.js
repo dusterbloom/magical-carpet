@@ -12,9 +12,26 @@ export class InputManager {
     this.deviceMotionEnabled = false;
     this.deviceMotionAvailable = typeof DeviceOrientationEvent !== 'undefined';
     this.initialOrientation = null;
+    
+    // Device motion properties
+    this.deviceMotion = {
+      acceleration: { x: 0, y: 0, z: 0 },
+      accelerationIncludingGravity: { x: 0, y: 0, z: 0 },
+      rotationRate: { alpha: 0, beta: 0, gamma: 0 },
+      interval: 0
+    };
+    
+    // Sensor fusion variables
+    this.fusedOrientation = { alpha: 0, beta: 0, gamma: 0 };
+    this.lastUpdateTime = 0;
+    this.filterCoefficient = 0.98; // Complementary filter coefficient
   }
   
   initialize() {
+    // Start the sensor fusion update loop
+    this.updateInterval = setInterval(() => {
+      this.updateFusedOrientation();
+    }, 16); // ~60fps update
     // Keyboard events
     window.addEventListener('keydown', this.onKeyDown.bind(this));
     window.addEventListener('keyup', this.onKeyUp.bind(this));
@@ -41,6 +58,12 @@ export class InputManager {
       if (this.deviceMotionAvailable) {
         console.log('Device orientation available, setting up orientation event handler');
         window.addEventListener('deviceorientation', this.onDeviceOrientation.bind(this));
+        
+        // Add device motion event listener
+        if (typeof DeviceMotionEvent !== 'undefined') {
+          console.log('Device motion available, setting up motion event handler');
+          window.addEventListener('devicemotion', this.onDeviceMotion.bind(this));
+        }
       }
     }
     
@@ -232,7 +255,117 @@ export class InputManager {
   
   // Method to calibrate device orientation
   calibrateDeviceOrientation() {
-    this.initialOrientation = null;
+    console.log('Calibrating device orientation');
+    
+    // Store current fused orientation as baseline
+    this.initialOrientation = {
+      alpha: this.fusedOrientation.alpha,
+      beta: this.fusedOrientation.beta,
+      gamma: this.fusedOrientation.gamma
+    };
+    
+    console.log('Initial orientation set:', this.initialOrientation);
+  }
+  
+  // Helper to keep angle in range 0-360
+  normalizeAngle(angle) {
+    return ((angle % 360) + 360) % 360;
+  }
+  
+  // Helper to clamp angle between min and max
+  clampAngle(angle, min, max) {
+    return Math.max(min, Math.min(max, angle));
+  }
+  
+  // Device motion event handler
+  onDeviceMotion(event) {
+    // Store motion data
+    if (event.accelerationIncludingGravity) {
+      this.deviceMotion.accelerationIncludingGravity.x = event.accelerationIncludingGravity.x || 0;
+      this.deviceMotion.accelerationIncludingGravity.y = event.accelerationIncludingGravity.y || 0;
+      this.deviceMotion.accelerationIncludingGravity.z = event.accelerationIncludingGravity.z || 0;
+    }
+    
+    if (event.rotationRate) {
+      this.deviceMotion.rotationRate.alpha = event.rotationRate.alpha || 0;
+      this.deviceMotion.rotationRate.beta = event.rotationRate.beta || 0;
+      this.deviceMotion.rotationRate.gamma = event.rotationRate.gamma || 0;
+    }
+    
+    this.deviceMotion.interval = event.interval || 16;
+    
+    // Log first motion event for debugging
+    if (!this._motionLogged) {
+      console.log('Device motion event:', {
+        acceleration: event.acceleration,
+        accelerationIncludingGravity: event.accelerationIncludingGravity,
+        rotationRate: event.rotationRate,
+        interval: event.interval
+      });
+      this._motionLogged = true;
+    }
+    
+    this.emit('devicemotion', event);
+  }
+  
+  // Update fused orientation using sensor fusion
+  updateFusedOrientation(delta) {
+    if (!this.deviceMotionEnabled) return;
+    
+    const now = performance.now();
+    if (this.lastUpdateTime === 0) {
+      this.lastUpdateTime = now;
+      return;
+    }
+    
+    // Calculate time difference if not provided
+    const dt = delta || (now - this.lastUpdateTime) / 1000;
+    this.lastUpdateTime = now;
+    
+    // Get rotation rates (in deg/s, convert to rad/s)
+    const gyroAlpha = this.deviceMotion.rotationRate.alpha * (Math.PI / 180);
+    const gyroBeta = this.deviceMotion.rotationRate.beta * (Math.PI / 180);
+    const gyroGamma = this.deviceMotion.rotationRate.gamma * (Math.PI / 180);
+    
+    // Integrate gyroscope data
+    this.fusedOrientation.alpha += gyroAlpha * dt;
+    this.fusedOrientation.beta += gyroBeta * dt;
+    this.fusedOrientation.gamma += gyroGamma * dt;
+    
+    // Calculate angles from accelerometer
+    const accel = this.deviceMotion.accelerationIncludingGravity;
+    
+    // Only use accelerometer data when relatively stable (not during high acceleration)
+    const accelMagnitude = Math.sqrt(
+      accel.x * accel.x + accel.y * accel.y + accel.z * accel.z
+    );
+    
+    // Check if magnitude is close to gravity (9.8 m/s^2)
+    if (Math.abs(accelMagnitude - 9.8) < 1.0) {
+      // Calculate pitch and roll from accelerometer
+      const accelBeta = Math.atan2(-accel.x, Math.sqrt(accel.y * accel.y + accel.z * accel.z));
+      const accelGamma = Math.atan2(accel.y, accel.z);
+      
+      // Apply complementary filter (rad to deg for output)
+      this.fusedOrientation.beta = this.filterCoefficient * this.fusedOrientation.beta + 
+                                  (1 - this.filterCoefficient) * accelBeta * (180 / Math.PI);
+      this.fusedOrientation.gamma = this.filterCoefficient * this.fusedOrientation.gamma + 
+                                   (1 - this.filterCoefficient) * accelGamma * (180 / Math.PI);
+    }
+    
+    // Keep angles within range
+    this.fusedOrientation.alpha = this.normalizeAngle(this.fusedOrientation.alpha);
+    this.fusedOrientation.beta = this.clampAngle(this.fusedOrientation.beta, -90, 90);
+    this.fusedOrientation.gamma = this.clampAngle(this.fusedOrientation.gamma, -90, 90);
+    
+    // Apply calibration
+    if (this.initialOrientation) {
+      this.fusedOrientation.beta -= this.initialOrientation.beta;
+      this.fusedOrientation.gamma -= this.initialOrientation.gamma;
+    }
+    
+    // Emit updated orientation
+    this.emit('fusedorientation', this.fusedOrientation);
   }
   
   // Method to enable/disable device motion controls
