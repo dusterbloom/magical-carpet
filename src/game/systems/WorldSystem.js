@@ -20,6 +20,13 @@ export class WorldSystem {
     // Initialize maps and collections
     this.currentChunks = new Map();
     this.manaNodes = [];
+    
+    // Height cache system
+    this.heightCache = new Map(); // Key format: `${gridX},${gridZ}`
+    this.cacheResolution = 8; // Store heights at 1/8th resolution of actual terrain
+    this.maxCacheSize = 15000; // Prevent unbounded memory growth
+    this.cacheHits = 0;
+    this.cacheMisses = 0;
 
     // World configuration
     this.chunkSize = 1024;
@@ -363,6 +370,20 @@ export class WorldSystem {
   }
 
   getTerrainHeight(x, z) {
+    // Calculate grid position for caching (quantized to lower resolution)
+    const gridX = Math.floor(x / this.cacheResolution) * this.cacheResolution;
+    const gridZ = Math.floor(z / this.cacheResolution) * this.cacheResolution;
+    const cacheKey = `${gridX},${gridZ}`;
+    
+    // Check cache first
+    if (this.heightCache.has(cacheKey)) {
+      this.cacheHits++;
+      return this.heightCache.get(cacheKey);
+    }
+    
+    // Cache miss: Perform full calculation
+    this.cacheMisses++;
+    
     try {
       // Generate continent shape using large-scale noise
       const continentShape = this.fractalNoise(
@@ -626,6 +647,9 @@ export class WorldSystem {
       );
       
       height += detailNoise * this.terrainParams.detailHeight * 0.5;
+      
+      // Store in cache
+      this._addToHeightCache(cacheKey, height);
       
       return height;
     } catch (error) {
@@ -1605,6 +1629,53 @@ return color;
     return true;
   }
 
+  /**
+   * Helper for cache management
+   * @param {string} key - Cache key
+   * @param {number} value - Height value to store
+   * @private
+   */
+  _addToHeightCache(key, value) {
+    // Enforce cache size limit to prevent memory issues
+    if (this.heightCache.size >= this.maxCacheSize) {
+      // Remove oldest 10% of entries when limit is reached
+      const keysToRemove = Math.floor(this.maxCacheSize * 0.1);
+      const keys = [...this.heightCache.keys()];
+      for (let i = 0; i < keysToRemove; i++) {
+        this.heightCache.delete(keys[i]);
+      }
+    }
+    
+    // Add new value to cache
+    this.heightCache.set(key, value);
+  }
+
+  /**
+   * Get cache statistics
+   * @returns {Object} Cache stats including size, hits, misses, hit rate, and memory estimate
+   */
+  getCacheStats() {
+    const hitRate = this.cacheHits / (this.cacheHits + this.cacheMisses || 1) * 100;
+    return {
+      size: this.heightCache.size,
+      hits: this.cacheHits,
+      misses: this.cacheMisses,
+      hitRate: `${hitRate.toFixed(1)}%`,
+      memorySizeEstimate: `~${(this.heightCache.size * 16 / 1024).toFixed(1)} KB`
+    };
+  }
+
+  /**
+   * Clear terrain height cache
+   * Useful for world regeneration
+   */
+  clearHeightCache() {
+    this.heightCache.clear();
+    this.cacheHits = 0;
+    this.cacheMisses = 0;
+    console.log("Terrain height cache cleared");
+  }
+  
   computeSmoothedNormals(geometry, startX, startZ) {
     const positions = geometry.attributes.position;
     const vertexCount = positions.count;
