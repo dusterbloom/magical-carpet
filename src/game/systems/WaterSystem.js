@@ -18,8 +18,11 @@ export class WaterSystem {
     this._waterQuality = 'high';
     this._originalOnBeforeRender = null; // Store the original function
 
-    // NEW: State flag for reflections
+    // State flag for reflections
     this.reflectionsEnabled = true; // Assume enabled by default
+    
+    // Track saved resolution for efficient reflection toggling
+    this._savedResolution = null;
 
     // Debug flag
     this._debugChecked = false;
@@ -51,34 +54,65 @@ export class WaterSystem {
     console.log("WaterSystem initialized");
   }
 
-  // NEW: Method to efficiently toggle reflections
   /**
-   * Enables or disables water reflections without recreating the water object.
-   * @param {boolean} enabled - True to enable reflections, false to disable.
+   * Toggle water reflections without recreating water materials
+   * @param {boolean} enabled - Whether to enable reflections
    */
   setReflectionEnabled(enabled) {
-    if (this.reflectionsEnabled === enabled) {
-      return; // No change needed
-    }
-
+    // Skip if already in the requested state
+    if (this.reflectionsEnabled === enabled) return;
+    
+    // Track state change
+    const prevEnabled = this.reflectionsEnabled;
     this.reflectionsEnabled = enabled;
-    console.log(`Water reflections set to: ${enabled}`);
-
-    // Update the internal quality tracker if necessary (optional, but helps consistency)
+    
+    // Update the internal quality tracker for consistency
     if (!enabled && this._waterQuality !== 'low') {
-         this._waterQuality = 'low';
+      this._waterQuality = 'low';
     } else if (enabled && this._waterQuality === 'low') {
-         // If enabling, maybe default to medium? Or let LOD manager decide further.
-         this._waterQuality = 'medium';
+      this._waterQuality = 'medium';
     }
-
-    // No need to recreate water here. The change will be picked up
-    // by the wrapped onBeforeRender function.
-    // We might adjust other quality settings like distortion/texture size here
-    // if needed, separate from the reflection toggle itself.
+    
+    console.log(`Water reflections ${enabled ? 'enabled' : 'disabled'} without recreation`);
+    
+    // Apply changes to existing water material
     if (this.water && this.water.material) {
-         // Example: Adjust distortion based on reflection state
-         // this.water.material.uniforms.distortionScale.value = enabled ? 0.8 : 0.1;
+      // Modify specific properties instead of recreating entire material
+      
+      // Adjust reflection-specific properties
+      if (this.water.material.uniforms) {
+        // Update distortion scale
+        if (this.water.material.uniforms.distortionScale) {
+          this.water.material.uniforms.distortionScale.value = enabled ? 0.8 : 0.1;
+        }
+      }
+      
+      // Handle reflection textures/render targets
+      const reflector = this.water;
+      if (reflector && reflector.getRenderTarget) {
+        // Enable/disable reflection texture updates
+        const target = reflector.getRenderTarget();
+        if (target) {
+          // Keep texture but stop updates if disabled
+          if (!enabled) {
+            // Store existing resolution to restore if re-enabled
+            this._savedResolution = target.width;
+            // Set to 2x2 minimal texture while disabled (near zero cost)
+            target.setSize(2, 2);
+          } else if (this._savedResolution) {
+            // Restore previous resolution
+            target.setSize(this._savedResolution, this._savedResolution);
+          }
+        }
+      }
+      
+      // Force material update
+      this.water.material.needsUpdate = true;
+    }
+    
+    // Dispatch event for other systems
+    if (this.engine.events) {
+      this.engine.events.emit('water-reflection-changed', { enabled });
     }
   }
 
@@ -353,6 +387,28 @@ export class WaterSystem {
     return this.waterLevel - position.y;
   }
 
+  /**
+   * Clean up reflection resources specifically
+   */
+  cleanupReflectionResources() {
+    if (this.water && this.water.getRenderTarget) {
+      const target = this.water.getRenderTarget();
+      if (target) {
+        target.dispose();
+      }
+    }
+    
+    // Clean up any additional reflection-related resources
+    if (this.water && this.water.material) {
+      if (this.water.material.uniforms.tReflectionMap?.value) {
+        this.water.material.uniforms.tReflectionMap.value.dispose();
+      }
+    }
+  }
+
+  /**
+   * Clean up resources used by this system
+   */
   dispose() {
     // Clean up shoreline resources
     if (this.shoreline) {
@@ -361,6 +417,9 @@ export class WaterSystem {
       if (this.shoreline.material) this.shoreline.material.dispose();
       this.shoreline = null;
     }
+    
+    // Clean up reflection resources first
+    this.cleanupReflectionResources();
     
     if (this.water) {
       // IMPORTANT: Restore original onBeforeRender if we wrapped it
@@ -373,9 +432,10 @@ export class WaterSystem {
       // Safely dispose geometry and material
       if (this.water.geometry) this.water.geometry.dispose();
       if (this.water.material) {
-           // Dispose textures if they are managed here
-           if (this.water.material.uniforms.tReflectionMap?.value) this.water.material.uniforms.tReflectionMap.value.dispose();
-           if (this.water.material.uniforms.waterNormals?.value) this.water.material.uniforms.waterNormals.value.dispose();
+           // Dispose water normals texture if it exists
+           if (this.water.material.uniforms.waterNormals?.value) {
+             this.water.material.uniforms.waterNormals.value.dispose();
+           }
            this.water.material.dispose();
       }
       this.water = null;

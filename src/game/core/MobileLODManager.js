@@ -307,6 +307,22 @@ export class MobileLODManager {
   }
   
   /**
+   * Get terrain resolution multiplier based on quality level
+   * @returns {number} Resolution multiplier factor (0-1)
+   */
+  getTerrainResolutionMultiplier() {
+    switch (this.qualityLevel) {
+      case 0: // Low
+        return 0.33; // 1/3 of full resolution
+      case 1: // Medium
+        return 0.67; // 2/3 of full resolution
+      case 2: // High
+      default:
+        return 1.0; // Full resolution
+    }
+  }
+  
+  /**
    * Get terrain resolution based on distance and current settings
    * @param {number} distanceFromPlayer - Distance from player
    * @returns {number} Number of segments to use for this terrain chunk
