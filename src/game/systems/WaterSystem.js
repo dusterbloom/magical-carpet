@@ -13,6 +13,7 @@ export class WaterSystem {
     this.scene = engine.scene;
     this.waterLevel = 0;
     this.water = null;
+    this.shoreline = null; // Reference to shoreline mesh for smooth transitions
     this._reflectionCameraInitialized = false;
     this._waterQuality = 'high';
     this._originalOnBeforeRender = null; // Store the original function
@@ -27,10 +28,10 @@ export class WaterSystem {
   async initialize() {
     console.log("Initializing WaterSystem...");
     if (this.engine.systems.world) {
-      // Position slightly below terrain minHeight, but check if that's too low
+      // Position with a larger offset from terrain minHeight to avoid z-fighting
       const baseLevel = this.engine.systems.world.minHeight || 0;
       // Ensure water isn't absurdly deep if minHeight is very low
-      this.waterLevel = Math.max(baseLevel - 2, -50); // E.g., -2 or -50 if baseLevel is -100
+      this.waterLevel = Math.max(baseLevel - 5, -55); // Increased offset from 2 to 5
       console.log(`Setting water level to ${this.waterLevel.toFixed(2)} based on terrain`);
     }
 
@@ -88,6 +89,9 @@ export class WaterSystem {
     let distortionScale = 0.8;
     let alpha = 0.95;
     let waterColorHex = 0x001e0f; // Default desktop color
+    
+    // Shoreline transition width
+    let shorelineWidth = 2.0;
 
     // Adjust quality based on internal state (_waterQuality)
     if (this.engine.settings && this.engine.settings.isMobile) {
@@ -233,6 +237,54 @@ export class WaterSystem {
     };
 
     this.scene.add(this.water);
+    
+    // Create transparent shore edge material for smoother shoreline transition
+    const shorelineMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        waterColor: { value: new THREE.Color(waterColorHex) },
+        shorelineWidth: { value: shorelineWidth },  // Width of shoreline transition in world units
+        waterLevel: { value: this.waterLevel }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPosition;
+        
+        void main() {
+          vUv = uv;
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 waterColor;
+        uniform float shorelineWidth;
+        uniform float waterLevel;
+        
+        varying vec2 vUv;
+        varying vec3 vWorldPosition;
+        
+        void main() {
+          // Calculate distance to shoreline
+          float distToShoreline = abs(vWorldPosition.y - waterLevel);
+          
+          // Create a smooth transition at the edge
+          float edgeFactor = smoothstep(0.0, shorelineWidth, distToShoreline);
+          
+          // Adjust alpha based on distance to shore
+          float alpha = mix(0.7, 0.95, edgeFactor);
+          
+          gl_FragColor = vec4(waterColor, alpha);
+        }
+      `,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    
+    // REMOVING the shoreline geometry as it causes visual artifacts
+    // We'll rely on the improved water-terrain matching instead
+    // The position and deterministic noise alignment should be sufficient
+    this.shoreline = null; // No shoreline mesh
   }
 
 
@@ -254,11 +306,33 @@ export class WaterSystem {
       this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
     }
 
-    // --- Position Update (Keep following camera) ---
+    // --- Position Update with Grid Quantization ---
     if (this.engine.camera) {
-      this.water.position.x = this.engine.camera.position.x;
-      this.water.position.z = this.engine.camera.position.z;
+      const cameraX = this.engine.camera.position.x;
+      const cameraZ = this.engine.camera.position.z;
+      
+      // Quantize the water position to match terrain grid
+      const worldSystem = this.engine.systems.world;
+      if (worldSystem && worldSystem.cacheResolution) {
+        // Align to the same grid as terrain (multiple of cache resolution)
+        const gridX = Math.floor(cameraX / worldSystem.cacheResolution) * worldSystem.cacheResolution;
+        const gridZ = Math.floor(cameraZ / worldSystem.cacheResolution) * worldSystem.cacheResolution;
+        
+        // Apply exact quantized position
+        this.water.position.x = gridX;
+        this.water.position.z = gridZ;
+        
+        // Apply matching deterministic micro-noise to keep consistent with terrain
+        const deterministicNoise = Math.sin(gridX * 0.1) * Math.cos(gridZ * 0.1) * 0.01;
+        this.water.position.y = this.waterLevel + deterministicNoise - 0.05; // Small offset to avoid z-fighting
+      } else {
+        // Fallback to original behavior if world system not available
+        this.water.position.x = cameraX;
+        this.water.position.z = cameraZ;
+      }
     }
+    
+    // No shoreline to update - removed due to visual artifacts
 
     // --- REMOVED Redundant Mobile Hacks ---
     // No need to force color or zero matrix here anymore.
@@ -280,6 +354,14 @@ export class WaterSystem {
   }
 
   dispose() {
+    // Clean up shoreline resources
+    if (this.shoreline) {
+      this.scene.remove(this.shoreline);
+      if (this.shoreline.geometry) this.shoreline.geometry.dispose();
+      if (this.shoreline.material) this.shoreline.material.dispose();
+      this.shoreline = null;
+    }
+    
     if (this.water) {
       // IMPORTANT: Restore original onBeforeRender if we wrapped it
       if (this._originalOnBeforeRender) {
