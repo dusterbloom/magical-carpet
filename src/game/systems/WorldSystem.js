@@ -36,6 +36,11 @@ export class WorldSystem {
     // Water level removed
     this.viewDistance = 6;
     
+    // Initialize frustum culling objects
+    this._frustum = new THREE.Frustum();
+    this._frustumMatrix = new THREE.Matrix4();
+    this._cameraViewProjectionMatrix = new THREE.Matrix4();
+
     // Terrain parameters
     this.terrainParams = {
       baseScale: 0.0015,       // Reduced for larger, smoother terrain features
@@ -2981,6 +2986,66 @@ return color;
       console.warn("Error in updateChunks:", error);
     }
   }
+
+    updateVisibility(camera) {
+      if (!camera) return;
+      
+      // Update frustum from camera
+      camera.updateMatrixWorld();
+      this._cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      this._frustum.setFromProjectionMatrix(this._cameraViewProjectionMatrix);
+      
+      // Process active chunks for visibility
+      for (const [key, chunk] of this.currentChunks) {
+        if (!chunk) continue;
+        
+        // Skip chunks that don't have a proper bounding box
+        if (!chunk.userData || !chunk.userData.bounds) {
+          // Create bounds if missing
+          if (!chunk.userData) chunk.userData = {};
+          
+          const keyParts = key.split(',');
+          const chunkX = parseInt(keyParts[0]);
+          const chunkZ = parseInt(keyParts[1]);
+          
+          // Estimate chunk bounds based on terrain height range
+          const minY = this.minHeight;
+          const maxY = this.maxHeight;
+          
+          // Create bounding box
+          chunk.userData.bounds = new THREE.Box3(
+            new THREE.Vector3(chunkX, minY, chunkZ),
+            new THREE.Vector3(chunkX + this.chunkSize, maxY, chunkZ + this.chunkSize)
+          );
+        }
+        
+        // Check if chunk bounds intersect with camera frustum
+        const isVisible = this._frustum.intersectsBox(chunk.userData.bounds);
+        
+        // Apply visibility state (skip if unchanged)
+        if (chunk.visible !== isVisible) {
+          chunk.visible = isVisible;
+        }
+      }
+      
+      // Similarly apply culling to landmarks and other distant objects
+      if (this.landmarks) {
+        for (const [id, landmark] of this.landmarks) {
+          if (landmark.mesh) {
+            // Get or create bounds
+            if (!landmark.bounds) {
+              landmark.mesh.updateMatrixWorld();
+              landmark.bounds = new THREE.Box3().setFromObject(landmark.mesh);
+            }
+            
+            // Check visibility
+            const isVisible = this._frustum.intersectsBox(landmark.bounds);
+            landmark.mesh.visible = isVisible;
+          }
+        }
+      }
+    }
+
 
   update(delta, elapsed) {
     const player = this.engine.systems.player?.localPlayer;

@@ -19,8 +19,6 @@ import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
 import { IntroScreen } from "../ui/screens/IntroScreen";
 
-// ShorelineEffect removed
-
 
 export class Engine {
   constructor() {
@@ -44,23 +42,63 @@ export class Engine {
     // Create core managers
     this.input = new InputManager();
     this.assets = new AssetManager();
-
-    // Create renderer
+    
+    // Detect device capabilities
+    this.isMobile = this._detectDeviceCapabilities();
+    
+    // Create renderer with platform-specific optimizations
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: !this.isMobile, // Disable expensive AA on mobile
       powerPreference: "high-performance",
+      precision: this.isMobile ? "mediump" : "highp", // Lower precision on mobile
+      depth: true,
+      stencil: false, // Disable stencil buffer if not needed
+      alpha: false, // Optimize for opaque background
+      premultipliedAlpha: true,
+      preserveDrawingBuffer: false, // Performance optimization
+      logarithmicDepthBuffer: false // Enable only if z-fighting occurs
     });
+    
+    // Common renderer settings
     this.renderer.setClearColor(0x88ccff);
-    this.renderer.setPixelRatio(this.devicePixelRatio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     THREE.ColorManagement.enabled = true;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
+    
+    // Platform-specific renderer settings
+    if (this.isMobile) {
+      // Mobile-optimized configuration
+      const pixelRatio = this.deviceCapabilities.gpuTier === 'low' ? 
+        Math.min(window.devicePixelRatio, 1.0) : // Low-end: cap at 1.0
+        Math.min(window.devicePixelRatio, 1.5);  // Mid/high: cap at 1.5
+        
+      this.renderer.setPixelRatio(pixelRatio);
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      
+      // Mobile tone mapping (less expensive)
+      this.renderer.toneMapping = THREE.ReinhardToneMapping;
+      this.renderer.toneMappingExposure = 1.0;
+      
+      // Optimized shadow maps for mobile
+      this.renderer.shadowMap.enabled = this.deviceCapabilities.gpuTier !== 'low';
+      if (this.renderer.shadowMap.enabled) {
+        this.renderer.shadowMap.type = THREE.BasicShadowMap; // Fastest shadow map
+        this.renderer.shadowMap.autoUpdate = false; // Manual shadow updates only
+      }
+    } else {
+      // Desktop-optimized configuration
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      
+      // Higher quality desktop settings
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.0;
+      
+      // High quality shadows for desktop
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
+    
     // Create main scene and camera
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
@@ -81,6 +119,119 @@ export class Engine {
     
     // Handle visibility changes
     document.addEventListener("visibilitychange", this.onVisibilityChange.bind(this));
+    
+    // Add frame timing variables
+    this._frameSkipAccumulator = 0;
+    this._shadowUpdateCounter = 0;
+    this._frameCounter = 0;
+  }
+
+  // Device capability detection method
+  _detectDeviceCapabilities() {
+    // Create detailed device profile
+    this.deviceCapabilities = {
+      isMobile: /(android|iphone|ipad|ipod|blackberry|windows phone)/g.test(navigator.userAgent.toLowerCase()),
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      gpuTier: 'unknown',
+      memoryLimited: false,
+      supportsShadowMapType: true,
+      supportsFloatTextures: true,
+      maxTextureSize: 4096
+    };
+    
+    // Use feature detection where possible
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      
+      if (gl) {
+        // Check max texture size
+        this.deviceCapabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+        
+        // Check if float textures are supported
+        const ext = gl.getExtension('OES_texture_float');
+        this.deviceCapabilities.supportsFloatTextures = !!ext;
+        
+        // Check for depth texture support
+        const depthTextureExt = gl.getExtension('WEBGL_depth_texture');
+        this.deviceCapabilities.supportsDepthTexture = !!depthTextureExt;
+        
+        // Check available memory (for some browsers)
+        if (gl.getExtension('WEBGL_debug_renderer_info')) {
+          const renderer = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
+          const vendor = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_VENDOR_WEBGL);
+          
+          console.log(`WebGL Renderer: ${renderer}, Vendor: ${vendor}`);
+          
+          // Detect low-end GPUs
+          const lowerCaseRenderer = renderer.toLowerCase();
+          if (
+            lowerCaseRenderer.includes('intel') && 
+            !lowerCaseRenderer.includes('iris') && 
+            !lowerCaseRenderer.includes('uhd')
+          ) {
+            this.deviceCapabilities.gpuTier = 'low';
+            this.deviceCapabilities.memoryLimited = true;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to detect WebGL capabilities:', e);
+    }
+    
+    // More detailed mobile device classification
+    if (this.deviceCapabilities.isMobile) {
+      // Get more specific mobile info
+      const ua = navigator.userAgent.toLowerCase();
+      
+      // Check for high-end indicators
+      if (
+        ua.includes('iphone 13') || ua.includes('iphone 14') || ua.includes('iphone 15') ||
+        ua.includes('ipad pro') || ua.includes('sm-s') || ua.includes('sm-n') ||
+        ua.includes('pixel 6') || ua.includes('pixel 7') || ua.includes('pixel 8')
+      ) {
+        this.deviceCapabilities.gpuTier = 'high';
+      }
+      // Check for low-end indicators
+      else if (
+        ua.includes('sm-j') || ua.includes('sm-a') || ua.includes('redmi') || 
+        ua.includes('mediatek') || ua.includes('wiko') || ua.includes('nokia')
+      ) {
+        this.deviceCapabilities.gpuTier = 'low';
+        this.deviceCapabilities.memoryLimited = true;
+      }
+      // Mid-level is the default for unrecognized devices
+      else {
+        this.deviceCapabilities.gpuTier = 'medium';
+      }
+      
+      // Limit texture size on mobile (prevents memory issues)
+      this.deviceCapabilities.maxTextureSize = 
+        this.deviceCapabilities.gpuTier === 'high' ? 4096 :
+        this.deviceCapabilities.gpuTier === 'medium' ? 2048 : 1024;
+      
+      console.log(`Mobile device GPU classification: ${this.deviceCapabilities.gpuTier}, ` +
+                  `maxTextureSize: ${this.deviceCapabilities.maxTextureSize}`);
+    } else {
+      // Desktop detection
+      this.deviceCapabilities.gpuTier = 'high';
+      // Check for WebGL capabilities
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (gl) {
+          // Check max texture size
+          this.deviceCapabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+          // Check if float textures are supported
+          const ext = gl.getExtension('OES_texture_float');
+          this.deviceCapabilities.supportsFloatTextures = !!ext;
+        }
+      } catch (e) {
+        console.warn('Failed to detect WebGL capabilities:', e);
+      }
+    }
+    
+    return this.deviceCapabilities.isMobile;
   }
 
   async initialize() {
@@ -101,12 +252,9 @@ export class Engine {
     this.systems.landmarks = new LandmarkSystem(this);
     this.systems.minimap = new MinimapSystem(this);
     // Settings is already initialized in the constructor, not a system
-    // ShorelineEffect removed
-
 
     // Define initialization order (some systems depend on others)
     const initOrder = [
-      
       "network",
       "mobileLOD", // Initialize LOD manager first to prepare for other systems
       "world", // Base terrain must be initialized first
@@ -128,6 +276,9 @@ export class Engine {
         console.log(`System initialized: ${systemName}`);
       }
     }
+
+    // After systems are initialized, apply material optimizations
+    this.optimizeMaterials();
 
     // Set up event handling
     this.input.initialize();
@@ -155,7 +306,7 @@ export class Engine {
     console.log("Engine initialized successfully");
   }
 
-  animate() {
+  animate(timestamp) {
     if (!this.isRunning) return;
 
     requestAnimationFrame(this.animate.bind(this));
@@ -166,20 +317,43 @@ export class Engine {
     // Calculate delta time and cap it to prevent huge jumps
     this.delta = Math.min(this.clock.getDelta(), this.maxDeltaTime);
     this.elapsed = this.clock.getElapsedTime();
+    
+    // Mobile optimizations for lower frame rates
+    if (this.isMobile && this.deviceCapabilities.gpuTier === 'low') {
+      // Target 30fps on low-end devices (skip frames if needed)
+      const targetFrameTime = 1/30;
+      if (this._frameSkipAccumulator < targetFrameTime) {
+        this._frameSkipAccumulator += this.delta;
+        
+        // Still update player controls for responsiveness, but skip everything else
+        if (this.systems.player) {
+          const startTime = performance.now();
+          this.systems.player.update(this.delta, this.elapsed);
+          const endTime = performance.now();
+          this.performanceMonitor.addSystemTime("player", endTime - startTime);
+        }
+        
+        // Skip remaining updates and rendering
+        return;
+      }
+      
+      // Reset accumulator and proceed with full update
+      this._frameSkipAccumulator = 0;
+    }
 
-    // Update systems in correct order
+    // Update systems in correct order with performance monitoring
     const updateOrder = [
       "network",
-      "mobileLOD", // Update LOD manager first to adapt to performance
+      "mobileLOD",
       "world",
       "water",
       "vegetation",
-      "player",     // Player now updated BEFORE atmosphere
-      "atmosphere", 
-      "carpetTrail", // Update trail after player movement
-      "landmarks",   // Update landmarks
+      "player",
+      "atmosphere",
+      "carpetTrail",
+      "landmarks",
       "ui",
-      "minimap"    // Update minimap last to capture all world changes
+      "minimap"
     ];
 
     // Update systems with performance monitoring
@@ -192,79 +366,221 @@ export class Engine {
         this.performanceMonitor.addSystemTime(systemName, endTime - startTime);
       }
     }
+    
 
+    // Update shadow maps only when needed (improves mobile performance)
+    if (this.renderer.shadowMap.enabled) {
+      // Only update shadows every N frames on mobile
+      const shadowUpdateInterval = this.isMobile ? 
+        (this.deviceCapabilities.gpuTier === 'low' ? 15 : 5) : 1;
+      
+      if (this._shadowUpdateCounter % shadowUpdateInterval === 0) {
+        this.renderer.shadowMap.needsUpdate = true;
+      } else {
+        this.renderer.shadowMap.needsUpdate = false;
+      }
+      
+      this._shadowUpdateCounter++;
+    }
+    
+    // Run frustum culling optimizations
+    if (this.systems.world && this.systems.world.updateVisibility) {
+      this.systems.world.updateVisibility(this.camera);
+    }
+    
     // Standard rendering with performance monitoring
     const renderStartTime = performance.now();
+    
+    // Add renderer optimizations before render
+    this._optimizeBeforeRender();
+    
+    // Perform the actual render
     this.renderer.render(this.scene, this.camera);
+    
+    // Clean up after render
+    this._cleanupAfterRender();
+    
     const renderEndTime = performance.now();
     this.performanceMonitor.addSystemTime("render", renderEndTime - renderStartTime);
     
     // Update performance monitor
     this.performanceMonitor.update(this.renderer, this);
     
-    // Check if performance requires adjusting quality settings - only on mobile
-    if (this.settings && this.settings.isMobile && Math.floor(this.elapsed) % 5 === 0) {
+    // Check if performance requires adjusting quality settings (only occasional checks)
+    if (this.settings && this.isMobile && this._frameCounter % 120 === 0) {
       const report = this.performanceMonitor.generateReport();
       if (this.settings.updateFromPerformance(report)) {
-        console.log('Mobile: Performance-based quality adjustments applied');
+        console.log('Performance-based quality adjustments applied');
       }
     }
+    
+    // Update frame counter
+    this._frameCounter++;
 
-    // Update stats if available
+    // Update stats if available (dev only)
     if (this.stats) this.stats.update();
-}
+  }
 
+  // Optimize state before rendering
+  _optimizeBeforeRender() {
+    // Limit active lights for mobile devices
+    if (this.isMobile && this.scene) {
+      let activeLights = 0;
+      const maxLights = this.deviceCapabilities.gpuTier === 'low' ? 2 : 
+                      this.deviceCapabilities.gpuTier === 'medium' ? 3 : 4;
+                    
+      // Only process if player exists (get position for distance sorting)
+      const playerPos = this.systems.player && this.systems.player.localPlayer ? 
+        this.systems.player.localPlayer.position : null;
+      
+      if (playerPos) {
+        // Collect and sort lights by importance/distance
+        const lights = [];
+        this.scene.traverse((object) => {
+          if (object.isLight && object.visible) {
+            // Calculate distance or importance score
+            const distance = playerPos.distanceTo(object.position);
+            const importance = object.intensity * (1 / (1 + distance * 0.01));
+            lights.push({ light: object, importance, distance });
+          }
+        });
+        
+        // Sort by importance (higher = more important)
+        lights.sort((a, b) => b.importance - a.importance);
+        
+        // Disable less important lights temporarily
+        for (let i = 0; i < lights.length; i++) {
+          const lightData = lights[i];
+          if (i < maxLights) {
+            lightData.light._wasEnabled = lightData.light.visible;
+            lightData.light.visible = true;
+            activeLights++;
+          } else {
+            lightData.light._wasEnabled = lightData.light.visible;
+            lightData.light.visible = false;
+          }
+        }
+      }
+    }
+    
+    // Apply any additional pre-render optimizations
+    if (this.isMobile && this.deviceCapabilities.gpuTier === 'low') {
+      // For very low-end devices, disable some visual effects temporarily
+      if (this.systems.atmosphere && this.systems.atmosphere.setEffectsEnabled) {
+        this.systems.atmosphere._effectsWereEnabled = this.systems.atmosphere.effectsEnabled;
+        this.systems.atmosphere.setEffectsEnabled(false);
+      }
+    }
+  }
 
-onResize() {
-  // Update camera
-  this.camera.aspect = window.innerWidth / window.innerHeight;
-  this.camera.updateProjectionMatrix();
+  // Clean up after rendering
+  _cleanupAfterRender() {
+    // Restore lights that were temporarily modified
+    if (this.isMobile && this.scene) {
+      this.scene.traverse((object) => {
+        if (object.isLight && object._wasEnabled !== undefined) {
+          object.visible = object._wasEnabled;
+          delete object._wasEnabled;
+        }
+      });
+    }
+    
+    // Restore any other temporary render state changes
+    if (this.isMobile && this.deviceCapabilities.gpuTier === 'low') {
+      if (this.systems.atmosphere && this.systems.atmosphere._effectsWereEnabled !== undefined) {
+        this.systems.atmosphere.setEffectsEnabled(this.systems.atmosphere._effectsWereEnabled);
+        delete this.systems.atmosphere._effectsWereEnabled;
+      }
+    }
+  }
 
-  // Update renderer
-  this.renderer.setSize(window.innerWidth, window.innerHeight);
-  
-  // ShorelineEffect removed
-}
-  
+  // Material optimization utilities
+  // Ensure scene exists before attempting optimization
+  optimizeMaterials() {
+    if (!this.scene) {
+      console.warn('Cannot optimize materials: scene not initialized');
+      return;
+    }
+    // Material optimization constants
+    const LOW_QUALITY_SETTINGS = {
+      aoMapIntensity: 0.5,
+      displacementScale: 0,
+      normalScale: new THREE.Vector2(0.5, 0.5),
+      roughness: 0.8,
+      metalness: 0.2,
+      envMapIntensity: 0.5,
+      flatShading: true
+    };
+    
+    const MID_QUALITY_SETTINGS = {
+      aoMapIntensity: 0.7,
+      displacementScale: 0,
+      normalScale: new THREE.Vector2(0.7, 0.7),
+      roughness: 0.7,
+      metalness: 0.3,
+      envMapIntensity: 0.7,
+      flatShading: false
+    };
+    
+    // Apply quality settings based on device tier
+    const qualitySettings = this.isMobile ? 
+      (this.deviceCapabilities.gpuTier === 'low' ? LOW_QUALITY_SETTINGS : MID_QUALITY_SETTINGS) : 
+      null; // Don't modify materials on desktop
+    
+    if (!qualitySettings) return;
+    
+    // Collect all materials
+    const materials = [];
+    this.scene.traverse((node) => {
+      if (node.material) {
+        if (Array.isArray(node.material)) {
+          materials.push(...node.material);
+        } else {
+          materials.push(node.material);
+        }
+      }
+    });
+    
+    // Apply optimizations to standard materials
+    for (const material of materials) {
+      if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
+        // Apply quality reductions for expensive materials
+        if (material.aoMap) material.aoMapIntensity = qualitySettings.aoMapIntensity;
+        if (material.normalMap) material.normalScale.copy(qualitySettings.normalScale);
+        if (material.displacementMap) material.displacementScale = qualitySettings.displacementScale;
+        
+        material.roughness = qualitySettings.roughness;
+        material.metalness = qualitySettings.metalness;
+        material.envMapIntensity = qualitySettings.envMapIntensity;
+        material.flatShading = qualitySettings.flatShading;
+        
+        // Force material update
+        material.needsUpdate = true;
+      }
+    }
+    
+    console.log(`Applied material optimizations for ${materials.length} materials`);
+  }
+
+  // Update onResize method to include proper updating of frustum culling
+  onResize() {
+    // Update camera
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+
+    // Update renderer
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Force frustum culling update
+    if (this.systems.world && this.systems.world.updateVisibility) {
+      this.systems.world.updateVisibility(this.camera);
+    }
+  }
+
+  // onVisibilityChange is missing but required by the constructor
   onVisibilityChange() {
     this.isVisible = document.visibilityState === 'visible';
-    
-    if (this.isVisible) {
-      // Reset clock to prevent large delta time spikes
-      this.clock.start();
-      
-      // Reset or repair critical systems when tab regains focus
-      this.resetSystems();
-      
-      console.log('Game visibility restored');
-    } else {
-      console.log('Game visibility lost');
-    }
-  }
-  
-  resetSystems() {
-    // Reset trail system which is causing errors
-    if (this.systems.carpetTrail) {
-      this.systems.carpetTrail.resetTrail();
-    }
-    
-    // Allow other systems to handle visibility changes if they implement the method
-    for (const systemName in this.systems) {
-      const system = this.systems[systemName];
-      if (system && typeof system.handleVisibilityChange === 'function') {
-        system.handleVisibilityChange(true);
-      }
-    }
-  }
-  
-  /**
-   * Generates and returns a performance report
-   * Call this from the browser console to get performance data
-   * @returns {Object} Performance report
-   */
-  getPerformanceReport() {
-    const report = this.performanceMonitor.generateReport();
-    console.log("Performance Report:", report);
-    return report;
+    console.log(`Visibility changed: ${this.isVisible ? 'visible' : 'hidden'}`);
   }
 }
+
