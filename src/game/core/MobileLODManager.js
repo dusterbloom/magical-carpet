@@ -340,48 +340,133 @@ export class MobileLODManager {
     }
   }
   
-  /**
+ /**
    * Apply quality settings based on current quality level
    */
-  updateQualityBasedOnLevel() {
-    switch (this.qualityLevel) {
-      case 0: // Low quality
-        this.currentTerrainLOD = "low";
-        this.currentVegetationDensity = 0.4;
-        this.currentWaterReflectionEnabled = false;
-        
-        // Enable all optimizations
-        this.optimizations.aggressiveDistanceCulling = true;
-        this.optimizations.reduced3DTextures = true;
-        this.optimizations.simplifiedShadows = true;
-        this.optimizations.dynamicResolutionScaling = true;
-        break;
-        
-      case 1: // Medium quality
-        this.currentTerrainLOD = "medium";
-        this.currentVegetationDensity = 0.6;
-        this.currentWaterReflectionEnabled = true;
-        
-        // Enable most optimizations
-        this.optimizations.aggressiveDistanceCulling = true;
-        this.optimizations.reduced3DTextures = true;
-        this.optimizations.simplifiedShadows = true;
-        this.optimizations.dynamicResolutionScaling = false;
-        break;
-        
-      case 2: // High quality
-        this.currentTerrainLOD = "adaptive";
-        this.currentVegetationDensity = 0.7;
-        this.currentWaterReflectionEnabled = true;
-        
-        // Reduce optimizations
-        this.optimizations.aggressiveDistanceCulling = false;
-        this.optimizations.reduced3DTextures = true;
-        this.optimizations.simplifiedShadows = false;
-        this.optimizations.dynamicResolutionScaling = false;
-        break;
+ updateQualityBasedOnLevel() {
+  let waterReflectionSetting = true; // Default to enabled
+
+  switch (this.qualityLevel) {
+    case 0: // Low quality
+      this.currentTerrainLOD = "low";
+      this.currentVegetationDensity = 0.4;
+      waterReflectionSetting = false; // Disable reflections at low quality
+      this.optimizations.aggressiveDistanceCulling = true;
+      this.optimizations.reduced3DTextures = true;
+      this.optimizations.simplifiedShadows = true;
+      this.optimizations.dynamicResolutionScaling = true;
+      break;
+
+    case 1: // Medium quality
+      this.currentTerrainLOD = "medium";
+      this.currentVegetationDensity = 0.6;
+      waterReflectionSetting = true; // Enable reflections at medium quality
+      this.optimizations.aggressiveDistanceCulling = true;
+      this.optimizations.reduced3DTextures = true;
+      this.optimizations.simplifiedShadows = true;
+      this.optimizations.dynamicResolutionScaling = false;
+      break;
+
+    case 2: // High quality
+    default:
+      this.currentTerrainLOD = "adaptive";
+      this.currentVegetationDensity = 0.7;
+      waterReflectionSetting = true; // Enable reflections at high quality
+      this.optimizations.aggressiveDistanceCulling = false;
+      this.optimizations.reduced3DTextures = true;
+      this.optimizations.simplifiedShadows = false;
+      this.optimizations.dynamicResolutionScaling = false;
+      break;
+  }
+
+  // NEW: Directly call the efficient water system method
+  if (this.engine.systems.water) {
+       this.engine.systems.water.setReflectionEnabled(waterReflectionSetting);
+  } else {
+       console.warn("MobileLODManager: WaterSystem not found to set reflection state.");
+  }
+}
+
+
+dynamicallyAdjustLOD() {
+  if (!this.isMobile || !this.initialBenchmarkComplete) return; // Ensure benchmark ran
+
+  const report = this.engine.performanceMonitor.generateReport();
+  const avgFPS = report.averages.fps;
+  const avgTriangles = report.averages.triangles || 0;
+
+  const timeSinceLastChange = Date.now() - this.lastQualityChangeTime;
+  const fpsRatio = avgFPS / this.targetFPS;
+
+  // Log current state
+  // console.log(`LOD Assessment: Avg FPS: ${avgFPS.toFixed(1)}/${this.targetFPS} (${(fpsRatio * 100).toFixed(0)}%), ` +
+  //             `Triangles: ${avgTriangles.toFixed(0)}, ` +
+  //             `Quality: ${this.qualityLevel}/2, ` +
+  //             `Time at quality: ${(this.timeAtCurrentQuality / 1000).toFixed(1)}s`);
+
+  let shouldDecrease = false;
+  let shouldIncrease = false;
+  const reasons = [];
+
+  // --- Performance analysis (Simplified for clarity) ---
+  if (fpsRatio < this.fpsThresholds.critical || avgTriangles > this.triangleThresholds.critical) {
+    shouldDecrease = true;
+    reasons.push(fpsRatio < this.fpsThresholds.critical ? `FPS critical (${(fpsRatio * 100).toFixed(0)}%)` : `Triangles critical (${avgTriangles.toFixed(0)})`);
+  } else if (fpsRatio < this.fpsThresholds.low || (avgTriangles > this.triangleThresholds.high && fpsRatio < 1.1)) {
+    shouldDecrease = true;
+    reasons.push(fpsRatio < this.fpsThresholds.low ? `FPS low (${(fpsRatio * 100).toFixed(0)}%)` : `Triangles high (${avgTriangles.toFixed(0)})`);
+  } else if (fpsRatio > this.fpsThresholds.good && avgTriangles < this.triangleThresholds.medium) {
+    shouldIncrease = true;
+    reasons.push(`FPS good (${(fpsRatio * 100).toFixed(0)}%) & Tris moderate`);
+  } else if (fpsRatio > this.fpsThresholds.excellent && avgTriangles < this.triangleThresholds.high) {
+     shouldIncrease = true;
+     reasons.push(`FPS excellent (${(fpsRatio * 100).toFixed(0)}%) & Tris manageable`);
+  }
+
+
+  // --- Apply hysteresis constraints ---
+  if (shouldDecrease && timeSinceLastChange < this.minTimeBeforeDecrease) {
+    // console.log(`Quality decrease suggested but postponed (hysteresis)`);
+    shouldDecrease = false;
+  }
+  if (shouldIncrease && timeSinceLastChange < this.minTimeBeforeIncrease) {
+    // console.log(`Quality increase suggested but postponed (hysteresis)`);
+    shouldIncrease = false;
+  }
+
+  // --- Apply quality changes ---
+  let qualityChanged = false;
+  if (shouldDecrease && this.qualityLevel > 0) {
+    this.qualityLevel--;
+    console.log(`⬇️ Decreasing quality to ${this.qualityLevel}/2. Reason: ${reasons.join(", ")}`);
+    qualityChanged = true;
+  } else if (shouldIncrease && this.qualityLevel < 2) {
+    this.qualityLevel++;
+    console.log(`⬆️ Increasing quality to ${this.qualityLevel}/2. Reason: ${reasons.join(", ")}`);
+    qualityChanged = true;
+  }
+
+  if (qualityChanged) {
+    this.updateQualityBasedOnLevel(); // This now calls waterSystem.setReflectionEnabled
+    this.timeAtCurrentQuality = 0;
+    this.lastQualityChangeTime = Date.now();
+    this.updateLODSettings(); // Update other systems like vegetation density
+
+    // Apply emergency pixel ratio reduction if critically low FPS triggered the change
+    if (this.qualityLevel === 0 && fpsRatio < 0.6 && this.engine.renderer) {
+      const currentPixelRatio = this.engine.renderer.getPixelRatio();
+      if (currentPixelRatio > 0.6) {
+        const newRatio = Math.max(0.6, currentPixelRatio * 0.9);
+        this.engine.renderer.setPixelRatio(newRatio);
+        console.log(`🚨 Emergency pixel ratio reduction to ${newRatio.toFixed(2)}`);
+      }
     }
   }
+  // else {
+  //   console.log(`✓ Maintaining quality level ${this.qualityLevel}/2`);
+  // }
+}
+
   
   /**
    * Dynamically adjust LOD settings based on performance
@@ -490,63 +575,57 @@ export class MobileLODManager {
     }
   }
   
-  /**
+   /**
    * Update LOD settings across all systems
+   * REMOVED the water recreation logic from here.
    */
-  updateLODSettings() {
+   updateLODSettings() {
     if (!this.isMobile) return;
-    
-    // Clear cached LOD distances
-    this.cachedLODDistances = null;
-    
-    // Update vegetation system
+
+    this.cachedLODDistances = null; // Invalidate cache
+
+    // Update vegetation system density and LOD distances
     if (this.engine.systems.vegetation) {
       const vegSystem = this.engine.systems.vegetation;
-      
-      // Update density scale
-      if (vegSystem.densityScale !== this.currentVegetationDensity) {
-        console.log(`Updating vegetation density to ${this.currentVegetationDensity.toFixed(2)}`);
-        vegSystem.densityScale = this.currentVegetationDensity;
-        
-        // Force regeneration with new density
+      const newDensity = this.currentVegetationDensity;
+      const newVegLODs = this.getLODDistances().vegetation;
+
+      let needsRegen = false;
+      if (Math.abs(vegSystem.densityScale - newDensity) > 0.01) {
+        console.log(`Updating vegetation density to ${newDensity.toFixed(2)}`);
+        vegSystem.densityScale = newDensity;
+        needsRegen = true; // Density change requires regeneration
+      }
+      if (JSON.stringify(vegSystem.lodDistances) !== JSON.stringify(newVegLODs)) {
+           vegSystem.lodDistances = newVegLODs;
+           // Note: Changing LOD distances ideally shouldn't require full regen,
+           // just re-evaluation in the update loop. If regen IS needed, keep it.
+           // needsRegen = true;
+      }
+
+      if (needsRegen) {
         vegSystem.regenerateVegetation();
       }
-      
-      // Update LOD distances
-      vegSystem.lodDistances = this.getLODDistances().vegetation;
     }
-    
-    // Update water system reflection settings
-    if (this.engine.systems.water && this.engine.systems.water.water) {
-      const waterSystem = this.engine.systems.water;
-      
-      // Determine if we need to update water reflection state
-      const waterReflectionEnabled = 
-        waterSystem.water.material && 
-        waterSystem.water.material.uniforms && 
-        waterSystem.water.material.uniforms['reflectionCamera'];
-      
-      if (waterReflectionEnabled !== this.currentWaterReflectionEnabled) {
-        console.log(`Updating water reflections to: ${this.currentWaterReflectionEnabled}`);
-        
-        // Update water quality based on current settings
-        // Since water creation is encapsulated, we need to recreate water with new settings
-        if (this.engine.settings) {
-          const qualityLevel = this.currentWaterReflectionEnabled ? 'medium' : 'low';
-          this.engine.settings.setQuality('water', qualityLevel);
-          
-          // Recreate water with new settings
-          waterSystem.scene.remove(waterSystem.water);
-          waterSystem.water.geometry.dispose();
-          waterSystem.water.material.dispose();
-          waterSystem.createWater();
-        }
-      }
+
+    // Water system reflections are now handled directly by setReflectionEnabled
+    // No need to do anything here for water reflections.
+    // We *could* adjust other water properties like texture size here if needed,
+    // but that would still likely require recreation. Toggling reflections is now cheap.
+
+    // Update terrain resolution (assuming getTerrainResolution is used dynamically)
+    if (this.engine.systems.world) {
+         // If terrain resolution depends on LOD manager state that changed,
+         // we might need to trigger terrain chunk updates here.
+         // Currently, getTerrainResolution is called *during* chunk creation/update,
+         // so changes should apply automatically as chunks are loaded/updated.
+         // Force a refresh if needed: this.engine.systems.world.forceChunkUpdate();
     }
-    
-    // Apply resolution scaling if needed
-    if (this.optimizations.dynamicResolutionScaling && this.engine.renderer) {
-      // This will be called during the dynamic adjustment when needed
+
+    // Other potential optimizations based on this.optimizations flags...
+    if (this.engine.renderer && this.engine.renderer.shadowMap) {
+         this.engine.renderer.shadowMap.enabled = !this.optimizations.simplifiedShadows;
+         // Or change shadow map type/size
     }
   }
   
