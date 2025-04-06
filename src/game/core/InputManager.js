@@ -25,6 +25,16 @@ export class InputManager {
     this.fusedOrientation = { alpha: 0, beta: 0, gamma: 0 };
     this.lastUpdateTime = 0;
     this.filterCoefficient = 0.98; // Complementary filter coefficient
+
+    // Add these properties to the constructor
+this.touchScale = 1 / window.devicePixelRatio;
+this.lastTapTime = 0;
+this.doubleTapThreshold = 300;
+
+
+this.boundOnDeviceOrientation = this.onDeviceOrientation.bind(this);
+this.boundOnDeviceMotion = this.onDeviceMotion.bind(this);
+this.prevRotationRate = { alpha: 0, beta: 0, gamma: 0 };
   }
   
   initialize() {
@@ -58,7 +68,11 @@ export class InputManager {
       if (this.deviceMotionAvailable) {
         console.log('Device orientation available, setting up orientation event handler');
         window.addEventListener('deviceorientation', this.onDeviceOrientation.bind(this));
-        
+        console.debug('Device Motion:', {
+          interval: event.interval,
+          acceleration: event.acceleration,
+          rotationRate: event.rotationRate
+        });
         // Add device motion event listener
         if (typeof DeviceMotionEvent !== 'undefined') {
           console.log('Device motion available, setting up motion event handler');
@@ -110,53 +124,148 @@ export class InputManager {
     this.emit('mousemove', event);
   }
   
-  onTouchStart(event) {
-    // Prevent default behaviors like scrolling
-    event.preventDefault();
+
+// Modified touch start handler
+// onTouchStart(event) {
+//   event.preventDefault();
+  
+//   // Handle double-tap detection
+//   const now = Date.now();
+//   if (now - this.lastTapTime < this.doubleTapThreshold) {
+//     this.emit('doubletap', event);
+//     this.lastTapTime = 0;
+//   } else {
+//     this.lastTapTime = now;
+//   }
+
+//   // Scale coordinates for high-DPI devices
+//   for (let i = 0; i < event.changedTouches.length; i++) {
+//     const touch = event.changedTouches[i];
+//     this.touches[touch.identifier] = {
+//       x: touch.clientX * this.touchScale,
+//       y: touch.clientY * this.touchScale,
+//       startX: touch.clientX * this.touchScale,
+//       startY: touch.clientY * this.touchScale,
+//       timestamp: performance.now()
+//     };
+//   }
+  
+//   this.emit('touchstart', event);
+// }
+  
+// // Fix touch end handler to properly track released touches
+// onTouchEnd(event) {
+//   event.preventDefault();
+  
+//   // Track released touches for 100ms to avoid race conditions
+//   const releasedTouches = [];
+//   for (let i = 0; i < event.changedTouches.length; i++) {
+//     const touch = event.changedTouches[i];
+//     releasedTouches.push({
+//       identifier: touch.identifier,
+//       x: touch.clientX,
+//       y: touch.clientY
+//     });
+//     delete this.touches[touch.identifier];
+//   }
+  
+//   // Mobile browsers need small delay before emitting touchend
+//   setTimeout(() => {
+//     this.emit('touchend', { originalEvent: event, touches: releasedTouches });
+//   }, 50);
+// }
+  
+//   onTouchMove(event) {
+//     event.preventDefault();
     
-    console.log('Touch start detected', event.touches.length, 'touches');
+//     for (let i = 0; i < event.changedTouches.length; i++) {
+//       const touch = event.changedTouches[i];
+//       if (this.touches[touch.identifier]) {
+//         this.touches[touch.identifier].x = touch.clientX;
+//         this.touches[touch.identifier].y = touch.clientY;
+//       }
+//     }
     
-    for (let i = 0; i < event.changedTouches.length; i++) {
-      const touch = event.changedTouches[i];
-      this.touches[touch.identifier] = {
-        id: touch.identifier,
-        x: touch.clientX,
-        y: touch.clientY,
-        startX: touch.clientX,
-        startY: touch.clientY
-      };
-    }
-    
-    this.emit('touchstart', event);
+//     this.emit('touchmove', event);
+//   }
+  
+
+// In InputManager.js
+onTouchStart(event) {
+  // Prevent default behaviors like scrolling
+  event.preventDefault();
+  
+  console.log('Touch start detected', event.touches.length, 'touches');
+  
+  const touchData = {
+    originalEvent: event,  // Pass the original event
+    touches: []
+  };
+  
+  for (let i = 0; i < event.changedTouches.length; i++) {
+    const touch = event.changedTouches[i];
+    const touchInfo = {
+      identifier: touch.identifier,
+      x: touch.clientX * this.touchScale,
+      y: touch.clientY * this.touchScale,
+      startX: touch.clientX * this.touchScale,
+      startY: touch.clientY * this.touchScale,
+      timestamp: performance.now()
+    };
+    this.touches[touch.identifier] = touchInfo;
+    touchData.touches.push(touchInfo);
   }
   
-  onTouchEnd(event) {
-    event.preventDefault();
-    
-    console.log('Touch end detected', event.changedTouches.length, 'touches');
-    
-    for (let i = 0; i < event.changedTouches.length; i++) {
-      const touch = event.changedTouches[i];
+  this.emit('touchstart', touchData);
+}
+
+onTouchEnd(event) {
+  event.preventDefault();
+  
+  const touchData = {
+    originalEvent: event,
+    touches: []
+  };
+  
+  for (let i = 0; i < event.changedTouches.length; i++) {
+    const touch = event.changedTouches[i];
+    if (this.touches[touch.identifier]) {
+      touchData.touches.push({
+        identifier: touch.identifier,
+        x: touch.clientX * this.touchScale,
+        y: touch.clientY * this.touchScale
+      });
       delete this.touches[touch.identifier];
     }
-    
-    this.emit('touchend', event);
   }
   
-  onTouchMove(event) {
-    event.preventDefault();
-    
-    for (let i = 0; i < event.changedTouches.length; i++) {
-      const touch = event.changedTouches[i];
-      if (this.touches[touch.identifier]) {
-        this.touches[touch.identifier].x = touch.clientX;
-        this.touches[touch.identifier].y = touch.clientY;
-      }
+  this.emit('touchend', touchData);
+}
+
+onTouchMove(event) {
+  event.preventDefault();
+  
+  const touchData = {
+    originalEvent: event,
+    touches: []
+  };
+  
+  for (let i = 0; i < event.changedTouches.length; i++) {
+    const touch = event.changedTouches[i];
+    if (this.touches[touch.identifier]) {
+      const touchInfo = {
+        identifier: touch.identifier,
+        x: touch.clientX * this.touchScale,
+        y: touch.clientY * this.touchScale
+      };
+      Object.assign(this.touches[touch.identifier], touchInfo);
+      touchData.touches.push(touchInfo);
     }
-    
-    this.emit('touchmove', event);
   }
   
+  this.emit('touchmove', touchData);
+}
+
   onTouchCancel(event) {
     event.preventDefault();
     
@@ -310,8 +419,16 @@ export class InputManager {
   
   // Update fused orientation using sensor fusion
   updateFusedOrientation(delta) {
-    if (!this.deviceMotionEnabled) return;
-    
+    if (!this.deviceMotionEnabled || !this.deviceMotion.rotationRate) return;
+
+    // Add low-pass filter to rotation rates
+    const smoothFactor = 0.2;
+    const gyroAlpha = this.lerp(
+      this.prevRotationRate.alpha,
+      this.deviceMotion.rotationRate.alpha * (Math.PI / 180),
+      smoothFactor
+    );
+
     const now = performance.now();
     if (this.lastUpdateTime === 0) {
       this.lastUpdateTime = now;
@@ -323,7 +440,7 @@ export class InputManager {
     this.lastUpdateTime = now;
     
     // Get rotation rates (in deg/s, convert to rad/s)
-    const gyroAlpha = this.deviceMotion.rotationRate.alpha * (Math.PI / 180);
+    // const gyroAlpha = this.deviceMotion.rotationRate.alpha * (Math.PI / 180);
     const gyroBeta = this.deviceMotion.rotationRate.beta * (Math.PI / 180);
     const gyroGamma = this.deviceMotion.rotationRate.gamma * (Math.PI / 180);
     
@@ -367,41 +484,37 @@ export class InputManager {
     // Emit updated orientation
     this.emit('fusedorientation', this.fusedOrientation);
   }
-  
-  // Method to enable/disable device motion controls
-  setDeviceMotionEnabled(enabled) {
-    console.log('Setting device motion enabled:', enabled);
-    
-    // Request permission for device orientation on iOS
-    if (enabled && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      console.log('Requesting iOS device orientation permission');
-      DeviceOrientationEvent.requestPermission()
-        .then(permissionState => {
-          if (permissionState === 'granted') {
-            console.log('iOS device orientation permission granted');
-            this.deviceMotionEnabled = enabled;
-            this.calibrateDeviceOrientation();
-          } else {
-            console.warn('Device orientation permission denied');
-          }
-        })
-        .catch(err => {
-          console.error('Error requesting device orientation permission:', err);
-          // Fall back to standard orientation API
-          this.deviceMotionEnabled = enabled;
-          if (enabled) {
-            this.calibrateDeviceOrientation();
-          }
-        });
-    } else {
-      // For non-iOS devices or when disabling
-      this.deviceMotionEnabled = enabled;
-      if (enabled) {
-        this.calibrateDeviceOrientation();
-      }
-    }
-    
-    // Return the current state
-    return this.deviceMotionEnabled;
+
+  lerp(a, b, t) {
+    return a * (1 - t) + b * t;
   }
+  
+// Modified permission handling for iOS
+async setDeviceMotionEnabled(enabled) {
+  if (enabled && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const permission = await DeviceOrientationEvent.requestPermission();
+      if (permission !== 'granted') {
+        console.warn('Device orientation permission denied');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+      return false;
+    }
+  }
+  
+  // Enable/disable event listeners
+  if (enabled) {
+    window.addEventListener('deviceorientation', this.boundOnDeviceOrientation);
+    window.addEventListener('devicemotion', this.boundOnDeviceMotion);
+    this.calibrateDeviceOrientation();
+  } else {
+    window.removeEventListener('deviceorientation', this.boundOnDeviceOrientation);
+    window.removeEventListener('devicemotion', this.boundOnDeviceMotion);
+  }
+  
+  this.deviceMotionEnabled = enabled;
+  return enabled;
+}
 }

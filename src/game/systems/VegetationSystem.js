@@ -34,7 +34,7 @@ export class VegetationSystem {
     this.projScreenMatrix = new THREE.Matrix4();
     
     // Performance adaptation
-    this.targetFPS = 40; // Target framerate
+    this.targetFPS = 60; // Target framerate
     this.densityScale = 1.0; // Current density scaling factor (adjusted based on performance)
     this.lastDensityAdjustment = 0; // Time of last density adjustment
     this.densityAdjustmentInterval = 5000; // Adjust every 5 seconds if needed

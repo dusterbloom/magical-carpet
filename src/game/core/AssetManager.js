@@ -9,6 +9,9 @@ export class AssetManager {
     this.materials = {};
     this.audio = {};
     this.shaders = {};
+    this.loadingPromises = new Map();
+    this.retryAttempts = new Map();
+    this.maxRetries = 2;
     
     // Create fallback assets
     this.createFallbackAssets();

@@ -25,11 +25,15 @@ export class MobileLODManager {
         low: 900 // Use low detail up to this distance (beyond = culled)
       },
       water: {
-        reflection: 1000, // Max distance for reflections
-        highDetail: 500, // Use high detail water effects within this distance
-        mediumDetail: 1500 // Use medium detail water effects within this distance
+        reflection: 2000, // Max distance for reflections
+        highDetail: 1000, // Use high detail water effects within this distance
+        mediumDetail: 3000 // Use medium detail water effects within this distance
       }
     };
+
+      // Increase minimum scaling factor for water
+  this.minWaterScalingFactor = 0.7; // New property for water-specific scaling
+
     
     // Scaling factors to apply to LOD distances based on device performance
     // More powerful devices can use higher detail at greater distances
@@ -43,7 +47,8 @@ export class MobileLODManager {
     // Performance tracking for dynamic adjustment
     this.lastAdjustmentTime = 0;
     this.adjustmentInterval = 5000; // Check every 5 seconds
-    this.targetFPS = 30; // Target framerate for mobile
+    this.targetFPS = 60; // Target framerate for mobile
+
 
     // Quality level state variables for hysteresis
     this.qualityLevel = this.isMobile ? 1 : 2; // 0=Low, 1=Medium, 2=High
@@ -60,19 +65,19 @@ export class MobileLODManager {
     
     // Triangle count thresholds
     this.triangleThresholds = {
-      critical: 500000, // Critical - force quality reduction
-      high: 400000,     // High - consider reduction if FPS is also marginal
-      medium: 300000,   // Medium - maintain current level
-      low: 200000       // Low - consider increasing quality if FPS is good
+    critical: 100000,  // Increased from 50000
+    high: 80000,      // Increased from 40000
+    medium: 60000,    // Increased from 30000
+    low: 40000        // Increased from 20000
     };
     
     // FPS thresholds relative to target
     this.fpsThresholds = {
-      critical: 0.7,   // Below 70% of target FPS - force quality reduction
-      low: 0.9,        // Below 90% of target FPS - consider reduction
-      target: 1.0,     // At target FPS - maintain current level
-      good: 1.2,       // Above 120% of target FPS - consider quality increase
-      excellent: 1.5   // Above 150% of target FPS - consider aggressive improvements
+      critical: 0.4,    // Changed from 0.7 to 0.4
+      low: 0.6,        // Changed from 0.9 to 0.6
+      target: 1.0,     // Kept the same
+      good: 1.1,       // Changed from 1.2 to 1.1
+      excellent: 1.3   // Changed from 1.5 to 1.3
     };
     
     // Flags to track enabled optimizations
@@ -92,6 +97,16 @@ export class MobileLODManager {
     // Reference to current LOD settings (to avoid frequent recalculations)
     this.cachedLODDistances = null;
     this.updateLODSettings();
+    // Add frame timing tracking
+    this.frameTimings = new Array(60).fill(16.67); // Target 60fps
+    this.frameIndex = 0;
+    
+    // Adjust quality thresholds
+    this.qualityThresholds = {
+      low: { fps: 30, triangles: 50000 },
+      medium: { fps: 60, triangles: 75000 },
+      high: { fps: 120, triangles: 150000 }
+    };
   }
   
   /**
@@ -240,6 +255,17 @@ export class MobileLODManager {
     console.log(`Mobile device capability score: ${capabilityScore.toFixed(2)}, scaling factor: ${this.distanceScalingFactor.toFixed(2)}`);
   }
   
+
+  updateFrameTiming(deltaTime) {
+    this.frameTimings[this.frameIndex] = deltaTime * 1000; // Convert to ms
+    this.frameIndex = (this.frameIndex + 1) % this.frameTimings.length;
+  }
+
+  getAverageFrameTime() {
+    return this.frameTimings.reduce((a, b) => a + b) / this.frameTimings.length;
+  }
+
+
   /**
    * Apply initial optimizations based on device type
    */
@@ -360,46 +386,55 @@ export class MobileLODManager {
    * Apply quality settings based on current quality level
    */
  updateQualityBasedOnLevel() {
-  let waterReflectionSetting = true; // Default to enabled
+  let waterReflectionSetting = true;
+  let waterQuality = 'medium'; // Default water quality
 
   switch (this.qualityLevel) {
     case 0: // Low quality
       this.currentTerrainLOD = "low";
       this.currentVegetationDensity = 0.4;
-      waterReflectionSetting = false; // Disable reflections at low quality
-      this.optimizations.aggressiveDistanceCulling = true;
-      this.optimizations.reduced3DTextures = true;
-      this.optimizations.simplifiedShadows = true;
-      this.optimizations.dynamicResolutionScaling = true;
+      // Don't completely disable water reflections, just reduce quality
+      waterReflectionSetting = true;
+      waterQuality = 'low';
       break;
 
     case 1: // Medium quality
       this.currentTerrainLOD = "medium";
       this.currentVegetationDensity = 0.6;
-      waterReflectionSetting = true; // Enable reflections at medium quality
-      this.optimizations.aggressiveDistanceCulling = true;
-      this.optimizations.reduced3DTextures = true;
-      this.optimizations.simplifiedShadows = true;
-      this.optimizations.dynamicResolutionScaling = false;
+      waterReflectionSetting = true;
+      waterQuality = 'medium';
       break;
 
     case 2: // High quality
-    default:
       this.currentTerrainLOD = "adaptive";
       this.currentVegetationDensity = 0.7;
-      waterReflectionSetting = true; // Enable reflections at high quality
-      this.optimizations.aggressiveDistanceCulling = false;
-      this.optimizations.reduced3DTextures = true;
-      this.optimizations.simplifiedShadows = false;
-      this.optimizations.dynamicResolutionScaling = false;
+      waterReflectionSetting = true;
+      waterQuality = 'high';
       break;
   }
 
-  // NEW: Directly call the efficient water system method
+  // Apply water settings with minimum scaling
   if (this.engine.systems.water) {
-       this.engine.systems.water.setReflectionEnabled(waterReflectionSetting);
-  } else {
-       console.warn("MobileLODManager: WaterSystem not found to set reflection state.");
+    const waterSystem = this.engine.systems.water;
+    const waterScaling = Math.max(this.distanceScalingFactor, this.minWaterScalingFactor);
+    
+    waterSystem.setQuality({
+      reflectionEnabled: waterReflectionSetting,
+      quality: waterQuality,
+      renderDistance: this.baseLODDistances.water.reflection * waterScaling,
+      textureSize: this.getWaterTextureSize(waterQuality)
+    });
+  }
+}
+
+
+// New method for water texture sizing
+getWaterTextureSize(quality) {
+  switch(quality) {
+    case 'low': return 256;
+    case 'medium': return 512;
+    case 'high': return 1024;
+    default: return 512;
   }
 }
 
@@ -654,17 +689,23 @@ dynamicallyAdjustLOD() {
    */
   shouldCull(position, cameraPosition, baseCullDistance = 6000) {
     if (!this.isMobile) {
-      // Less aggressive culling on desktop
+      // Desktop culling unchanged
       const distance = position.distanceTo(cameraPosition);
       return distance > baseCullDistance;
     }
     
-    // More aggressive culling on mobile
+    // Less aggressive culling on mobile - adjusted values
     const distance = position.distanceTo(cameraPosition);
     const cullDistance = this.optimizations.aggressiveDistanceCulling ? 
-      baseCullDistance * 0.6 : // 40% reduction in view distance when aggressive culling is on
-      baseCullDistance * 0.8;  // 20% reduction in normal mode
+      baseCullDistance * 0.8 : // Changed from 0.6 (60%) to 0.8 (80%)
+      baseCullDistance * 0.9;  // Changed from 0.8 (80%) to 0.9 (90%)
       
+    // Add minimap consideration
+    const isInMinimapRange = distance < 2000; // Keep chunks visible for minimap
+    if (isInMinimapRange) {
+      return false; // Don't cull if within minimap range
+    }
+    
     return distance > cullDistance;
   }
   

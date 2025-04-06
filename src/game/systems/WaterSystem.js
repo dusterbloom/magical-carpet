@@ -78,7 +78,7 @@ export class WaterSystem {
     // Apply changes to existing water material
     if (this.water && this.water.material) {
       // Modify specific properties instead of recreating entire material
-      
+      this.water.material.uniforms.useReflection.value = enabled;
       // Adjust reflection-specific properties
       if (this.water.material.uniforms) {
         // Update distortion scale
@@ -114,6 +114,47 @@ export class WaterSystem {
     if (this.engine.events) {
       this.engine.events.emit('water-reflection-changed', { enabled });
     }
+  }
+
+  /**
+   * Set water quality with multiple parameters
+   * This is a comprehensive method to control all water quality settings
+   * @param {Object} options - Water quality options
+   * @param {boolean} options.reflectionEnabled - Whether reflections are enabled
+   * @param {string} options.quality - Quality level ('low', 'medium', 'high')
+   * @param {number} options.renderDistance - Max distance for reflections
+   * @param {number} options.textureSize - Size for reflection texture
+   */
+  setQuality(options) {
+    console.log('WaterSystem: Applying quality settings:', options);
+    
+    // First handle reflection toggle - this is the most basic operation
+    // and doesn't require recreation of water
+    if (options.reflectionEnabled !== undefined) {
+      this.setReflectionEnabled(options.reflectionEnabled);
+    }
+    
+    // Update internal quality tracker
+    if (options.quality) {
+      this._waterQuality = options.quality;
+    }
+    
+    // For other settings, we currently don't have a way to apply them without
+    // recreating the water. In a future update, more parameters could be made
+    // dynamic, but for now we'll just log what we would have done.
+    if (options.renderDistance) {
+      console.log(`Water render distance would be set to ${options.renderDistance}`);
+      // Would need to update internal variables and possibly recreate water
+    }
+    
+    if (options.textureSize) {
+      console.log(`Water texture size would be set to ${options.textureSize}`);
+      // Would need recreation of water object with new texture size
+    }
+    
+    // Note: In a more advanced implementation, we could store these settings
+    // and apply them when/if water is recreated, or implement more dynamic
+    // control over the existing water object.
   }
 
 

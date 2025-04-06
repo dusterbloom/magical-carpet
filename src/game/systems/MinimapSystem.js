@@ -10,7 +10,7 @@ export class MinimapSystem {
     this.minimapContainer = null;
     this.initialized = false;
     this.lastUpdate = 0;         // For throttling updates
-    this.updateInterval = 1/30;  // Update at 30fps max
+    this.updateInterval = 1/60;  // Update at 30fps max
     
     // Visual settings
     this.colors = {

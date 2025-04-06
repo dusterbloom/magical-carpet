@@ -13,19 +13,19 @@ export class MobileLODManager {
     // Base LOD distances that will be scaled based on device performance
     this.baseLODDistances = {
       terrain: {
-        high: 1500, // Use high detail up to this distance
-        medium: 3000, // Use medium detail up to this distance
-        low: 6000 // Use low detail up to this distance (beyond = ultra-low)
+        high: 2000,    // Increased from 1500
+        medium: 4000,  // Increased from 3000
+        low: 6000      // Kept the same
       },
       vegetation: {
-        high: 150, // Use high detail up to this distance
-        medium: 400, // Use medium detail up to this distance
-        low: 900 // Use low detail up to this distance (beyond = culled)
+        high: 200,     // Increased from 150
+        medium: 500,   // Increased from 400
+        low: 1000      // Increased from 900
       },
       water: {
-        reflection: 1000, // Max distance for reflections
-        highDetail: 500, // Use high detail water effects within this distance
-        mediumDetail: 1500 // Use medium detail water effects within this distance
+        reflection: 1500,     // Increased from 1000
+        highDetail: 750,      // Increased from 500
+        mediumDetail: 2000    // Increased from 1500
       }
     };
     
@@ -35,13 +35,13 @@ export class MobileLODManager {
     
     // Mobile-specific scaling (reduced distances = earlier LOD transitions)
     if (this.isMobile) {
-      this.distanceScalingFactor = 0.5; // Start with 50% of standard distances
+      this.distanceScalingFactor = 0.7; // Start with 50% of standard distances
     }
     
     // Performance tracking for dynamic adjustment
     this.lastAdjustmentTime = 0;
     this.adjustmentInterval = 5000; // Check every 5 seconds
-    this.targetFPS = 30; // Target framerate for mobile
+    this.targetFPS = 60; // Target framerate for mobile
     
     this.currentTerrainLOD = "adaptive"; // Default is adaptive LOD for terrain
     this.currentVegetationDensity = 0.7; // Start with reduced vegetation density on mobile
@@ -237,86 +237,37 @@ export class MobileLODManager {
   dynamicallyAdjustLOD() {
     if (!this.isMobile) return;
     
-    // Get latest performance data
     const report = this.engine.performanceMonitor.generateReport();
     const currentFPS = report.current.fps;
     const avgFPS = report.averages.fps;
     
-    console.log(`Current FPS: ${currentFPS.toFixed(1)}, Average FPS: ${avgFPS.toFixed(1)}, Triangle count: ${report.current.triangles}`);
-    
-    // Performance is too low - make aggressive cutbacks
+    // Adjusted thresholds
     if (avgFPS < 20) {
-      console.log("Mobile performance critical - applying aggressive LOD reductions");
+      // Critical performance - but keep reasonable view distance
+      this.distanceScalingFactor = 0.6; // Changed from more aggressive values
+      this.currentVegetationDensity = 0.5; // Increased from 0.4
       
-      // Reduce terrain detail
-      this.currentTerrainLOD = "low";
-      
-      // Reduce vegetation density drastically
-      this.currentVegetationDensity = 0.4;
-      
-      // Disable water reflections
-      this.currentWaterReflectionEnabled = false;
-      
-      // Enable all optimizations
-      this.optimizations.aggressiveDistanceCulling = true;
-      this.optimizations.reduced3DTextures = true;
-      this.optimizations.simplifiedShadows = true;
-      this.optimizations.dynamicResolutionScaling = true;
-      
-      // Apply reduced resolution scaling if extremely low FPS
       if (avgFPS < 15 && this.engine.renderer) {
         const currentPixelRatio = this.engine.renderer.getPixelRatio();
-        if (currentPixelRatio > 0.6) {
-          this.engine.renderer.setPixelRatio(Math.max(0.6, currentPixelRatio * 0.9));
-          console.log(`Reducing pixel ratio to ${this.engine.renderer.getPixelRatio().toFixed(2)}`);
+        if (currentPixelRatio > 0.7) { // Changed from 0.6
+          this.engine.renderer.setPixelRatio(Math.max(0.7, currentPixelRatio * 0.9));
         }
       }
     }
-    // Performance is below target but not critical
     else if (avgFPS < this.targetFPS) {
-      console.log("Mobile performance below target - applying moderate LOD reductions");
-      
-      // Use medium terrain detail
-      this.currentTerrainLOD = "medium";
-      
-      // Moderately reduce vegetation density
+      // Below target but not critical
+      this.distanceScalingFactor = 0.7;
       this.currentVegetationDensity = 0.6;
-      
-      // Keep water reflections but reduce quality
-      this.currentWaterReflectionEnabled = true;
-      
-      // Enable most optimizations
-      this.optimizations.aggressiveDistanceCulling = true;
-      this.optimizations.reduced3DTextures = true;
-      this.optimizations.simplifiedShadows = true;
     }
-    // Performance is good - we can improve quality
     else if (avgFPS > this.targetFPS * 1.2) {
-      console.log("Mobile performance good - gradually increasing quality");
+      // Good performance - gradually increase quality
+      this.distanceScalingFactor = Math.min(0.8, this.distanceScalingFactor + 0.05);
       
-      // Increase terrain detail
-      if (this.currentTerrainLOD === "low") {
-        this.currentTerrainLOD = "medium";
-      } else if (this.currentTerrainLOD === "medium") {
-        this.currentTerrainLOD = "adaptive";
-      }
-      
-      // Gradually increase vegetation density
       if (this.currentVegetationDensity < 0.7) {
         this.currentVegetationDensity = Math.min(0.7, this.currentVegetationDensity + 0.1);
       }
-      
-      // Enable water reflections
-      this.currentWaterReflectionEnabled = true;
-      
-      // Gradually reduce optimizations if FPS is very high
-      if (avgFPS > this.targetFPS * 1.5) {
-        // Only disable aggressive distance culling if FPS is very high
-        if (avgFPS > this.targetFPS * 1.8) {
-          this.optimizations.aggressiveDistanceCulling = false;
-        }
-      }
     }
+  
     
     // Apply updates to affected systems
     this.updateLODSettings();
@@ -390,21 +341,30 @@ export class MobileLODManager {
    * @returns {boolean} True if the object should be culled
    */
   shouldCull(position, cameraPosition, baseCullDistance = 6000) {
+    const distance = position.distanceTo(cameraPosition);
+    
+    // Special handling for water
+    if (position.y < 0) { // Assuming water is below y=0
+      const waterCullDistance = baseCullDistance * 0.9; // Less aggressive culling for water
+      return distance > waterCullDistance;
+    }
+  
+    // Original culling logic for other objects
     if (!this.isMobile) {
-      // Less aggressive culling on desktop
-      const distance = position.distanceTo(cameraPosition);
       return distance > baseCullDistance;
     }
-    
-    // More aggressive culling on mobile
-    const distance = position.distanceTo(cameraPosition);
+  
     const cullDistance = this.optimizations.aggressiveDistanceCulling ? 
-      baseCullDistance * 0.6 : // 40% reduction in view distance when aggressive culling is on
-      baseCullDistance * 0.8;  // 20% reduction in normal mode
-      
+      baseCullDistance * 0.8 : 
+      baseCullDistance * 0.9;
+  
+    const isInMinimapRange = distance < 2000;
+    if (isInMinimapRange) {
+      return false;
+    }
+  
     return distance > cullDistance;
   }
-  
   /**
    * Get the recommended texture size for the given base size
    * @param {number} baseSize - Base texture size (e.g., 1024)

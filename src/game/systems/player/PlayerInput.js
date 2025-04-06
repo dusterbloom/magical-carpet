@@ -266,113 +266,222 @@ export class PlayerInput {
     }
   }
   
-  setupTouchControls() {
-    console.log('Setting up touch controls UI elements');
-    const input = this.engine.input;
+  // setupTouchControls() {
+  //   console.log('Setting up touch controls UI elements');
+  //   const input = this.engine.input;
     
-    // Store UI elements in a collection for easy access
-    this.mobileControlElements = [];
+  //   // Store UI elements in a collection for easy access
+  //   this.mobileControlElements = [];
     
-    // Debug overlay for mobile input
-    this.createDebugOverlay();
+  //   // Debug overlay for mobile input
+  //   this.createDebugOverlay();
     
-    // Create virtual joystick for mobile - now on the right side
-    const joystickContainer = document.createElement('div');
-    joystickContainer.style.position = 'fixed';
-    joystickContainer.style.bottom = '20px';
-    joystickContainer.style.right = '20px'; // Changed from left to right
-    joystickContainer.style.width = '150px';
-    joystickContainer.style.height = '150px';
-    joystickContainer.style.borderRadius = '75px';
-    joystickContainer.style.background = 'rgba(255, 255, 255, 0.3)';
-    joystickContainer.style.border = '2px solid rgba(255, 255, 255, 0.5)';
-    joystickContainer.style.zIndex = '1000';
-    joystickContainer.style.display = 'none'; // Initially hidden until game starts
-    document.body.appendChild(joystickContainer);
-    this.mobileControlElements.push(joystickContainer);
+  //   // Create virtual joystick for mobile - now on the right side
+  //   const joystickContainer = document.createElement('div');
+  //   joystickContainer.style.position = 'fixed';
+  //   joystickContainer.style.bottom = '20px';
+  //   joystickContainer.style.right = '20px'; // Changed from left to right
+  //   joystickContainer.style.width = '150px';
+  //   joystickContainer.style.height = '150px';
+  //   joystickContainer.style.borderRadius = '75px';
+  //   joystickContainer.style.background = 'rgba(255, 255, 255, 0.3)';
+  //   joystickContainer.style.border = '2px solid rgba(255, 255, 255, 0.5)';
+  //   joystickContainer.style.zIndex = '1000';
+  //   joystickContainer.style.display = 'none'; // Initially hidden until game starts
+  //   document.body.appendChild(joystickContainer);
+  //   this.mobileControlElements.push(joystickContainer);
     
-    const joystick = document.createElement('div');
-    joystick.style.position = 'absolute';
-    joystick.style.top = '50px';
-    joystick.style.left = '50px';
-    joystick.style.width = '50px';
-    joystick.style.height = '50px';
-    joystick.style.borderRadius = '25px';
-    joystick.style.background = 'rgba(255, 255, 255, 0.7)';
-    joystick.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
-    joystickContainer.appendChild(joystick);
+  //   const joystick = document.createElement('div');
+  //   joystick.style.position = 'absolute';
+  //   joystick.style.top = '50px';
+  //   joystick.style.left = '50px';
+  //   joystick.style.width = '50px';
+  //   joystick.style.height = '50px';
+  //   joystick.style.borderRadius = '25px';
+  //   joystick.style.background = 'rgba(255, 255, 255, 0.7)';
+  //   joystick.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+  //   joystickContainer.appendChild(joystick);
     
-    // Create space button (acts like spacebar for altitude)
-    const spaceButton = document.createElement('div');
-    spaceButton.style.position = 'fixed';
-    spaceButton.style.bottom = '20px';
-    spaceButton.style.left = '20px'; // Left side
-    spaceButton.style.width = '80px';
-    spaceButton.style.height = '80px';
-    spaceButton.style.borderRadius = '40px';
-    spaceButton.style.background = 'rgba(30, 144, 255, 0.7)'; // Blue color like spacebar function
-    spaceButton.style.display = 'flex';
-    spaceButton.style.alignItems = 'center';
-    spaceButton.style.justifyContent = 'center';
-    spaceButton.style.fontSize = '28px';
-    spaceButton.innerHTML = '🚀'; // Rocket emoji
-    // Controls already centered
-    spaceButton.style.pointerEvents = 'auto';
-    spaceButton.style.color = 'white';
-    spaceButton.style.boxShadow = '0 0 15px rgba(30, 144, 255, 0.5)';
-    spaceButton.style.zIndex = '1000';
-    spaceButton.style.userSelect = 'none';
-    spaceButton.style.display = 'none'; // Initially hidden until game starts
-    document.body.appendChild(spaceButton);
-    this.mobileControlElements.push(spaceButton);
+  //   // Create space button (acts like spacebar for altitude)
+  //   const spaceButton = document.createElement('div');
+  //   spaceButton.style.position = 'fixed';
+  //   spaceButton.style.bottom = '20px';
+  //   spaceButton.style.left = '20px'; // Left side
+  //   spaceButton.style.width = '80px';
+  //   spaceButton.style.height = '80px';
+  //   spaceButton.style.borderRadius = '40px';
+  //   spaceButton.style.background = 'rgba(30, 144, 255, 0.7)'; // Blue color like spacebar function
+  //   spaceButton.style.display = 'flex';
+  //   spaceButton.style.alignItems = 'center';
+  //   spaceButton.style.justifyContent = 'center';
+  //   spaceButton.style.fontSize = '28px';
+  //   spaceButton.innerHTML = '🚀'; // Rocket emoji
+  //   // Controls already centered
+  //   spaceButton.style.pointerEvents = 'auto';
+  //   spaceButton.style.color = 'white';
+  //   spaceButton.style.boxShadow = '0 0 15px rgba(30, 144, 255, 0.5)';
+  //   spaceButton.style.zIndex = '1000';
+  //   spaceButton.style.userSelect = 'none';
+  //   spaceButton.style.display = 'none'; // Initially hidden until game starts
+  //   document.body.appendChild(spaceButton);
+  //   this.mobileControlElements.push(spaceButton);
     
-    // Initialize joystick state
-    this.joystick = {
-      active: false,
-      position: { x: 0, y: 0 },
-      startPosition: { x: 0, y: 0 },
-      container: {
-        rect: joystickContainer.getBoundingClientRect(),
-        radius: 75
-      }
-    };
+  //   // Initialize joystick state
+  //   this.joystick = {
+  //     active: false,
+  //     position: { x: 0, y: 0 },
+  //     startPosition: { x: 0, y: 0 },
+  //     container: {
+  //       rect: joystickContainer.getBoundingClientRect(),
+  //       radius: 75
+  //     }
+  //   };
     
-    // Update joystick container rect on resize
-    window.addEventListener('resize', () => {
-      // Update joystick container rect when visible
-      if (joystickContainer.style.display !== 'none') {
-        this.joystick.container.rect = joystickContainer.getBoundingClientRect();
-      }
-    });
+  //   // Update joystick container rect on resize
+  //   window.addEventListener('resize', () => {
+  //     // Update joystick container rect when visible
+  //     if (joystickContainer.style.display !== 'none') {
+  //       this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+  //     }
+  //   });
     
-    // Also update the rect when container becomes visible
-    const updateJoystickRect = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-          if (joystickContainer.style.display !== 'none') {
-            this.joystick.container.rect = joystickContainer.getBoundingClientRect();
-          }
-        }
-      });
-    });
+  //   // Also update the rect when container becomes visible
+  //   const updateJoystickRect = new MutationObserver((mutations) => {
+  //     mutations.forEach((mutation) => {
+  //       if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+  //         if (joystickContainer.style.display !== 'none') {
+  //           this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+  //         }
+  //       }
+  //     });
+  //   });
     
-    updateJoystickRect.observe(joystickContainer, { attributes: true });
+  //   updateJoystickRect.observe(joystickContainer, { attributes: true });
     
-    // Handle space button events - works exactly like spacebar
-    spaceButton.addEventListener('touchstart', () => {
-      this.touchAltitude.up = true;
-      spaceButton.style.background = 'rgba(0, 119, 255, 0.8)'; // Highlight when active
-    });
+  //   // Handle space button events - works exactly like spacebar
+  //   spaceButton.addEventListener('touchstart', () => {
+  //     this.touchAltitude.up = true;
+  //     spaceButton.style.background = 'rgba(0, 119, 255, 0.8)'; // Highlight when active
+  //   });
     
-    spaceButton.addEventListener('touchend', () => {
-      this.touchAltitude.up = false;
-      spaceButton.style.background = 'rgba(30, 144, 255, 0.7)'; // Back to normal color
-    });
+  //   spaceButton.addEventListener('touchend', () => {
+  //     this.touchAltitude.up = false;
+  //     spaceButton.style.background = 'rgba(30, 144, 255, 0.7)'; // Back to normal color
+  //   });
     
-    this.setupJoystickEvents(input, joystick);
-  }
+  //   this.setupJoystickEvents(input, joystick);
+  // }
   
   // Toggle motion controls on/off
+  
+ // In PlayerInput.js
+setupTouchControls() {
+  console.log('Setting up touch controls UI elements');
+  const input = this.engine.input;
+  
+  // Store UI elements in a collection for easy access
+  this.mobileControlElements = [];
+  
+  // Debug overlay for mobile input
+  this.createDebugOverlay();
+  
+  // Create virtual joystick for mobile - now on the right side
+  const joystickContainer = document.createElement('div');
+  joystickContainer.style.position = 'fixed';
+  joystickContainer.style.bottom = '20px';
+  joystickContainer.style.right = '20px'; // Changed from left to right
+  joystickContainer.style.width = '150px';
+  joystickContainer.style.height = '150px';
+  joystickContainer.style.borderRadius = '75px';
+  joystickContainer.style.background = 'rgba(255, 255, 255, 0.3)';
+  joystickContainer.style.border = '2px solid rgba(255, 255, 255, 0.5)';
+  joystickContainer.style.zIndex = '1000';
+  joystickContainer.style.display = 'none'; // Initially hidden until game starts
+  document.body.appendChild(joystickContainer);
+  this.mobileControlElements.push(joystickContainer);
+  
+  const joystick = document.createElement('div');
+  joystick.style.position = 'absolute';
+  joystick.style.top = '50px';
+  joystick.style.left = '50px';
+  joystick.style.width = '50px';
+  joystick.style.height = '50px';
+  joystick.style.borderRadius = '25px';
+  joystick.style.background = 'rgba(255, 255, 255, 0.7)';
+  joystick.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+  joystickContainer.appendChild(joystick);
+  
+  // Create space button (acts like spacebar for altitude)
+  const spaceButton = document.createElement('div');
+  spaceButton.style.position = 'fixed';
+  spaceButton.style.bottom = '20px';
+  spaceButton.style.left = '20px'; // Left side
+  spaceButton.style.width = '80px';
+  spaceButton.style.height = '80px';
+  spaceButton.style.borderRadius = '40px';
+  spaceButton.style.background = 'rgba(30, 144, 255, 0.7)';
+  spaceButton.style.display = 'flex';
+  spaceButton.style.alignItems = 'center';
+  spaceButton.style.justifyContent = 'center';
+  spaceButton.style.fontSize = '28px';
+  spaceButton.innerHTML = '🚀';
+  spaceButton.style.pointerEvents = 'auto';
+  spaceButton.style.color = 'white';
+  spaceButton.style.boxShadow = '0 0 15px rgba(30, 144, 255, 0.5)';
+  spaceButton.style.zIndex = '1000';
+  spaceButton.style.userSelect = 'none';
+  spaceButton.style.display = 'none';
+  document.body.appendChild(spaceButton);
+  this.mobileControlElements.push(spaceButton);
+  
+  // Initialize joystick state
+  this.joystick = {
+    active: false,
+    position: { x: 0, y: 0 },
+    startPosition: { x: 0, y: 0 },
+    container: {
+      rect: joystickContainer.getBoundingClientRect(),
+      radius: 75
+    }
+  };
+  
+  // Update joystick container rect on resize
+  window.addEventListener('resize', () => {
+    if (joystickContainer.style.display !== 'none') {
+      this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+    }
+  });
+  
+  // Update rect when container becomes visible
+  const updateJoystickRect = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+        if (joystickContainer.style.display !== 'none') {
+          this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+        }
+      }
+    });
+  });
+  
+  updateJoystickRect.observe(joystickContainer, { attributes: true });
+  
+  // Handle space button events
+  spaceButton.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    this.touchAltitude.up = true;
+    spaceButton.style.background = 'rgba(0, 119, 255, 0.8)';
+  }, { passive: false });
+  
+  spaceButton.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    this.touchAltitude.up = false;
+    spaceButton.style.background = 'rgba(30, 144, 255, 0.7)';
+  }, { passive: false });
+  
+  // Setup joystick events using the Input Manager's touch events
+  this.setupJoystickEvents(input, joystick);
+}
+  
   toggleMotionControls(enabled) {
     this.motionControlsEnabled = enabled;
     const input = this.engine.input;
@@ -393,132 +502,221 @@ export class PlayerInput {
     return this.motionControlsEnabled;
   }
   
-  setupJoystickEvents(input, joystickElement) {
-    console.log('Setting up joystick event handlers');
+  // setupJoystickEvents(input, joystickElement) {
+  //   console.log('Setting up joystick event handlers');
     
-    // Create a dedicated handler to track which touch ID is controlling the joystick
-    let joystickTouchId = null;
+  //   // Create a dedicated handler to track which touch ID is controlling the joystick
+  //   let joystickTouchId = null;
     
-    // Handle touch events for joystick
-    input.on('touchstart', (event) => {
-      // Prevent default to avoid scrolling
-      event.preventDefault();
+  //   // Handle touch events for joystick
+  //   input.on('touchstart', (event) => {
+  //     // Prevent default to avoid scrolling
+  //     event.preventDefault();
       
-      // Don't process if we already have an active touch for the joystick
-      if (joystickTouchId !== null) return;
+  //     // Don't process if we already have an active touch for the joystick
+  //     if (joystickTouchId !== null) return;
       
-      for (let i = 0; i < event.touches.length; i++) {
-        const touch = event.touches[i];
-        const touchX = touch.clientX;
-        const touchY = touch.clientY;
+  //     for (let i = 0; i < event.touches.length; i++) {
+  //       const touch = event.touches[i];
+  //       const touchX = touch.clientX;
+  //       const touchY = touch.clientY;
         
-        // Check if touch is within joystick container
-        const containerRect = this.joystick.container.rect;
-        if (
-          touchX >= containerRect.left &&
-          touchX <= containerRect.right &&
-          touchY >= containerRect.top &&
-          touchY <= containerRect.bottom
-        ) {
-          joystickTouchId = touch.identifier; // Store the touch ID
-          this.joystick.active = true;
-          this.joystick.startPosition.x = touchX;
-          this.joystick.startPosition.y = touchY;
+  //       // Check if touch is within joystick container
+  //       const containerRect = this.joystick.container.rect;
+  //       if (
+  //         touchX >= containerRect.left &&
+  //         touchX <= containerRect.right &&
+  //         touchY >= containerRect.top &&
+  //         touchY <= containerRect.bottom
+  //       ) {
+  //         joystickTouchId = touch.identifier; // Store the touch ID
+  //         this.joystick.active = true;
+  //         this.joystick.startPosition.x = touchX;
+  //         this.joystick.startPosition.y = touchY;
           
-          console.log('Joystick activated with touch ID:', joystickTouchId);
-          break;
-        }
-      }
-    });
+  //         console.log('Joystick activated with touch ID:', joystickTouchId);
+  //         break;
+  //       }
+  //     }
+  //   });
     
-    input.on('touchmove', (event) => {
-      // Prevent default to avoid scrolling
-      event.preventDefault();
+  //   input.on('touchmove', (event) => {
+  //     // Prevent default to avoid scrolling
+  //     event.preventDefault();
       
-      if (this.joystick.active && joystickTouchId !== null) {
-        // Find our specific touch by ID
-        let foundTouch = false;
+  //     if (this.joystick.active && joystickTouchId !== null) {
+  //       // Find our specific touch by ID
+  //       let foundTouch = false;
         
-        for (let i = 0; i < event.touches.length; i++) {
-          const touch = event.touches[i];
+  //       for (let i = 0; i < event.touches.length; i++) {
+  //         const touch = event.touches[i];
           
-          if (touch.identifier === joystickTouchId) {
-            foundTouch = true;
-            const touchX = touch.clientX;
-            const touchY = touch.clientY;
+  //         if (touch.identifier === joystickTouchId) {
+  //           foundTouch = true;
+  //           const touchX = touch.clientX;
+  //           const touchY = touch.clientY;
             
-            const containerRect = this.joystick.container.rect;
-            const centerX = containerRect.left + containerRect.width / 2;
-            const centerY = containerRect.top + containerRect.height / 2;
+  //           const containerRect = this.joystick.container.rect;
+  //           const centerX = containerRect.left + containerRect.width / 2;
+  //           const centerY = containerRect.top + containerRect.height / 2;
             
-            // Calculate joystick position
-            let dx = touchX - centerX;
-            let dy = touchY - centerY;
+  //           // Calculate joystick position
+  //           let dx = touchX - centerX;
+  //           let dy = touchY - centerY;
             
-            // Limit to container radius
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const maxDistance = this.joystick.container.radius;
+  //           // Limit to container radius
+  //           const distance = Math.sqrt(dx * dx + dy * dy);
+  //           const maxDistance = this.joystick.container.radius;
             
-            if (distance > maxDistance) {
-              dx = dx * (maxDistance / distance);
-              dy = dy * (maxDistance / distance);
-            }
+  //           if (distance > maxDistance) {
+  //             dx = dx * (maxDistance / distance);
+  //             dy = dy * (maxDistance / distance);
+  //           }
             
-            // Update joystick position
-            joystickElement.style.transform = `translate(${dx}px, ${dy}px)`;
+  //           // Update joystick position
+  //           joystickElement.style.transform = `translate(${dx}px, ${dy}px)`;
             
-            // Store normalized joystick position (-1 to 1)
-            this.joystick.position.x = dx / maxDistance;
-            this.joystick.position.y = dy / maxDistance;
+  //           // Store normalized joystick position (-1 to 1)
+  //           this.joystick.position.x = dx / maxDistance;
+  //           this.joystick.position.y = dy / maxDistance;
             
-            break;
-          }
-        }
+  //           break;
+  //         }
+  //       }
         
-        // If we didn't find our touch, it may have been canceled
-        if (!foundTouch) {
-          this.resetJoystick(joystickElement);
-          joystickTouchId = null;
-        }
-      }
-    });
+  //       // If we didn't find our touch, it may have been canceled
+  //       if (!foundTouch) {
+  //         this.resetJoystick(joystickElement);
+  //         joystickTouchId = null;
+  //       }
+  //     }
+  //   });
     
-    input.on('touchend', (event) => {
-      // Prevent default
-      event.preventDefault();
+  //   input.on('touchend', (event) => {
+  //     // Prevent default
+  //     event.preventDefault();
       
-      // Check if our joystick touch ended
-      for (let i = 0; i < event.changedTouches.length; i++) {
-        const touch = event.changedTouches[i];
+  //     // Check if our joystick touch ended
+  //     for (let i = 0; i < event.changedTouches.length; i++) {
+  //       const touch = event.changedTouches[i];
         
-        if (touch.identifier === joystickTouchId) {
-          this.resetJoystick(joystickElement);
-          joystickTouchId = null;
-          console.log('Joystick released');
-          break;
-        }
-      }
-    });
+  //       if (touch.identifier === joystickTouchId) {
+  //         this.resetJoystick(joystickElement);
+  //         joystickTouchId = null;
+  //         console.log('Joystick released');
+  //         break;
+  //       }
+  //     }
+  //   });
     
-    // Also handle touchcancel event
-    input.on('touchcancel', (event) => {
-      // Prevent default
-      event.preventDefault();
+  //   // Also handle touchcancel event
+  //   input.on('touchcancel', (event) => {
+  //     // Prevent default
+  //     event.preventDefault();
       
-      // Check if our joystick touch was canceled
-      for (let i = 0; i < event.changedTouches.length; i++) {
-        const touch = event.changedTouches[i];
+  //     // Check if our joystick touch was canceled
+  //     for (let i = 0; i < event.changedTouches.length; i++) {
+  //       const touch = event.changedTouches[i];
         
-        if (touch.identifier === joystickTouchId) {
-          this.resetJoystick(joystickElement);
-          joystickTouchId = null;
-          console.log('Joystick touch canceled');
-          break;
-        }
-      }
-    });
-  }
+  //       if (touch.identifier === joystickTouchId) {
+  //         this.resetJoystick(joystickElement);
+  //         joystickTouchId = null;
+  //         console.log('Joystick touch canceled');
+  //         break;
+  //       }
+  //     }
+  //   });
+  // }
   
+
+  // In PlayerInput.js, modify the touch event handlers:
+setupJoystickEvents(input, joystickElement) {
+  console.log('Setting up joystick event handlers');
+  
+  let joystickTouchId = null;
+  
+  input.on('touchstart', (touchData) => {
+    // Use originalEvent for preventDefault
+    touchData.originalEvent.preventDefault();
+    
+    if (joystickTouchId !== null) return;
+    
+    for (let i = 0; i < touchData.originalEvent.touches.length; i++) {
+      const touch = touchData.originalEvent.touches[i];
+      const touchX = touch.clientX;
+      const touchY = touch.clientY;
+      
+      const containerRect = this.joystick.container.rect;
+      if (
+        touchX >= containerRect.left &&
+        touchX <= containerRect.right &&
+        touchY >= containerRect.top &&
+        touchY <= containerRect.bottom
+      ) {
+        joystickTouchId = touch.identifier;
+        this.joystick.active = true;
+        this.joystick.startPosition.x = touchX;
+        this.joystick.startPosition.y = touchY;
+        
+        console.log('Joystick activated with touch ID:', joystickTouchId);
+        break;
+      }
+    }
+  });
+  
+  input.on('touchmove', (touchData) => {
+    touchData.originalEvent.preventDefault();
+    
+    if (this.joystick.active && joystickTouchId !== null) {
+      let foundTouch = false;
+      
+      for (let i = 0; i < touchData.originalEvent.touches.length; i++) {
+        const touch = touchData.originalEvent.touches[i];
+        
+        if (touch.identifier === joystickTouchId) {
+          foundTouch = true;
+          // Rest of your joystick movement code...
+          break;
+        }
+      }
+      
+      if (!foundTouch) {
+        this.resetJoystick(joystickElement);
+        joystickTouchId = null;
+      }
+    }
+  });
+  
+  input.on('touchend', (touchData) => {
+    touchData.originalEvent.preventDefault();
+    
+    for (let i = 0; i < touchData.originalEvent.changedTouches.length; i++) {
+      const touch = touchData.originalEvent.changedTouches[i];
+      
+      if (touch.identifier === joystickTouchId) {
+        this.resetJoystick(joystickElement);
+        joystickTouchId = null;
+        console.log('Joystick released');
+        break;
+      }
+    }
+  });
+  
+  input.on('touchcancel', (touchData) => {
+    touchData.originalEvent.preventDefault();
+    
+    for (let i = 0; i < touchData.originalEvent.changedTouches.length; i++) {
+      const touch = touchData.originalEvent.changedTouches[i];
+      
+      if (touch.identifier === joystickTouchId) {
+        this.resetJoystick(joystickElement);
+        joystickTouchId = null;
+        console.log('Joystick touch canceled');
+        break;
+      }
+    }
+  });
+}
   resetJoystick(joystickElement) {
     this.joystick.active = false;
     this.joystick.position.x = 0;
@@ -615,17 +813,22 @@ export class PlayerInput {
    */
   showMobileControls() {
     console.log('Showing mobile controls');
-    if (this.mobileControlElements) {
-      this.mobileControlElements.forEach(element => {
-        if (element === this.debugOverlay) {
-          // Keep debug overlay hidden initially
-          return;
-        }
-        element.style.display = element === this.debugOverlay ? 'none' : 'block';
-      });
-    }
-    // Start debug overlay updates
-    this.updateDebugOverlay();
+    // Always show touch controls first
+    this.setupTouchControls();
+    
+    // Optionally offer motion controls
+    const motionButton = document.createElement('button');
+    motionButton.innerHTML = '📱 Enable Motion Controls';
+    motionButton.onclick = async () => {
+      const enabled = await this.toggleMotionControls(true);
+      if (enabled) {
+        // Motion controls working, can hide some touch UI
+        this.minimizeTouchControls();
+      } else {
+        // Motion failed, keep using touch controls
+        alert('Motion controls not available. Using touch controls.');
+      }
+    };
   }
   
   /**
@@ -681,5 +884,166 @@ export class PlayerInput {
     
     // Schedule next update
     requestAnimationFrame(() => this.updateDebugOverlay());
+  }
+
+
+  setupTouchControls() {
+    console.log('Setting up touch controls UI elements');
+    
+    // Store UI elements in a collection for easy access
+    this.mobileControlElements = [];
+    
+    // Create virtual joystick container
+    const joystickContainer = document.createElement('div');
+    joystickContainer.style.position = 'fixed';
+    joystickContainer.style.bottom = '20px';
+    joystickContainer.style.right = '20px';
+    joystickContainer.style.width = '150px';
+    joystickContainer.style.height = '150px';
+    joystickContainer.style.borderRadius = '75px';
+    joystickContainer.style.background = 'rgba(255, 255, 255, 0.2)';
+    joystickContainer.style.border = '2px solid rgba(255, 255, 255, 0.4)';
+    joystickContainer.style.zIndex = '1000';
+    document.body.appendChild(joystickContainer);
+    this.mobileControlElements.push(joystickContainer);
+  
+    // Create joystick knob
+    const joystick = document.createElement('div');
+    joystick.style.position = 'absolute';
+    joystick.style.top = '50px';
+    joystick.style.left = '50px';
+    joystick.style.width = '50px';
+    joystick.style.height = '50px';
+    joystick.style.borderRadius = '25px';
+    joystick.style.background = 'rgba(255, 255, 255, 0.8)';
+    joystick.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+    joystickContainer.appendChild(joystick);
+  
+    // Create boost button
+    const boostButton = document.createElement('div');
+    boostButton.style.position = 'fixed';
+    boostButton.style.bottom = '20px';
+    boostButton.style.left = '20px';
+    boostButton.style.width = '80px';
+    boostButton.style.height = '80px';
+    boostButton.style.borderRadius = '40px';
+    boostButton.style.background = 'rgba(30, 144, 255, 0.7)';
+    boostButton.style.display = 'flex';
+    boostButton.style.alignItems = 'center';
+    boostButton.style.justifyContent = 'center';
+    boostButton.style.fontSize = '28px';
+    boostButton.innerHTML = '🚀';
+    boostButton.style.color = 'white';
+    boostButton.style.boxShadow = '0 0 15px rgba(30, 144, 255, 0.5)';
+    boostButton.style.zIndex = '1000';
+    document.body.appendChild(boostButton);
+    this.mobileControlElements.push(boostButton);
+  
+    // Initialize joystick state
+    this.joystick = {
+      active: false,
+      position: { x: 0, y: 0 },
+      startPosition: { x: 0, y: 0 },
+      container: {
+        rect: joystickContainer.getBoundingClientRect(),
+        radius: 75
+      }
+    };
+  
+    // Handle boost button events
+    boostButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.touchAltitude.up = true;
+      boostButton.style.background = 'rgba(0, 119, 255, 0.8)';
+    }, { passive: false });
+  
+    boostButton.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      this.touchAltitude.up = false;
+      boostButton.style.background = 'rgba(30, 144, 255, 0.7)';
+    }, { passive: false });
+  
+    // Setup joystick touch handling
+    this.setupJoystickEvents(joystick);
+  
+    // Update joystick container rect on resize
+    window.addEventListener('resize', () => {
+      this.joystick.container.rect = joystickContainer.getBoundingClientRect();
+    });
+  }
+  
+  setupJoystickEvents(joystickElement) {
+    let joystickTouchId = null;
+  
+    const handleTouchStart = (e) => {
+      e.preventDefault();
+      if (joystickTouchId !== null) return;
+  
+      const touch = e.touches[0];
+      const rect = this.joystick.container.rect;
+      
+      if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+          touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+        joystickTouchId = touch.identifier;
+        this.joystick.active = true;
+        updateJoystickPosition(touch);
+      }
+    };
+  
+    const handleTouchMove = (e) => {
+      e.preventDefault();
+      if (!this.joystick.active) return;
+  
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === joystickTouchId) {
+          updateJoystickPosition(e.touches[i]);
+          break;
+        }
+      }
+    };
+  
+    const handleTouchEnd = (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joystickTouchId) {
+          resetJoystick();
+          break;
+        }
+      }
+    };
+  
+    const updateJoystickPosition = (touch) => {
+      const rect = this.joystick.container.rect;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      let dx = touch.clientX - centerX;
+      let dy = touch.clientY - centerY;
+      
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > this.joystick.container.radius) {
+        dx *= this.joystick.container.radius / distance;
+        dy *= this.joystick.container.radius / distance;
+      }
+      
+      joystickElement.style.transform = `translate(${dx}px, ${dy}px)`;
+      this.joystick.position.x = dx / this.joystick.container.radius;
+      this.joystick.position.y = dy / this.joystick.container.radius;
+    };
+  
+    const resetJoystick = () => {
+      joystickTouchId = null;
+      this.joystick.active = false;
+      this.joystick.position.x = 0;
+      this.joystick.position.y = 0;
+      joystickElement.style.transform = 'translate(0px, 0px)';
+    };
+  
+    // Add touch event listeners
+    const container = joystickElement.parentElement;
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+    container.addEventListener('touchcancel', handleTouchEnd, { passive: false });
   }
 }

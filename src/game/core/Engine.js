@@ -32,6 +32,12 @@ export class Engine {
     this.maxDeltaTime = 1/15; // Cap at 15 FPS equivalent
     this.devicePixelRatio = Math.min(window.devicePixelRatio, 2);
     this.gameStarted = false; // Flag to track if the game has started
+    this.performanceMetrics = {
+      fps: [],
+      frameTime: [],
+      triangleCount: [],
+      drawCalls: []
+    };
     
     // Create performance monitor
     this.performanceMonitor = new PerformanceMonitor();
@@ -59,6 +65,12 @@ export class Engine {
       preserveDrawingBuffer: false, // Performance optimization
       logarithmicDepthBuffer: false // Enable only if z-fighting occurs
     });
+
+    this.frameScheduled = false;
+    this.lastFrameTime = 0;
+    this.targetFrameTime = 1000 / 60; // Target 30fps on mobile
+    this.gcInterval = 30000; // 30 seconds
+    this.lastGC = 0;
     
     // Common renderer settings
     this.renderer.setClearColor(0x88ccff);
@@ -303,7 +315,15 @@ export class Engine {
     this.introScreen.show();
     useGameState.getState().setGameState(GameStates.INTRO);
 
+
+
     console.log("Engine initialized successfully");
+    console.log('Device Info:', {
+      userAgent: navigator.userAgent,
+      deviceMemory: navigator.deviceMemory,
+      hardwareConcurrency: navigator.hardwareConcurrency,
+      devicePixelRatio: window.devicePixelRatio
+    });
   }
 
   animate(timestamp) {
@@ -421,6 +441,15 @@ export class Engine {
     if (this.stats) this.stats.update();
   }
 
+
+  checkMemory(timestamp) {
+    if (timestamp - this.lastGC > this.gcInterval) {
+      // Force garbage collection of unused assets
+      this.systems.assetManager.cleanupUnusedAssets();
+      this.lastGC = timestamp;
+    }
+  }
+
   // Optimize state before rendering
   _optimizeBeforeRender() {
     // Limit active lights for mobile devices
@@ -494,6 +523,20 @@ export class Engine {
     }
   }
 
+  logPerformanceMetrics() {
+    const metrics = {
+      fps: this.calculateAverageFPS(),
+      frameTime: this.systems.mobileLOD.getAverageFrameTime(),
+      triangles: this.renderer.info.render.triangles,
+      drawCalls: this.renderer.info.render.calls,
+      memory: performance.memory ? {
+        used: performance.memory.usedJSHeapSize / 1048576,
+        total: performance.memory.totalJSHeapSize / 1048576
+      } : 'unavailable'
+    };
+
+    console.log('Performance Metrics:', metrics);
+  }
   // Material optimization utilities
   // Ensure scene exists before attempting optimization
   optimizeMaterials() {
@@ -576,6 +619,7 @@ export class Engine {
       this.systems.world.updateVisibility(this.camera);
     }
   }
+
 
   // onVisibilityChange is missing but required by the constructor
   onVisibilityChange() {
