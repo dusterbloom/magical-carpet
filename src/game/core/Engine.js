@@ -18,6 +18,7 @@ import { CarpetTrailSystem } from "../systems/CarpetTrailSystem";
 import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
 import { IntroScreen } from "../ui/screens/IntroScreen";
+import { useGameState, GameStates } from '../state/gameState.js';
 
 
 export class Engine {

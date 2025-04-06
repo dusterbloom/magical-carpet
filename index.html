@@ -45,21 +45,6 @@
   <div id="ui-container"></div>
   <canvas id="game-canvas"></canvas>
   <script type="module" src="/src/main.js"></script>
-  <script>
-    // Global function to access performance data from browser console
-    window.getPerformanceReport = function() {
-      if (window.gameEngine) {
-        return window.gameEngine.getPerformanceReport();
-      } else {
-        // Check if running in production - no global engine reference
-        if (!import.meta.env?.DEV) {
-          console.log('Performance monitoring only available in development mode');
-        } else {
-          console.error('Game engine not initialized yet');
-        }
-        return null;
-      }
-    };
-  </script>
+ 
 </body>
 </html>

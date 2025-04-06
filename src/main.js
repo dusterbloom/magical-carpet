@@ -1,4 +1,5 @@
 import { Engine } from './game/core/Engine';
+import { setupPerformanceTools } from './PerformanceTools.js';
 
 // Update font style for the entire app
 document.documentElement.style.setProperty('--app-font', '"Helvetica Neue", Helvetica, sans-serif');
@@ -15,7 +16,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     await engine.initialize();
-    
+    setupPerformanceTools();
+
     console.log('Vibe Carpet initialized successfully!');
     console.log('Use window.getPerformanceReport() to view performance metrics');
   } catch (error) {

@@ -447,13 +447,19 @@ dynamicallyAdjustLOD() {
   const avgTriangles = report.averages.triangles || 0;
 
   const timeSinceLastChange = Date.now() - this.lastQualityChangeTime;
+
+  if (timeSinceLastChange < 10000) {
+    console.log(`Quality adjustment postponed (${(10000 - timeSinceLastChange)/1000}s cooldown remaining)`);
+    return;
+  }
+
   const fpsRatio = avgFPS / this.targetFPS;
 
   // Log current state
-  // console.log(`LOD Assessment: Avg FPS: ${avgFPS.toFixed(1)}/${this.targetFPS} (${(fpsRatio * 100).toFixed(0)}%), ` +
-  //             `Triangles: ${avgTriangles.toFixed(0)}, ` +
-  //             `Quality: ${this.qualityLevel}/2, ` +
-  //             `Time at quality: ${(this.timeAtCurrentQuality / 1000).toFixed(1)}s`);
+  console.log(`LOD Assessment: Avg FPS: ${avgFPS.toFixed(1)}/${this.targetFPS} (${(fpsRatio * 100).toFixed(0)}%), ` +
+              `Triangles: ${avgTriangles.toFixed(0)}, ` +
+              `Quality: ${this.qualityLevel}/2, ` +
+              `Time at quality: ${(this.timeAtCurrentQuality / 1000).toFixed(1)}s`);
 
   let shouldDecrease = false;
   let shouldIncrease = false;

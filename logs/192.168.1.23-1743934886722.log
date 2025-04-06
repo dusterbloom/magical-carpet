@@ -1,0 +1,376 @@
+(index):57 Uncaught SyntaxError: Cannot use 'import.meta' outside a module (at (index):57:21)
+client:495 [vite] connecting...
+client:618 [vite] connected.
+Settings.js:51 Mobile device detected, applying optimized settings
+Engine.js:176 WebGL Renderer: Adreno (TM) 610, Vendor: Qualcomm
+Engine.js:225 Mobile device GPU classification: medium, maxTextureSize: 2048
+AssetManager.js:203 THREE.Texture: Property .encoding has been replaced by .colorSpace.
+warnOnce @ chunk-UZOV2HZI.js?v=e2c42b69:1010
+set encoding @ chunk-UZOV2HZI.js?v=e2c42b69:1405
+(anonymous) @ AssetManager.js:203
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25345
+onImageLoad @ chunk-UZOV2HZI.js?v=e2c42b69:25216
+AssetManager.js:36 Asset not found: /assets/textures/sky.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+onImageError @ chunk-UZOV2HZI.js?v=e2c42b69:25222
+AssetManager.js:36 Asset not found: /assets/textures/carpet.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+onImageError @ chunk-UZOV2HZI.js?v=e2c42b69:25222
+AssetManager.js:36 Asset not found: /assets/textures/terrain.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+onImageError @ chunk-UZOV2HZI.js?v=e2c42b69:25222
+AssetManager.js:216 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:258:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:212:15)
+    at chunk-UZOV2HZI.js?v=e2c42b69:25067:39
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:200
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:217
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:210
+(anonymous) @ AssetManager.js:216
+loadModels @ AssetManager.js:215
+(anonymous) @ AssetManager.js:180
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:36 Asset not found: /assets/models/carpet.glb - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:202
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:217
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:210
+(anonymous) @ AssetManager.js:216
+loadModels @ AssetManager.js:215
+(anonymous) @ AssetManager.js:180
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:216 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:258:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:212:15)
+    at chunk-UZOV2HZI.js?v=e2c42b69:25067:39
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:200
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:217
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:210
+(anonymous) @ AssetManager.js:216
+loadModels @ AssetManager.js:215
+(anonymous) @ AssetManager.js:180
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:36 Asset not found: /assets/models/mana.glb - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:202
+(anonymous) @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:217
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ three_examples_jsm_loaders_GLTFLoader__js.js?v=e2c42b69:210
+(anonymous) @ AssetManager.js:216
+loadModels @ AssetManager.js:215
+(anonymous) @ AssetManager.js:180
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AtmosphereSystem.js:46 Synced Time of Day: 0.65
+NetworkManager.js:54 Connecting to server URL: http://192.168.1.23:4000
+NetworkManager.js:79 Network manager initialized
+Engine.js:288 System initialized: network
+MobileLODManager.js:116 Initializing MobileLODManager...
+MobileLODManager.js:211 ⚠️ Mobile device detection is inherently limited and may not perfectly reflect device capabilities.
+MobileLODManager.js:212 Dynamic adjustments will refine settings based on actual performance during gameplay.
+MobileLODManager.js:216 Device pixel ratio: 2.75 (higher generally indicates better display)
+MobileLODManager.js:225 Device memory information not available
+MobileLODManager.js:246 Device category: iOS (GPU score: 1.30)
+MobileLODManager.js:255 Mobile device capability score: 1.79, scaling factor: 1.00
+MobileLODManager.js:126 Starting initial FPS benchmark for better LOD calibration...
+MobileLODManager.js:130 MobileLODManager initialized
+Engine.js:288 System initialized: mobileLOD
+WorldSystem.js:239 Initializing WorldSystem...
+WorldSystem.js:1492 Creating initial terrain...
+WorldSystem.js:260 WorldSystem initialized
+Engine.js:288 System initialized: world
+WaterSystem.js:36 Initializing WaterSystem...
+WaterSystem.js:42 Setting water level to -55.00 based on terrain
+WaterSystem.js:52 WaterSystem initializing for Android platform
+WaterSystem.js:54 Android device info: mozilla/5.0 (linux; android 10; k) applewebkit/537.36 (khtml, like gecko) chrome/135.0.0.0 mobile safari/537.36
+WaterSystem.js:62 Mobile Android device detected, starting with water reflections disabled.
+AssetManager.js:230 EncodingError: Unable to decode audio data
+handleError @ chunk-UZOV2HZI.js?v=e2c42b69:26935
+Promise.catch
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:26926
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ chunk-UZOV2HZI.js?v=e2c42b69:26920
+(anonymous) @ AssetManager.js:230
+loadAudio @ AssetManager.js:229
+(anonymous) @ AssetManager.js:181
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:36 Asset not found: /assets/audio/background.mp3 - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+handleError @ chunk-UZOV2HZI.js?v=e2c42b69:26937
+Promise.catch
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:26926
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ chunk-UZOV2HZI.js?v=e2c42b69:26920
+(anonymous) @ AssetManager.js:230
+loadAudio @ AssetManager.js:229
+(anonymous) @ AssetManager.js:181
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:230 EncodingError: Unable to decode audio data
+handleError @ chunk-UZOV2HZI.js?v=e2c42b69:26935
+Promise.catch
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:26926
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ chunk-UZOV2HZI.js?v=e2c42b69:26920
+(anonymous) @ AssetManager.js:230
+loadAudio @ AssetManager.js:229
+(anonymous) @ AssetManager.js:181
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:36 Asset not found: /assets/audio/collect.mp3 - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+handleError @ chunk-UZOV2HZI.js?v=e2c42b69:26937
+Promise.catch
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:26926
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ chunk-UZOV2HZI.js?v=e2c42b69:26920
+(anonymous) @ AssetManager.js:230
+loadAudio @ AssetManager.js:229
+(anonymous) @ AssetManager.js:181
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:230 EncodingError: Unable to decode audio data
+handleError @ chunk-UZOV2HZI.js?v=e2c42b69:26935
+Promise.catch
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:26926
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ chunk-UZOV2HZI.js?v=e2c42b69:26920
+(anonymous) @ AssetManager.js:230
+loadAudio @ AssetManager.js:229
+(anonymous) @ AssetManager.js:181
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+AssetManager.js:36 Asset not found: /assets/audio/spell.mp3 - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=e2c42b69:24874
+handleError @ chunk-UZOV2HZI.js?v=e2c42b69:26937
+Promise.catch
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:26926
+(anonymous) @ chunk-UZOV2HZI.js?v=e2c42b69:25067
+Promise.then
+load @ chunk-UZOV2HZI.js?v=e2c42b69:25061
+load @ chunk-UZOV2HZI.js?v=e2c42b69:26920
+(anonymous) @ AssetManager.js:230
+loadAudio @ AssetManager.js:229
+(anonymous) @ AssetManager.js:181
+initialize @ AssetManager.js:177
+initialize @ Engine.js:251
+(anonymous) @ main.js:17
+WaterSystem.js:226 Created simplified water implementation for Android
+WaterSystem.js:79 Android: Applied reflection optimizations at initialization
+WaterSystem.js:83 WaterSystem initialized
+Engine.js:288 System initialized: water
+VegetationSystem.js:88 Initializing VegetationSystem...
+VegetationSystem.js:99 Using mobile-optimized LOD distances: {"high":150,"medium":400,"low":900}
+VegetationSystem.js:104 Using mobile vegetation density: 0.7
+VegetationSystem.js:108 VegetationSystem initialized
+Engine.js:288 System initialized: vegetation
+PlayerModels.js:46 Created 6 carpet models
+PlayerSpells.js:22 Spell system initialized
+PlayerSystem.js:34 Setting up touch controls for mobile device
+PlayerInput.js:891 Setting up touch controls UI elements
+PlayerSystem.js:64 Player system initialized
+Engine.js:288 System initialized: player
+AtmosphereSystem.js:60 Initializing AtmosphereSystem...
+SkySystem.js:23 Initializing SkySystem...
+SkySystem.js:46 SkySystem initialization complete
+SunSystem.js:38 SunSystem initialized
+AtmosphereSystem.js:78 AtmosphereSystem initialized
+Engine.js:288 System initialized: atmosphere
+UISystem.js:213 Minimap functionality moved to MinimapSystem
+UISystem.js:24 UI system initialized
+Engine.js:288 System initialized: ui
+CarpetTrailSystem.js:88 Initializing CarpetTrailSystem
+Engine.js:288 System initialized: carpetTrail
+LandmarkSystem.js:76 Initializing LandmarkSystem...
+LandmarkSystem.js:80 LandmarkSystem initialized
+Engine.js:288 System initialized: landmarks
+MinimapSystem.js:40 Initializing MinimapSystem...
+MinimapSystem.js:53 MinimapSystem initialized
+Engine.js:288 System initialized: minimap
+Engine.js:605 Applied material optimizations for 87 materials
+InputManager.js:61 Touch device detected, setting up touch event handlers
+MobileLODManager.js:170 Benchmark completed but no samples collected. Using default settings.
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 0.0/60 (0%), Triangles: 0, Quality: 1/2, Time at quality: 0.0s
+MobileLODManager.js:602 ⬇️ Decreasing quality to 0/2 because: FPS critically low (0% of target)
+WaterSystem.js:186 WaterSystem: Applying quality settings: {reflectionEnabled: true, quality: 'low', renderDistance: 2000, textureSize: 256}
+WaterSystem.js:107 Water reflections enabled without recreation (Android)
+WaterSystem.js:143 Android: Restored original water onBeforeRender function
+WaterSystem.js:203 Water render distance would be set to 2000
+WaterSystem.js:208 Water texture size would be set to 256
+MobileLODManager.js:613 🚨 Emergency pixel ratio reduction to 1.44
+MobileLODManager.js:652 Updating vegetation density to 0.40
+Settings.js:102 Reduced vegetation quality to low
+Engine.js:433 Performance-based quality adjustments applied
+main.js:22 Error initializing game: ReferenceError: useGameState is not defined
+    at Engine.initialize (Engine.js:316:5)
+    at async HTMLDocument.<anonymous> (main.js:17:5)
+(anonymous) @ main.js:22
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 14.1/60 (24%), Triangles: 74668, Quality: 0/2, Time at quality: 4.7s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+Settings.js:117 Turned shadows off
+Engine.js:433 Performance-based quality adjustments applied
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 18.9/60 (32%), Triangles: 74668, Quality: 0/2, Time at quality: 9.7s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+Settings.js:128 Reduced effects quality to low
+Engine.js:433 Performance-based quality adjustments applied
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 18.6/60 (31%), Triangles: 74668, Quality: 0/2, Time at quality: 14.7s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+InputManager.js:198 Touch start detected 1 touches
+InputManager.js:198 Touch start detected 1 touches
+InputManager.js:198 Touch start detected 1 touches
+Engine.js:433 Performance-based quality adjustments applied
+InputManager.js:198 Touch start detected 1 touches
+IntroScreen.js:109 Start Journey clicked
+InputManager.js:198 Touch start detected 1 touches
+IntroScreen.js:109 Start Journey clicked
+gameState.js:40 Invalid transition from LOADING to PLAYING
+setGameState @ gameState.js:40
+(anonymous) @ IntroScreen.js:115
+setTimeout
+handlePlayButtonPress @ IntroScreen.js:113
+IntroScreen.js:119 Calling play callback
+Engine.js:310 Game started from intro screen
+InputManager.js:198 Touch start detected 1 touches
+IntroScreen.js:109 Start Journey clicked
+gameState.js:40 Invalid transition from LOADING to PLAYING
+setGameState @ gameState.js:40
+(anonymous) @ IntroScreen.js:115
+setTimeout
+handlePlayButtonPress @ IntroScreen.js:113
+IntroScreen.js:119 Calling play callback
+Engine.js:310 Game started from intro screen
+InputManager.js:198 Touch start detected 1 touches
+InputManager.js:198 Touch start detected 1 touches
+gameState.js:40 Invalid transition from LOADING to PLAYING
+setGameState @ gameState.js:40
+(anonymous) @ IntroScreen.js:115
+setTimeout
+handlePlayButtonPress @ IntroScreen.js:113
+IntroScreen.js:119 Calling play callback
+IntroScreen.js:109 Start Journey clicked
+NetworkManager.js:84 Connected to server
+NetworkManager.js:107 Received player ID: a27c2d64-8fc5-4f36-81d1-5e0f00a1aa62
+PlayerSystem.js:109 Local player created with ID: a27c2d64-8fc5-4f36-81d1-5e0f00a1aa62
+PlayerSystem.js:142 Network player created with ID: 6dadefeb-999e-49a3-a852-9c499cbe61c4
+InputManager.js:198 Touch start detected 1 touches
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+[Violation] 'requestAnimationFrame' handler took <N>ms
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 18.3/60 (30%), Triangles: 75277, Quality: 0/2, Time at quality: 19.3s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+gameState.js:40 Invalid transition from LOADING to PLAYING
+setGameState @ gameState.js:40
+(anonymous) @ IntroScreen.js:115
+setTimeout
+handlePlayButtonPress @ IntroScreen.js:113
+IntroScreen.js:119 Calling play callback
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 20.4/60 (34%), Triangles: 77463, Quality: 0/2, Time at quality: 24.3s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 23.2/60 (39%), Triangles: 78618, Quality: 0/2, Time at quality: 29.3s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 23.8/60 (40%), Triangles: 77429, Quality: 0/2, Time at quality: 33.0s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 24.7/60 (41%), Triangles: 77866, Quality: 0/2, Time at quality: 38.1s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 25.0/60 (42%), Triangles: 77775, Quality: 0/2, Time at quality: 41.9s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 25.8/60 (43%), Triangles: 77530, Quality: 0/2, Time at quality: 46.1s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.1/60 (44%), Triangles: 77487, Quality: 0/2, Time at quality: 50.3s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.3/60 (44%), Triangles: 77538, Quality: 0/2, Time at quality: 54.6s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.4/60 (44%), Triangles: 77581, Quality: 0/2, Time at quality: 58.9s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.6/60 (44%), Triangles: 77495, Quality: 0/2, Time at quality: 63.0s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.9/60 (45%), Triangles: 77307, Quality: 0/2, Time at quality: 67.2s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.6/60 (44%), Triangles: 77144, Quality: 0/2, Time at quality: 71.3s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.7/60 (45%), Triangles: 77000, Quality: 0/2, Time at quality: 75.4s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 26.8/60 (45%), Triangles: 76968, Quality: 0/2, Time at quality: 79.7s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 27.3/60 (45%), Triangles: 76939, Quality: 0/2, Time at quality: 83.9s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 27.3/60 (46%), Triangles: 76997, Quality: 0/2, Time at quality: 88.2s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 27.6/60 (46%), Triangles: 77015, Quality: 0/2, Time at quality: 92.4s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 28.3/60 (47%), Triangles: 77103, Quality: 0/2, Time at quality: 96.6s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 28.7/60 (48%), Triangles: 77191, Quality: 0/2, Time at quality: 100.8s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+MobileLODManager.js:544 LOD Assessment: Avg FPS: 29.0/60 (48%), Triangles: 77279, Quality: 0/2, Time at quality: 105.1s
+MobileLODManager.js:626 ✓ Maintaining quality level 0/2
+ LOD Assessment: Avg FPS: 29.0/60 (48%), Triangles: 76969, Quality: 0/2, Time at quality: 109.4s
+ ✓ Maintaining quality level 0/2
+ LOD Assessment: Avg FPS: 28.6/60 (48%), Triangles: 76500, Quality: 0/2, Time at quality: 113.6s
+ ✓ Maintaining quality level 0/2
+ LOD Assessment: Avg FPS: 28.4/60 (47%), Triangles: 76621, Quality: 0/2, Time at quality: 117.8s
+ ✓ Maintaining quality level 0/2
