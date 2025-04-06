@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/detect-ip.js",
+    "prestart": "node scripts/detect-ip.js",
     "start": "node server.js",
     "dev": "vite",
     "build": "vite build",

@@ -33,10 +33,25 @@ export class NetworkManager extends EventEmitter {
       this.connect();
     });
     
-    // Set up server URL
-    this.serverUrl = this.isDev 
-      ? 'http://localhost:4000' 
-      : (import.meta.env.VITE_SERVER_URL || window.location.origin);
+    // Set up server URL - FIXED for mobile devices
+    // Use VITE_SERVER_URL if provided, otherwise use window.location.origin
+    // This will use the same domain/IP that the website is loaded from
+// Set up server URL
+  this.serverUrl = import.meta.env.VITE_SERVER_URL || window.location.origin;
+
+  // If using auto IP detection
+  if (import.meta.env.VITE_AUTO_IP === 'true') {
+    // Use current window host but port 4000
+    const url = new URL(window.location.href);
+    this.serverUrl = `${url.protocol}//${url.hostname}:4000`;
+  }    
+    // For local development on computer only, use localhost if needed
+    // To specifically test on localhost during development for desktop
+    if (this.isDev && window.location.hostname === 'localhost') {
+      this.serverUrl = 'http://localhost:4000';
+    }
+    
+    console.log("Connecting to server URL:", this.serverUrl);
     
     // Create socket but don't connect yet
     this.socket = io(this.serverUrl, {
