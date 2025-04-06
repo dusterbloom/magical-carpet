@@ -78,8 +78,37 @@ export class Engine {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     THREE.ColorManagement.enabled = true;
     
+
+    if (this.input.isTouchDevice) {
+      // Disable pointer lock behaviors on touch devices
+      this.input.pointerLockEnabled = false;
+      
+      // Add touch-specific styles
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      
+      // Prevent unwanted browser behaviors
+      document.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+      }, { passive: false });
+      
+      // Prevent double-tap zoom
+      let lastTap = 0;
+      document.addEventListener('touchend', (e) => {
+        const curTime = new Date().getTime();
+        const tapLen = curTime - lastTap;
+        if (tapLen < 500 && tapLen > 0) {
+          e.preventDefault();
+        }
+        lastTap = curTime;
+      });
+    }
+    
     // Platform-specific renderer settings
     if (this.isMobile) {
+
+
       // Mobile-optimized configuration
       const pixelRatio = this.deviceCapabilities.gpuTier === 'low' ? 
         Math.min(window.devicePixelRatio, 1.0) : // Low-end: cap at 1.0

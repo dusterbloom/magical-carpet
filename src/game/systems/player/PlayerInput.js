@@ -441,7 +441,7 @@ setupTouchControls() {
     startPosition: { x: 0, y: 0 },
     container: {
       rect: joystickContainer.getBoundingClientRect(),
-      radius: 75
+      radius: joystickContainer.getBoundingClientRect().width / 2
     }
   };
   
@@ -721,7 +721,8 @@ setupJoystickEvents(input, joystickElement) {
     this.joystick.active = false;
     this.joystick.position.x = 0;
     this.joystick.position.y = 0;
-    joystickElement.style.transform = 'translate(0px, 0px)';
+    joystickElement.style.left = '33%';
+    joystickElement.style.top = '33%';
   }
   
   createDebugOverlay() {
@@ -896,11 +897,11 @@ setupJoystickEvents(input, joystickElement) {
     // Create virtual joystick container
     const joystickContainer = document.createElement('div');
     joystickContainer.style.position = 'fixed';
-    joystickContainer.style.bottom = '20px';
-    joystickContainer.style.right = '20px';
-    joystickContainer.style.width = '150px';
-    joystickContainer.style.height = '150px';
-    joystickContainer.style.borderRadius = '75px';
+    joystickContainer.style.bottom = '5%';
+    joystickContainer.style.right = '5%';
+    joystickContainer.style.width = '20vmin';
+    joystickContainer.style.height = '20vmin';
+    joystickContainer.style.borderRadius = '50%';
     joystickContainer.style.background = 'rgba(255, 255, 255, 0.2)';
     joystickContainer.style.border = '2px solid rgba(255, 255, 255, 0.4)';
     joystickContainer.style.zIndex = '1000';
@@ -910,11 +911,11 @@ setupJoystickEvents(input, joystickElement) {
     // Create joystick knob
     const joystick = document.createElement('div');
     joystick.style.position = 'absolute';
-    joystick.style.top = '50px';
-    joystick.style.left = '50px';
-    joystick.style.width = '50px';
-    joystick.style.height = '50px';
-    joystick.style.borderRadius = '25px';
+    joystick.style.top = '33%';
+    joystick.style.left = '33%';
+    joystick.style.width = '33%';
+    joystick.style.height = '33%';
+    joystick.style.borderRadius = '50%';
     joystick.style.background = 'rgba(255, 255, 255, 0.8)';
     joystick.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
     joystickContainer.appendChild(joystick);
@@ -922,16 +923,16 @@ setupJoystickEvents(input, joystickElement) {
     // Create boost button
     const boostButton = document.createElement('div');
     boostButton.style.position = 'fixed';
-    boostButton.style.bottom = '20px';
-    boostButton.style.left = '20px';
-    boostButton.style.width = '80px';
-    boostButton.style.height = '80px';
-    boostButton.style.borderRadius = '40px';
+    boostButton.style.bottom = '5%';
+    boostButton.style.left = '5%';
+    boostButton.style.width = '15vmin';
+    boostButton.style.height = '15vmin';
+    boostButton.style.borderRadius = '50%';
     boostButton.style.background = 'rgba(30, 144, 255, 0.7)';
     boostButton.style.display = 'flex';
     boostButton.style.alignItems = 'center';
     boostButton.style.justifyContent = 'center';
-    boostButton.style.fontSize = '28px';
+    boostButton.style.fontSize = 'min(28px, 4vmin)';
     boostButton.innerHTML = '🚀';
     boostButton.style.color = 'white';
     boostButton.style.boxShadow = '0 0 15px rgba(30, 144, 255, 0.5)';
@@ -1026,7 +1027,10 @@ setupJoystickEvents(input, joystickElement) {
         dy *= this.joystick.container.radius / distance;
       }
       
-      joystickElement.style.transform = `translate(${dx}px, ${dy}px)`;
+      // Use left/top positioning instead of transform for better compatibility
+      joystickElement.style.left = `calc(33% + ${dx}px)`;
+      joystickElement.style.top = `calc(33% + ${dy}px)`;
+      
       this.joystick.position.x = dx / this.joystick.container.radius;
       this.joystick.position.y = dy / this.joystick.container.radius;
     };
@@ -1036,7 +1040,8 @@ setupJoystickEvents(input, joystickElement) {
       this.joystick.active = false;
       this.joystick.position.x = 0;
       this.joystick.position.y = 0;
-      joystickElement.style.transform = 'translate(0px, 0px)';
+      joystickElement.style.left = '33%';
+      joystickElement.style.top = '33%';
     };
   
     // Add touch event listeners

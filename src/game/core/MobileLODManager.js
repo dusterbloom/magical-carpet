@@ -693,7 +693,7 @@ dynamicallyAdjustLOD() {
    * @param {number} [baseCullDistance=6000] - Base distance for culling
    * @returns {boolean} True if the object should be culled
    */
-  shouldCull(position, cameraPosition, baseCullDistance = 6000) {
+  shouldCull(position, cameraPosition, baseCullDistance = 12000) {
     if (!this.isMobile) {
       // Desktop culling unchanged
       const distance = position.distanceTo(cameraPosition);

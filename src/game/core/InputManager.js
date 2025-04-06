@@ -27,7 +27,7 @@ export class InputManager {
     this.filterCoefficient = 0.98; // Complementary filter coefficient
 
     // Add these properties to the constructor
-this.touchScale = 1 / window.devicePixelRatio;
+this.touchScale = 1; // Remove DPI scaling which causes issues on some devices
 this.lastTapTime = 0;
 this.doubleTapThreshold = 300;
 
@@ -35,9 +35,23 @@ this.doubleTapThreshold = 300;
 this.boundOnDeviceOrientation = this.onDeviceOrientation.bind(this);
 this.boundOnDeviceMotion = this.onDeviceMotion.bind(this);
 this.prevRotationRate = { alpha: 0, beta: 0, gamma: 0 };
+
+this.pointerLocked = false;
+this.pointerLockRequested = false;
+this.isAndroid = /android/i.test(navigator.userAgent);
+this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   }
   
   initialize() {
+
+
+     // Only set up pointer lock on non-touch devices or when specifically requested
+     if (!this.isTouchDevice) {
+      document.addEventListener('click', this.requestPointerLock.bind(this));
+      document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this));
+      document.addEventListener('pointerlockerror', this.onPointerLockError.bind(this));
+    }
+  
     // Start the sensor fusion update loop
     this.updateInterval = setInterval(() => {
       this.updateFusedOrientation();
@@ -107,24 +121,62 @@ this.prevRotationRate = { alpha: 0, beta: 0, gamma: 0 };
   }
   
   onMouseMove(event) {
+    // Handle mouse movement differently based on pointer lock state
     if (this.pointerLocked) {
-      // Use movementX/Y for more accurate mouse control when pointer is locked
-      this.mouse.dx = event.movementX || 0;
-      this.mouse.dy = event.movementY || 0;
+      // Use movementX/Y for accurate mouse control when pointer is locked
+      this.mouse.dx = event.movementX || 
+                      event.mozMovementX || 
+                      event.webkitMovementX || 
+                      0;
+      this.mouse.dy = event.movementY || 
+                      event.mozMovementY || 
+                      event.webkitMovementY || 
+                      0;
     } else {
+      // Fall back to calculating movement from position when not locked
       const prevX = this.mouse.x;
       const prevY = this.mouse.y;
       
       this.mouse.x = event.clientX;
       this.mouse.y = event.clientY;
-      this.mouse.dx = this.mouse.x - prevX;
-      this.mouse.dy = this.mouse.y - prevY;
+      
+      // Only calculate delta if we have previous values
+      if (typeof prevX === 'number' && typeof prevY === 'number') {
+        this.mouse.dx = this.mouse.x - prevX;
+        this.mouse.dy = this.mouse.y - prevY;
+      } else {
+        this.mouse.dx = 0;
+        this.mouse.dy = 0;
+      }
     }
     
-    this.emit('mousemove', event);
+    // Scale mouse movement for consistency
+    const movementScale = this.pointerLocked ? 1.0 : 0.5;
+    this.mouse.dx *= movementScale;
+    this.mouse.dy *= movementScale;
+    
+    this.emit('mousemove', {
+      originalEvent: event,
+      dx: this.mouse.dx,
+      dy: this.mouse.dy,
+      x: this.mouse.x,
+      y: this.mouse.y
+    });
   }
   
+  // Add method to check if pointer lock is available
+  isPointerLockAvailable() {
+    return !this.isTouchDevice && 
+           'pointerLockElement' in document && 
+           'requestPointerLock' in document.body;
+  }
 
+  // Add method to explicitly release pointer lock
+  releasePointerLock() {
+    if (this.pointerLocked && document.exitPointerLock) {
+      document.exitPointerLock();
+    }
+  }
 // Modified touch start handler
 // onTouchStart(event) {
 //   event.preventDefault();
@@ -312,19 +364,46 @@ onTouchMove(event) {
   }
   
   requestPointerLock() {
-    if (!this.pointerLocked) {
-      document.body.requestPointerLock();
+    // Don't request pointer lock on touch devices
+    if (this.isTouchDevice) return;
+    
+    // Don't request if already locked or requesting
+    if (this.pointerLocked || this.pointerLockRequested) return;
+
+    try {
+      // Only request pointer lock if we're in a user gesture
+      if (document.body.requestPointerLock) {
+        this.pointerLockRequested = true;
+        document.body.requestPointerLock();
+      }
+    } catch (error) {
+      console.warn('Pointer lock request failed:', error);
+      this.pointerLockRequested = false;
     }
   }
-  
+
   onPointerLockChange() {
     this.pointerLocked = document.pointerLockElement === document.body;
+    this.pointerLockRequested = false;
+    
+    if (this.pointerLocked) {
+      console.log('Pointer lock acquired');
+    } else {
+      console.log('Pointer lock released');
+    }
+    
     this.emit('pointerlock', this.pointerLocked);
   }
-  
-  onPointerLockError() {
-    console.error('Pointer lock error');
+
+  onPointerLockError(error) {
+    console.warn('Pointer lock error:', error);
+    this.pointerLocked = false;
+    this.pointerLockRequested = false;
+    
+    // Emit error event so other systems can respond
+    this.emit('pointerlockerror', error);
   }
+
   
   // Device orientation handling for motion controls
   onDeviceOrientation(event) {
