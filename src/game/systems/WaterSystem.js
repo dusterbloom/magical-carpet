@@ -17,6 +17,7 @@ export class WaterSystem {
     this._reflectionCameraInitialized = false;
     this._waterQuality = 'high';
     this._originalOnBeforeRender = null; // Store the original function
+    this._savedAndroidBeforeRender = null; // Android-specific render function storage
 
     // State flag for reflections
     this.reflectionsEnabled = true; // Assume enabled by default
@@ -24,6 +25,9 @@ export class WaterSystem {
     // Track saved resolution for efficient reflection toggling
     this._savedResolution = null;
 
+    // Platform detection
+    this.isAndroid = /android/i.test(navigator.userAgent);
+    
     // Debug flag
     this._debugChecked = false;
   }
@@ -38,19 +42,44 @@ export class WaterSystem {
       console.log(`Setting water level to ${this.waterLevel.toFixed(2)} based on terrain`);
     }
 
+    // Detailed platform detection for better debugging
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroid = /android/i.test(userAgent);
+    const isIOS = /iphone|ipad|ipod/i.test(userAgent);
+    this.isAndroid = isAndroid; // Store platform info
+    
+    // Log detailed platform information
+    console.log(`WaterSystem initializing for ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Desktop'} platform`);
+    if (isAndroid) {
+      console.log(`Android device info: ${userAgent}`);
+    }
+
     // Initial quality setting based on platform
     if (this.engine.settings && this.engine.settings.isMobile) {
-       // Start with reflections disabled on mobile by default for performance
+      // Start with reflections disabled on mobile by default for performance
       this.reflectionsEnabled = false;
       this._waterQuality = 'low'; // Reflect the disabled state
-      console.log('Mobile device detected, starting with water reflections disabled.');
+      console.log(`Mobile ${isAndroid ? 'Android' : 'iOS'} device detected, starting with water reflections disabled.`);
     } else {
       this.reflectionsEnabled = true;
       this._waterQuality = 'high';
     }
 
-
     await this.createWater(); // Use await if texture loading needs it
+    
+    // Apply specific platform optimizations after water creation
+    if (isAndroid && !this.reflectionsEnabled) {
+      // Ensure Android-specific reflection disabling is active from the start
+      if (this.water && this.water.onBeforeRender) {
+        // Store original for later restoration
+        this._savedAndroidBeforeRender = this.water.onBeforeRender;
+        
+        // Replace with no-op
+        this.water.onBeforeRender = () => {};
+        console.log("Android: Applied reflection optimizations at initialization");
+      }
+    }
+    
     console.log("WaterSystem initialized");
   }
 
@@ -73,40 +102,68 @@ export class WaterSystem {
       this._waterQuality = 'medium';
     }
     
-    console.log(`Water reflections ${enabled ? 'enabled' : 'disabled'} without recreation`);
+    // Detect platform for platform-specific optimizations
+    const isAndroid = /android/i.test(navigator.userAgent);
+    console.log(`Water reflections ${enabled ? 'enabled' : 'disabled'} without recreation (${isAndroid ? 'Android' : 'iOS/Desktop'})`);
     
     // Apply changes to existing water material
     if (this.water && this.water.material) {
-      // Modify specific properties instead of recreating entire material
-      this.water.material.uniforms.useReflection.value = enabled;
-      // Adjust reflection-specific properties
+      // Platform-agnostic changes (work on all platforms)
       if (this.water.material.uniforms) {
         // Update distortion scale
         if (this.water.material.uniforms.distortionScale) {
           this.water.material.uniforms.distortionScale.value = enabled ? 0.8 : 0.1;
         }
+        
+        // Explicitly set useReflection if it exists, but don't rely on it
+        if (this.water.material.uniforms.useReflection) {
+          this.water.material.uniforms.useReflection.value = enabled;
+        }
       }
       
-      // Handle reflection textures/render targets
-      const reflector = this.water;
-      if (reflector && reflector.getRenderTarget) {
-        // Enable/disable reflection texture updates
-        const target = reflector.getRenderTarget();
-        if (target) {
-          // Keep texture but stop updates if disabled
-          if (!enabled) {
-            // Store existing resolution to restore if re-enabled
-            this._savedResolution = target.width;
-            // Set to 2x2 minimal texture while disabled (near zero cost)
-            target.setSize(2, 2);
-          } else if (this._savedResolution) {
-            // Restore previous resolution
-            target.setSize(this._savedResolution, this._savedResolution);
+      // PLATFORM-SPECIFIC: Handle reflection method override for Android
+      if (isAndroid) {
+        // Use method replacement approach for Android
+        if (!enabled) {
+          // Store original onBeforeRender function if not already stored
+          if (!this._savedAndroidBeforeRender && this.water.onBeforeRender) {
+            this._savedAndroidBeforeRender = this.water.onBeforeRender;
+            
+            // Replace with minimal no-op function to prevent reflection updates
+            this.water.onBeforeRender = (renderer, scene, camera) => {
+              // Do nothing - skip reflection rendering entirely
+              // This is the most direct way to prevent reflections on Android
+            };
+            console.log("Android: Replaced water onBeforeRender with no-op function");
+          }
+        } else if (this._savedAndroidBeforeRender) {
+          // Restore original function when re-enabling
+          this.water.onBeforeRender = this._savedAndroidBeforeRender;
+          this._savedAndroidBeforeRender = null;
+          console.log("Android: Restored original water onBeforeRender function");
+        }
+      } else {
+        // NON-ANDROID: Handle reflection textures/render targets (iOS/Desktop approach)
+        const reflector = this.water;
+        if (reflector && reflector.getRenderTarget) {
+          // Enable/disable reflection texture updates
+          const target = reflector.getRenderTarget();
+          if (target) {
+            // Keep texture but stop updates if disabled
+            if (!enabled) {
+              // Store existing resolution to restore if re-enabled
+              this._savedResolution = target.width;
+              // Set to 2x2 minimal texture while disabled (near zero cost)
+              target.setSize(2, 2);
+            } else if (this._savedResolution) {
+              // Restore previous resolution
+              target.setSize(this._savedResolution, this._savedResolution);
+            }
           }
         }
       }
       
-      // Force material update
+      // Force material update on all platforms
       this.water.material.needsUpdate = true;
     }
     
@@ -159,6 +216,92 @@ export class WaterSystem {
 
 
   async createWater() {
+    // Platform-specific water creation strategies
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroid = /android/i.test(userAgent);
+    
+    if (isAndroid && this.engine.settings && this.engine.settings.isMobile) {
+      // Use completely different water implementation for Android
+      await this.createAndroidSimplifiedWater();
+      console.log("Created simplified water implementation for Android");
+      return;
+    }
+
+    // Standard water implementation for iOS and desktop
+    await this.createStandardWater();
+  }
+
+  /**
+   * Create simplified water for Android devices
+   * This avoids all the complex reflection/refraction issues on Android WebGL
+   * @private
+   */
+  async createAndroidSimplifiedWater() {
+    // Create much simpler water with flat shading and no reflections
+    const waterGeometry = new THREE.PlaneGeometry(10000, 10000, 4, 4); // Minimal segments
+    
+    // Load texture for simple water
+    const waterTexture = await new Promise((resolve) => {
+      new TextureLoader().load('textures/2waternormals.jpg', texture => {
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(16, 16); // Large repeat for simpler pattern
+        resolve(texture);
+      }, undefined, err => {
+        console.error("Failed to load water texture", err);
+        // Create fallback texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0077bb';
+        ctx.fillRect(0, 0, 128, 128);
+        // Add simple wave pattern
+        ctx.strokeStyle = '#0099cc';
+        for (let i = 0; i < 8; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, i * 16);
+          for (let x = 0; x < 128; x++) {
+            ctx.lineTo(x, i * 16 + Math.sin(x * 0.1) * 5);
+          }
+          ctx.stroke();
+        }
+        resolve(new THREE.CanvasTexture(canvas));
+      });
+    });
+    
+    // Use simple PhongMaterial instead of complex Water shader
+    const waterMaterial = new THREE.MeshPhongMaterial({
+      color: 0x0088cc, // Brighter blue for better visibility
+      specular: 0x111111,
+      shininess: 50,
+      transparent: true,
+      opacity: 0.85,
+      flatShading: false,
+      map: waterTexture
+    });
+    
+    // Store animation data
+    this._waterOffset = { x: 0, y: 0 };
+    
+    // Create basic mesh
+    this.water = new THREE.Mesh(waterGeometry, waterMaterial);
+    this.water.rotation.x = -Math.PI / 2;
+    this.water.position.y = this.waterLevel - 0.2; // Slight offset to avoid z-fighting
+    this.water.renderOrder = 10; // Ensure water renders after terrain
+    
+    // No reflections for Android simplified water
+    this.reflectionsEnabled = false;
+    this._waterQuality = 'low';
+    
+    // Add to scene
+    this.scene.add(this.water);
+  }
+
+  /**
+   * Create standard water with reflections for iOS and Desktop
+   * @private
+   */
+  async createStandardWater() {
     // --- Determine Quality Settings (Texture Size, Distortion, Alpha) ---
     let textureSize = 2048;
     let distortionScale = 0.8;
@@ -364,24 +507,18 @@ export class WaterSystem {
 
 
   update(deltaTime) {
-    if (!this.water || !this.water.material) return; // Safety check
-
-    // --- Animation Speed ---
-    let animationSpeed = 0.8;
-    if (this.engine.settings && this.engine.settings.isMobile) {
-        animationSpeed = this._waterQuality === 'low' ? 0.3 :
-                          this._waterQuality === 'medium' ? 0.5 : 0.8;
-    }
-    this.water.material.uniforms['time'].value += deltaTime * animationSpeed;
-
-    // --- Sun Direction ---
-    if (this.engine.systems.atmosphere?.sunSystem) {
-      const sunPosition = this.engine.systems.atmosphere.sunSystem.getSunPosition();
-      const sunDirection = sunPosition.clone().normalize();
-      this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
+    if (!this.water) return; // Safety check
+    
+    const isAndroid = this.isAndroid || /android/i.test(navigator.userAgent);
+    
+    // Handle platform-specific water updates
+    if (isAndroid && this.engine.settings && this.engine.settings.isMobile) {
+      this.updateAndroidSimplifiedWater(deltaTime);
+    } else {
+      this.updateStandardWater(deltaTime);
     }
 
-    // --- Position Update with Grid Quantization ---
+    // --- Position Update with Grid Quantization (common for both implementations) ---
     if (this.engine.camera) {
       const cameraX = this.engine.camera.position.x;
       const cameraZ = this.engine.camera.position.z;
@@ -399,24 +536,71 @@ export class WaterSystem {
         
         // Apply matching deterministic micro-noise to keep consistent with terrain
         const deterministicNoise = Math.sin(gridX * 0.1) * Math.cos(gridZ * 0.1) * 0.01;
-        this.water.position.y = this.waterLevel + deterministicNoise - 0.05; // Small offset to avoid z-fighting
+        
+        // Adjust Y based on platform - Android needs slightly different Z offset
+        if (isAndroid) {
+          this.water.position.y = this.waterLevel + deterministicNoise - 0.2; // Bigger offset for Android
+        } else {
+          this.water.position.y = this.waterLevel + deterministicNoise - 0.05; // Regular offset for iOS/Desktop
+        }
       } else {
         // Fallback to original behavior if world system not available
         this.water.position.x = cameraX;
         this.water.position.z = cameraZ;
       }
     }
+  }
+  
+  /**
+   * Update simplified Android water
+   * @private
+   */
+  updateAndroidSimplifiedWater(deltaTime) {
+    // Simple texture-based animation for Android water
+    if (this.water && this.water.material && this.water.material.map) {
+      // Slow continuous movement for water texture
+      const texture = this.water.material.map;
+      const speed = 0.03; // Reduced animation speed for better performance
+      
+      // Initialize offset if needed
+      this._waterOffset = this._waterOffset || { x: 0, y: 0 };
+      
+      // Increment offset for animation
+      this._waterOffset.y += deltaTime * speed * 0.5;
+      this._waterOffset.x += deltaTime * speed * 0.2;
+      
+      // Apply texture offset for simple water animation
+      texture.offset.set(this._waterOffset.x % 1, this._waterOffset.y % 1);
+      this.water.material.needsUpdate = true;
+    }
+  }
+
+  /**
+   * Update standard water with reflections (iOS/Desktop)
+   * @private
+   */
+  updateStandardWater(deltaTime) {
+    // --- Animation Speed ---
+    let animationSpeed = 0.8;
+    if (this.engine.settings && this.engine.settings.isMobile) {
+        animationSpeed = this._waterQuality === 'low' ? 0.3 :
+                          this._waterQuality === 'medium' ? 0.5 : 0.8;
+    }
     
-    // No shoreline to update - removed due to visual artifacts
+    // Only update time uniform if it exists
+    if (this.water.material && this.water.material.uniforms && this.water.material.uniforms['time']) {
+      this.water.material.uniforms['time'].value += deltaTime * animationSpeed;
+    }
 
-    // --- REMOVED Redundant Mobile Hacks ---
-    // No need to force color or zero matrix here anymore.
-    // Reflection state is handled by the onBeforeRender wrapper.
-    // Water color is set during creation based on platform/quality.
-
-    // --- Performance Check & Quality Update (Moved to MobileLODManager) ---
-    // The logic to check FPS and recreate water is now removed from here.
-    // MobileLODManager will call setReflectionEnabled() when needed.
+    // --- Sun Direction ---
+    if (this.engine.systems.atmosphere?.sunSystem && 
+        this.water.material && 
+        this.water.material.uniforms && 
+        this.water.material.uniforms['sunDirection']) {
+      const sunPosition = this.engine.systems.atmosphere.sunSystem.getSunPosition();
+      const sunDirection = sunPosition.clone().normalize();
+      this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
+    }
   }
 
   isUnderwater(position) {
@@ -467,6 +651,13 @@ export class WaterSystem {
       if (this._originalOnBeforeRender) {
         this.water.onBeforeRender = this._originalOnBeforeRender;
         this._originalOnBeforeRender = null;
+      }
+      
+      // IMPORTANT: Also restore the Android-specific onBeforeRender if it was saved
+      if (this._savedAndroidBeforeRender) {
+        this.water.onBeforeRender = this._savedAndroidBeforeRender;
+        this._savedAndroidBeforeRender = null;
+        console.log("Android: Restored original water render function during disposal");
       }
 
       this.scene.remove(this.water);
