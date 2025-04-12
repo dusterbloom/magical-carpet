@@ -452,7 +452,7 @@ getWaterTextureSize(quality) {
   switch(quality) {
     case 'low': return 256;
     case 'medium': return 512;
-    case 'high': return 1024;
+    case 'high': return 512;
     default: return 512;
   }
 }
