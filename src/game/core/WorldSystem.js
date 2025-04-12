@@ -74,9 +74,7 @@ class WorldSystem {
       }
     }
   }
-  
-  // Rest of WorldSystem implementation would go here
-  // ...
+
 }
 
 export { WorldSystem };

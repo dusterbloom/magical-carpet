@@ -19,7 +19,7 @@ import { LandmarkSystem } from "../systems/LandmarkSystem";
 import { MinimapSystem } from "../systems/MinimapSystem";
 import { IntroScreen } from "../ui/screens/IntroScreen";
 import { useGameState, GameStates } from '../state/gameState.js';
-
+import { createTestRunner } from '../systems/tests';
 
 export class Engine {
   constructor() {
@@ -166,6 +166,11 @@ export class Engine {
     this._frameSkipAccumulator = 0;
     this._shadowUpdateCounter = 0;
     this._frameCounter = 0;
+
+    // Add test system in development mode
+    if (import.meta.env.DEV) {
+      this._testRunner = null;
+    }
   }
 
   // Device capability detection method
@@ -345,7 +350,18 @@ export class Engine {
     this.introScreen.show();
     useGameState.getState().setGameState(GameStates.INTRO);
 
-
+    // Initialize test system in development mode
+    if (import.meta.env.DEV) {
+      this._testRunner = createTestRunner(this);
+      
+      // Expose test runner to console
+      window.runSystemTests = async () => {
+        console.log('Running system tests...');
+        const results = await this._testRunner.runTests();
+        console.log('Tests complete!');
+        return results;
+      };
+    }
 
     console.log("Engine initialized successfully");
     console.log('Device Info:', {

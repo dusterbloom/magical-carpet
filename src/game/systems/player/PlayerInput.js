@@ -771,7 +771,7 @@ setupJoystickEvents(input, joystickElement) {
     debugOverlay.style.borderRadius = '5px';
     debugOverlay.style.fontFamily = 'monospace';
     debugOverlay.style.fontSize = '12px';
-    debugOverlay.style.zIndex = '2000';
+    // debugOverlay.style.zIndex = '2000';
     debugOverlay.style.pointerEvents = 'none'; // Don't capture touch events
     document.body.appendChild(debugOverlay);
     

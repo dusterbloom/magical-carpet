@@ -274,31 +274,48 @@ export class MobileLODManager {
     
     // Set renderer pixel ratio
     if (this.engine.renderer) {
-      // Use lower pixel ratio on mobile for better performance
-      // The visual quality impact is minor compared to the performance gain
       const optimalPixelRatio = Math.min(window.devicePixelRatio, 2);
       this.engine.renderer.setPixelRatio(optimalPixelRatio * 0.8);
       
       // Reduce shadow map size on mobile
       if (this.engine.renderer.shadowMap) {
-        this.engine.renderer.shadowMap.type = THREE.BasicShadowMap; // Use simpler shadows
+        this.engine.renderer.shadowMap.type = THREE.BasicShadowMap;
       }
     }
     
-    // Reduce draw distance on mobile
-    if (this.engine.systems.world) {
-      this.engine.systems.world.viewDistance = 4; // Reduced from default of 6
+    // Adjust camera frustum for mobile
+    if (this.engine.camera) {
+      // Increase FOV slightly for mobile to prevent sharp cutoffs
+      this.engine.camera.fov = Math.min(75, this.engine.camera.fov + 5);
+      
+      // Extend far plane for better horizon visibility
+      this.engine.camera.far = 25000; // Increased from default
+      
+      // Adjust near plane to help with precision
+      this.engine.camera.near = 1;
+      
+      // Update projection matrix to apply changes
+      this.engine.camera.updateProjectionMatrix();
     }
     
-    // Apply optimizations to all systems
+    // Adjust world view distance
+    if (this.engine.systems.world) {
+      // Increase view distance slightly to match camera far plane
+      this.engine.systems.world.viewDistance = 6;
+    }
+    
+    // Apply optimizations to vegetation
     if (this.engine.systems.vegetation) {
       const vegSystem = this.engine.systems.vegetation;
       vegSystem.densityScale = this.currentVegetationDensity;
-      // Reduce LOD distances for vegetation
       vegSystem.lodDistances = this.getLODDistances().vegetation;
     }
   }
-  
+
+  // Add a new method for horizon-specific LOD
+getHorizonLODDistance() {
+  return this.baseLODDistances.terrain.low * 1.2; // Extend horizon distance
+}
   /**
    * Get current LOD distances based on scaling factor
    * @returns {Object} LOD distances for all systems
@@ -312,7 +329,9 @@ export class MobileLODManager {
       terrain: {
         high: this.baseLODDistances.terrain.high * this.distanceScalingFactor,
         medium: this.baseLODDistances.terrain.medium * this.distanceScalingFactor,
-        low: this.baseLODDistances.terrain.low * this.distanceScalingFactor
+        low: this.baseLODDistances.terrain.low * this.distanceScalingFactor,
+        horizon: this.getHorizonLODDistance() // New horizon-specific distance
+
       },
       vegetation: {
         high: this.baseLODDistances.vegetation.high * this.distanceScalingFactor,
@@ -693,27 +712,40 @@ dynamicallyAdjustLOD() {
    * @param {number} [baseCullDistance=6000] - Base distance for culling
    * @returns {boolean} True if the object should be culled
    */
-  shouldCull(position, cameraPosition, baseCullDistance = 12000) {
-    if (!this.isMobile) {
-      // Desktop culling unchanged
-      const distance = position.distanceTo(cameraPosition);
-      return distance > baseCullDistance;
-    }
-    
-    // Less aggressive culling on mobile - adjusted values
+// Update the shouldCull method
+shouldCull(position, cameraPosition, baseCullDistance = 12000) {
+  if (!this.isMobile) {
     const distance = position.distanceTo(cameraPosition);
-    const cullDistance = this.optimizations.aggressiveDistanceCulling ? 
-      baseCullDistance * 0.8 : // Changed from 0.6 (60%) to 0.8 (80%)
-      baseCullDistance * 0.9;  // Changed from 0.8 (80%) to 0.9 (90%)
-      
-    // Add minimap consideration
-    const isInMinimapRange = distance < 2000; // Keep chunks visible for minimap
-    if (isInMinimapRange) {
-      return false; // Don't cull if within minimap range
-    }
-    
-    return distance > cullDistance;
+    return distance > baseCullDistance;
   }
+
+  const distance = position.distanceTo(cameraPosition);
+  
+  // Calculate angle to horizon
+  const angleToHorizon = Math.atan2(position.y - cameraPosition.y, 
+    Math.sqrt(Math.pow(position.x - cameraPosition.x, 2) + Math.pow(position.z - cameraPosition.z, 2)));
+  
+  // Special handling for horizon chunks (near horizontal view angle)
+  const isNearHorizon = Math.abs(angleToHorizon) < 0.1; // About 5.7 degrees
+  
+  if (isNearHorizon) {
+    // Use less aggressive culling for horizon chunks
+    return distance > baseCullDistance * 1.2; // Actually extend view distance for horizon
+  }
+
+  // Keep minimap chunks
+  const isInMinimapRange = distance < 2000;
+  if (isInMinimapRange) {
+    return false;
+  }
+
+  // Normal culling with adjusted distances
+  const cullDistance = this.optimizations.aggressiveDistanceCulling ? 
+    baseCullDistance * 0.85 : // Increased from 0.8
+    baseCullDistance * 0.95;  // Increased from 0.9
+
+  return distance > cullDistance;
+}
   
   /**
    * Get the recommended texture size for the given base size
