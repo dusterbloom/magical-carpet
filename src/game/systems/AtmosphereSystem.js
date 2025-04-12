@@ -299,8 +299,8 @@ createVolumetricClouds() {
     const sunMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       side: THREE.FrontSide,
-      transparent: false,
-      opacity: 0.1,
+      transparent: true,
+      opacity: 0.00001,
       
       // depthWrite: true, // Don't write to depth buffer to prevent clipping
       // depthTest: false   // Don't test against depth buffer to always be visible

@@ -79,7 +79,7 @@ export class SunSystem {
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffaa,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.0000002,
       side: THREE.DoubleSide,
       depthWrite: false,
       depthTest: true,
