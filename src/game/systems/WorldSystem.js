@@ -25,7 +25,7 @@ export class WorldSystem {
     this.terrainResolution = 64;
     this.maxHeight = 400;
     this.minHeight = -50;
-    this.viewDistance = 6;
+    this.viewDistance = 8;  // Increased view distance for better horizon rendering
 
     // Initialize frustum culling objects
     this._frustum = new THREE.Frustum();
@@ -498,23 +498,49 @@ export class WorldSystem {
     return geometry;
   }
 
-  // --- createInitialTerrain method remains unchanged ---
   createInitialTerrain() {
     console.log("Creating initial terrain...");
-    for (let x = -3; x <= 3; x++) {
-      for (let z = -3; z <= 3; z++) {
-        const startX = x * this.chunkSize; const startZ = z * this.chunkSize;
+    // Increased initial terrain area to reduce visible terrain loading
+    for (let x = -4; x <= 4; x++) {
+      for (let z = -4; z <= 4; z++) {
+        const startX = x * this.chunkSize;
+        const startZ = z * this.chunkSize;
         const key = `${startX},${startZ}`;
+        
         if (!this.currentChunks.has(key)) {
           try {
             const geometry = this.createChunkGeometry(startX, startZ);
             const mesh = new THREE.Mesh(geometry, this.materials.terrain);
             mesh.position.set(startX, 0, startZ);
-            mesh.castShadow = true; mesh.receiveShadow = true;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
             mesh.renderOrder = 0;
             this.scene.add(mesh);
             this.currentChunks.set(key, mesh);
-          } catch (error) { console.error("Error creating chunk:", error); }
+          } catch (error) {
+            console.error("Error creating chunk:", error);
+          }
+        }
+      }
+    }
+    
+    // Pre-cache some terrain heights to improve initial performance
+    const chunkSize = this.chunkSize;
+    const resolution = this.terrainResolution;
+    
+    // Pre-calculate some heights for nearby terrain
+    for (let x = -2; x <= 2; x++) {
+      for (let z = -2; z <= 2; z++) {
+        const startX = x * chunkSize;
+        const startZ = z * chunkSize;
+        
+        // Sample some points in each chunk for the height cache
+        for (let i = 0; i <= resolution; i += 4) {
+          for (let j = 0; j <= resolution; j += 4) {
+            const worldX = startX + (i / resolution) * chunkSize;
+            const worldZ = startZ + (j / resolution) * chunkSize;
+            this.getTerrainHeight(worldX, worldZ);
+          }
         }
       }
     }
@@ -650,8 +676,106 @@ export class WorldSystem {
   // --- updateLandmarks method remains unchanged ---
   updateLandmarks(delta, elapsed) { /* ... */ }
 
-  // --- updateChunks method remains unchanged ---
-  updateChunks() { /* ... */ }
+  updateChunks() {
+    const player = this.engine.systems.player?.localPlayer;
+    if (!player) return;
+
+    // Get camera for frustum culling
+    const camera = this.engine.camera;
+    if (!camera) return;
+
+    // Updated: Use MobileLODManager view distance if available for determining chunks to keep
+    let viewDistance = this.viewDistance;
+    if (this.engine.systems.mobileLOD && this.engine.settings && this.engine.settings.isMobile) {
+      // Get extended view distance for horizon for better terrain continuity
+      const horizonExtendedDistance = Math.ceil(this.engine.systems.mobileLOD.getHorizonLODDistance() / this.chunkSize);
+      viewDistance = Math.max(viewDistance, horizonExtendedDistance / this.chunkSize);
+    }
+    
+    // Calculate current chunk
+    const playerChunkX = Math.floor(player.position.x / this.chunkSize);
+    const playerChunkZ = Math.floor(player.position.z / this.chunkSize);
+    
+    // Keep track of chunks that are now in view range
+    const chunksToKeep = new Set();
+    
+    // Create camera projection matrix for frustum culling
+    this._cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    this._frustum.setFromProjectionMatrix(this._cameraViewProjectionMatrix);
+    
+    // Generate chunks within view distance
+    for (let x = -viewDistance; x <= viewDistance; x++) {
+      for (let z = -viewDistance; z <= viewDistance; z++) {
+        const distanceSquared = x * x + z * z;
+        if (distanceSquared <= viewDistance * viewDistance) {
+          const chunkX = playerChunkX + x;
+          const chunkZ = playerChunkZ + z;
+          const startX = chunkX * this.chunkSize;
+          const startZ = chunkZ * this.chunkSize;
+          const key = `${startX},${startZ}`;
+          
+          chunksToKeep.add(key);
+          
+          if (!this.currentChunks.has(key)) {
+            // Check if chunk would be visible (frustum culling)
+            const chunkCenter = new THREE.Vector3(
+              startX + this.chunkSize / 2,
+              0, // Use estimated height
+              startZ + this.chunkSize / 2
+            );
+            
+            // Get estimated terrain height at center for better frustum culling
+            chunkCenter.y = this.getTerrainHeight(chunkCenter.x, chunkCenter.z);
+            
+            // Create bounding sphere for chunk
+            const boundingSphere = new THREE.Sphere(chunkCenter, this.chunkSize * 0.75);
+            
+            // Skip chunk creation if definitely not visible
+            const distanceToCamera = chunkCenter.distanceTo(camera.position);
+            const isFarAway = distanceToCamera > this.chunkSize * viewDistance * 1.5;
+            
+            // Special handling for horizon chunks
+            const horizonAngle = Math.atan2(
+              chunkCenter.y - camera.position.y,
+              Math.sqrt(
+                Math.pow(chunkCenter.x - camera.position.x, 2) +
+                Math.pow(chunkCenter.z - camera.position.z, 2)
+              )
+            );
+            const isNearHorizon = Math.abs(horizonAngle) < 0.15; // ~8.6 degrees
+            
+            // If far away and not on horizon, apply stricter culling
+            if (isFarAway && !isNearHorizon && !this._frustum.intersectsSphere(boundingSphere)) {
+              continue; // Skip creation of definitely invisible chunks
+            }
+            
+            try {
+              const geometry = this.createChunkGeometry(startX, startZ);
+              const material = this.materials.terrain;
+              const mesh = new THREE.Mesh(geometry, material);
+              mesh.position.set(startX, 0, startZ);
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              mesh.renderOrder = 0;
+              this.scene.add(mesh);
+              this.currentChunks.set(key, mesh);
+            } catch (error) {
+              console.error(`Error creating terrain chunk at ${startX},${startZ}:`, error);
+            }
+          }
+        }
+      }
+    }
+    
+    // Remove chunks that are no longer in view range
+    for (const [key, mesh] of this.currentChunks.entries()) {
+      if (!chunksToKeep.has(key)) {
+        this.scene.remove(mesh);
+        mesh.geometry.dispose();
+        this.currentChunks.delete(key);
+      }
+    }
+  }
 
   // --- updateVisibility method remains unchanged ---
   updateVisibility(camera) { /* ... */ }

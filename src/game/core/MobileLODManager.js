@@ -312,9 +312,9 @@ export class MobileLODManager {
     }
   }
 
-  // Add a new method for horizon-specific LOD
+  // Enhanced method for horizon-specific LOD
 getHorizonLODDistance() {
-  return this.baseLODDistances.terrain.low * 1.2; // Extend horizon distance
+  return this.baseLODDistances.terrain.low * 1.8; // Significantly extend horizon distance
 }
   /**
    * Get current LOD distances based on scaling factor
@@ -712,8 +712,8 @@ dynamicallyAdjustLOD() {
    * @param {number} [baseCullDistance=6000] - Base distance for culling
    * @returns {boolean} True if the object should be culled
    */
-// Update the shouldCull method
-shouldCull(position, cameraPosition, baseCullDistance = 12000) {
+// Update the shouldCull method with improved horizon handling
+shouldCull(position, cameraPosition, baseCullDistance = 8000) {
   if (!this.isMobile) {
     const distance = position.distanceTo(cameraPosition);
     return distance > baseCullDistance;
@@ -721,16 +721,20 @@ shouldCull(position, cameraPosition, baseCullDistance = 12000) {
 
   const distance = position.distanceTo(cameraPosition);
   
-  // Calculate angle to horizon
-  const angleToHorizon = Math.atan2(position.y - cameraPosition.y, 
-    Math.sqrt(Math.pow(position.x - cameraPosition.x, 2) + Math.pow(position.z - cameraPosition.z, 2)));
+  // Calculate angle to horizon using the XZ plane (ignore Y)
+  const xzDistance = Math.sqrt(
+    Math.pow(position.x - cameraPosition.x, 2) + 
+    Math.pow(position.z - cameraPosition.z, 2)
+  );
+  const angleToHorizon = Math.atan2(position.y - cameraPosition.y, xzDistance);
   
   // Special handling for horizon chunks (near horizontal view angle)
-  const isNearHorizon = Math.abs(angleToHorizon) < 0.1; // About 5.7 degrees
+  // Increased angle threshold to better capture horizon
+  const isNearHorizon = Math.abs(angleToHorizon) < 0.15; // About 8.6 degrees
   
   if (isNearHorizon) {
-    // Use less aggressive culling for horizon chunks
-    return distance > baseCullDistance * 1.2; // Actually extend view distance for horizon
+    // Much less aggressive culling for horizon chunks to prevent terrain gaps
+    return distance > baseCullDistance * 1.5; // Significantly extend view distance for horizon
   }
 
   // Keep minimap chunks
@@ -739,10 +743,10 @@ shouldCull(position, cameraPosition, baseCullDistance = 12000) {
     return false;
   }
 
-  // Normal culling with adjusted distances
+  // Normal culling with adjusted distances - made less aggressive
   const cullDistance = this.optimizations.aggressiveDistanceCulling ? 
-    baseCullDistance * 0.85 : // Increased from 0.8
-    baseCullDistance * 0.95;  // Increased from 0.9
+    baseCullDistance * 0.9 : // Increased from 0.85
+    baseCullDistance;        // No reduction for non-aggressive mode
 
   return distance > cullDistance;
 }

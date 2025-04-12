@@ -1,0 +1,167 @@
+ WebGL Renderer: ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11), Vendor: Google Inc. (NVIDIA)
+ Asset not found: /assets/textures/carpet.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=c72e86c4:24874
+onImageError @ chunk-UZOV2HZI.js?v=c72e86c4:25222
+ 
+_onError @ three_examples_jsm_l…s.js?v=c72e86c4:200
+(anonymous) @ three_examples_jsm_l…s.js?v=c72e86c4:217
+(anonymous) @ chunk-UZOV2HZI.js?v=c72e86c4:25067
+ Asset not found: /assets/models/carpet.glb - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=c72e86c4:24874
+_onError @ three_examples_jsm_l…s.js?v=c72e86c4:202
+(anonymous) @ three_examples_jsm_l…s.js?v=c72e86c4:217
+(anonymous) @ chunk-UZOV2HZI.js?v=c72e86c4:25067
+ 
+_onError @ three_examples_jsm_l…s.js?v=c72e86c4:200
+(anonymous) @ three_examples_jsm_l…s.js?v=c72e86c4:217
+(anonymous) @ chunk-UZOV2HZI.js?v=c72e86c4:25067
+ Asset not found: /assets/models/mana.glb - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=c72e86c4:24874
+_onError @ three_examples_jsm_l…s.js?v=c72e86c4:202
+(anonymous) @ three_examples_jsm_l…s.js?v=c72e86c4:217
+(anonymous) @ chunk-UZOV2HZI.js?v=c72e86c4:25067
+ Asset not found: /assets/textures/terrain.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=c72e86c4:24874
+onImageError @ chunk-UZOV2HZI.js?v=c72e86c4:25222
+ Asset not found: /assets/textures/sky.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=c72e86c4:24874
+onImageError @ chunk-UZOV2HZI.js?v=c72e86c4:25222
+ 
+handleError @ chunk-UZOV2HZI.js?v=c72e86c4:26935
+ Asset not found: /assets/audio/background.mp3 - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=c72e86c4:24874
+handleError @ chunk-UZOV2HZI.js?v=c72e86c4:26937
+ 
+handleError @ chunk-UZOV2HZI.js?v=c72e86c4:26935
+ Asset not found: /assets/audio/spell.mp3 - using fallback
+(anonymous) @ AssetManager.js:36
+LoadingManager.itemError @ chunk-UZOV2HZI.js?v=c72e86c4:24874
+handleError @ chunk-UZOV2HZI.js?v=c72e86c4:26937
+ THREE.Texture: Property .encoding has been replaced by .colorSpace.
+warnOnce @ chunk-UZOV2HZI.js?v=c72e86c4:1010
+set encoding @ chunk-UZOV2HZI.js?v=c72e86c4:1405
+(anonymous) @ AssetManager.js:203
+(anonymous) @ chunk-UZOV2HZI.js?v=c72e86c4:25345
+onImageLoad @ chunk-UZOV2HZI.js?v=c72e86c4:25216
+ Synced Time of Day: 0.65
+ Connecting to server URL: http://localhost:4000
+ Network manager initialized
+ System initialized: network
+ Initializing MobileLODManager...
+ MobileLODManager initialized
+ System initialized: mobileLOD
+ Initializing WorldSystem...
+ Creating initial terrain...
+ WorldSystem initialized
+ System initialized: world
+ Initializing WaterSystem...
+ Setting water level to -55.00 based on terrain
+ WaterSystem initializing for Desktop platform
+ Desktop Water: Quality='high', Reflections=true, TexSize=1024, Distortion=0.8
+ Visibility changed: visible
+ WaterSystem initialized
+ System initialized: water
+ Initializing VegetationSystem...
+ Using mobile-optimized LOD distances: {"high":150,"medium":400,"low":900}
+ VegetationSystem initialized
+ System initialized: vegetation
+ Created 6 carpet models
+ Spell system initialized
+ Player system initialized
+ System initialized: player
+ Initializing AtmosphereSystem...
+ Initializing SkySystem...
+ SkySystem initialization complete
+ SunSystem initialized
+ AtmosphereSystem initialized
+ System initialized: atmosphere
+ Minimap functionality moved to MinimapSystem
+UISystem.js:24 UI system initialized
+Engine.js:323 System initialized: ui
+CarpetTrailSystem.js:88 Initializing CarpetTrailSystem
+Engine.js:323 System initialized: carpetTrail
+LandmarkSystem.js:76 Initializing LandmarkSystem...
+LandmarkSystem.js:80 LandmarkSystem initialized
+Engine.js:323 System initialized: landmarks
+MinimapSystem.js:40 Initializing MinimapSystem...
+MinimapSystem.js:53 MinimapSystem initialized
+Engine.js:323 System initialized: minimap
+gameState.js:44 Game State changing from LOADING to: INTRO
+Engine.js:366 Engine initialized successfully
+Engine.js:367 Device Info: Object
+main.js:21 Vibe Carpet initialized successfully!
+main.js:22 Use window.getPerformanceReport() to view performance metrics
+IntroScreen.js:109 Start Journey clicked
+InputManager.js:390 Pointer lock acquired
+InputManager.js:390 Pointer lock acquired
+InputManager.js:392 Pointer lock released
+InputManager.js:392 Pointer lock released
+gameState.js:44 Game State changing from INTRO to: PLAYING
+IntroScreen.js:119 Calling play callback
+Engine.js:345 Game started from intro screen
+InputManager.js:399 Pointer lock error: Event
+onPointerLockError @ InputManager.js:399
+InputManager.js:399 Pointer lock error: Event
+onPointerLockError @ InputManager.js:399
+localhost/:1 Uncaught (in promise) SecurityError: The user has exited the lock before this request was completed.
+IntroScreen.js:109 Start Journey clicked
+InputManager.js:399 Pointer lock error: Event
+onPointerLockError @ InputManager.js:399
+InputManager.js:399 Pointer lock error: Event
+onPointerLockError @ InputManager.js:399
+localhost/:1 Uncaught (in promise) SecurityError: The user has exited the lock before this request was completed.
+gameState.js:40 Invalid transition from PLAYING to PLAYING
+setGameState @ gameState.js:40
+(anonymous) @ IntroScreen.js:115
+IntroScreen.js:119 Calling play callback
+NetworkManager.js:84 Connected to server
+NetworkManager.js:107 Received player ID: 6a389570-c492-4c03-ad7d-e7e61fc3e168
+PlayerSystem.js:110 Local player created with ID: 6a389570-c492-4c03-ad7d-e7e61fc3e168
+PlayerSystem.js:143 Network player created with ID: 090fd6e3-e5a7-42bf-bd21-c132f14b653f
+VegetationSystem.js:1050 Reducing vegetation density to 0.95 due to low FPS (45.3 FPS, 237594 triangles)
+InputManager.js:390 Pointer lock acquired
+InputManager.js:390 Pointer lock acquired
+VegetationSystem.js:1050 Reducing vegetation density to 0.90 due to low FPS (53.3 FPS, 176002 triangles)
+InputManager.js:392 Pointer lock released
+InputManager.js:392 Pointer lock released
+Engine.js:673 Visibility changed: hidden
+Engine.js:673 Visibility changed: visible
+Engine.js:673 Visibility changed: hidden
+Engine.js:673 Visibility changed: visible
+InputManager.js:390 Pointer lock acquired
+InputManager.js:390 Pointer lock acquired
+InputManager.js:392 Pointer lock released
+InputManager.js:392 Pointer lock released
+Engine.js:673 Visibility changed: hidden
+Engine.js:673 Visibility changed: visible
+Engine.js:673 Visibility changed: hidden
+Engine.js:673 Visibility changed: visible
+InputManager.js:390 Pointer lock acquired
+InputManager.js:390 Pointer lock acquired
+InputManager.js:392 Pointer lock released
+InputManager.js:392 Pointer lock released
+Engine.js:673 Visibility changed: hidden
+Engine.js:673 Visibility changed: visible
+InputManager.js:390 Pointer lock acquired
+InputManager.js:390 Pointer lock acquired
+InputManager.js:392 Pointer lock released
+InputManager.js:392 Pointer lock released
+Engine.js:673 Visibility changed: hidden
+Engine.js:673 Visibility changed: visible
+InputManager.js:390 Pointer lock acquired
+InputManager.js:390 Pointer lock acquired
+VegetationSystem.js:1050 Reducing vegetation density to 0.85 due to high triangle count (59.3 FPS, 417586 triangles)
+InputManager.js:392 Pointer lock released
+InputManager.js:392 Pointer lock released
+Engine.js:673 Visibility changed: hidden
+Engine.js:673 Visibility changed: visible
+InputManager.js:390 Pointer lock acquired
+InputManager.js:390 Pointer lock acquired
+InputManager.js:392 Pointer lock released
+InputManager.js:392 Pointer lock released

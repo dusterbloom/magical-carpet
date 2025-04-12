@@ -147,7 +147,7 @@ export class Engine {
       75,
       window.innerWidth / window.innerHeight,
       0.1,
-      2000
+      10000  // Increased far plane distance to better render distant terrain
     );
 
     // Performance monitoring in development
@@ -427,7 +427,16 @@ export class Engine {
       const system = this.systems[systemName];
       if (system && typeof system.update === "function") {
         const startTime = performance.now();
-        system.update(this.delta, this.elapsed);
+        
+        // Pass delta to mobileLOD separately to track frame timing
+        if (systemName === "mobileLOD" && this.isMobile) {
+          system.update(this.delta, this.elapsed);
+          // Track frame timing for better LOD decisions
+          system.updateFrameTiming(this.delta);
+        } else {
+          system.update(this.delta, this.elapsed);
+        }
+        
         const endTime = performance.now();
         this.performanceMonitor.addSystemTime(systemName, endTime - startTime);
       }
