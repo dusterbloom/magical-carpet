@@ -22,17 +22,29 @@ export class SkySystem {
   async initialize() {
     console.log("Initializing SkySystem...");
     
-    // Create Three.js Sky
+    // Create Three.js Sky with responsive scaling
     this.sky = new Sky();
-    this.sky.scale.setScalar(30000);
+    const screenRatio = window.innerWidth / window.innerHeight;
+    const baseScale = 30000;
+    this.sky.scale.setScalar(baseScale * (screenRatio < 1 ? 1.5 : 1));
+    
+    // Adjust sky mesh geometry for better mobile rendering
+    const skyMesh = this.sky.geometry;
+    skyMesh.parameters.widthSegments = Math.max(32, Math.floor(32 * screenRatio));
+    skyMesh.parameters.heightSegments = Math.max(32, Math.floor(32 * screenRatio));
+    
     this.scene.add(this.sky);
     
-    // Initial sky parameters
+    // Enhanced sky parameters for mobile
     const uniforms = this.sky.material.uniforms;
-    uniforms['turbidity'].value = 8;
-    uniforms['rayleigh'].value = 1;
-    uniforms['mieCoefficient'].value = 0.025;
-    uniforms['mieDirectionalG'].value = 0.999;
+    uniforms['turbidity'].value = 10;
+    uniforms['rayleigh'].value = 2;
+    uniforms['mieCoefficient'].value = 0.005;
+    uniforms['mieDirectionalG'].value = 0.8;
+    
+    // Fix seam issue by adjusting material settings
+    this.sky.material.side = THREE.BackSide;
+    this.sky.material.depthWrite = false;
     
     // Store original background color
     this.originalBackgroundColor = new THREE.Color(0x88ccff);
@@ -56,9 +68,14 @@ export class SkySystem {
     // Update sky colors based on time of day
     this.updateSkyColors();
     
-    // Make sure sky follows camera
+    // Make sure sky follows camera with offset compensation for small screens
     if (this.sky && this.engine.camera) {
-      this.sky.position.copy(this.engine.camera.position);
+      const pos = this.engine.camera.position.clone();
+      if (window.innerWidth < window.innerHeight) {
+        // Add slight vertical offset on mobile to prevent horizon line issues
+        pos.y += 100;
+      }
+      this.sky.position.copy(pos);
     }
   }
   
@@ -76,8 +93,15 @@ export class SkySystem {
     const uniforms = this.sky.material.uniforms;
     const sunPosition = this.atmosphereSystem.getSunPosition();
     
-    // Update sun position in sky shader (this is key for sky coloration)
-    uniforms['sunPosition'].value.copy(sunPosition.normalize());
+    // Update sun position with rotation compensation
+    const sunPos = sunPosition.clone().normalize();
+    const cameraDirection = new THREE.Vector3();
+    this.engine.camera.getWorldDirection(cameraDirection);
+    
+    // Apply camera-relative rotation to prevent sky split
+    const angle = Math.atan2(cameraDirection.x, cameraDirection.z);
+    sunPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -angle);
+    uniforms['sunPosition'].value.copy(sunPos);
     
     // Adjust background color based on time of day
     if (nightFactor > 0) {

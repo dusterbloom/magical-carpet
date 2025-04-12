@@ -60,7 +60,7 @@ export class Engine {
       canvas: this.canvas,
       antialias: !this.isMobile, // Disable expensive AA on mobile
       powerPreference: "high-performance",
-      precision: this.isMobile ? "mediump" : "highp", // Lower precision on mobile
+      precision: this.isMobile ? "highp" : "highp", // Lower precision on mobile
       depth: true,
       stencil: false, // Disable stencil buffer if not needed
       alpha: false, // Optimize for opaque background
