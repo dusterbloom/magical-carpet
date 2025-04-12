@@ -1,5 +1,6 @@
 // Updated imports to include new systems
 import * as THREE from "three";
+import { deviceCapabilities } from "./utils/DeviceCapabilities";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { InputManager } from "./InputManager";
 import { AssetManager } from "./AssetManager";
@@ -50,8 +51,9 @@ export class Engine {
     this.input = new InputManager();
     this.assets = new AssetManager();
     
-    // Detect device capabilities
-    this.isMobile = this._detectDeviceCapabilities();
+    // Use centralized device capabilities
+    this.deviceCapabilities = deviceCapabilities;
+    this.isMobile = this.deviceCapabilities.isMobile;
     
     // Create renderer with platform-specific optimizations
     this.renderer = new THREE.WebGLRenderer({
@@ -173,113 +175,7 @@ export class Engine {
     }
   }
 
-  // Device capability detection method
-  _detectDeviceCapabilities() {
-    // Create detailed device profile
-    this.deviceCapabilities = {
-      isMobile: /(android|iphone|ipad|ipod|blackberry|windows phone)/g.test(navigator.userAgent.toLowerCase()),
-      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-      gpuTier: 'unknown',
-      memoryLimited: false,
-      supportsShadowMapType: true,
-      supportsFloatTextures: true,
-      maxTextureSize: 4096
-    };
-    
-    // Use feature detection where possible
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      
-      if (gl) {
-        // Check max texture size
-        this.deviceCapabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-        
-        // Check if float textures are supported
-        const ext = gl.getExtension('OES_texture_float');
-        this.deviceCapabilities.supportsFloatTextures = !!ext;
-        
-        // Check for depth texture support
-        const depthTextureExt = gl.getExtension('WEBGL_depth_texture');
-        this.deviceCapabilities.supportsDepthTexture = !!depthTextureExt;
-        
-        // Check available memory (for some browsers)
-        if (gl.getExtension('WEBGL_debug_renderer_info')) {
-          const renderer = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
-          const vendor = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_VENDOR_WEBGL);
-          
-          console.log(`WebGL Renderer: ${renderer}, Vendor: ${vendor}`);
-          
-          // Detect low-end GPUs
-          const lowerCaseRenderer = renderer.toLowerCase();
-          if (
-            lowerCaseRenderer.includes('intel') && 
-            !lowerCaseRenderer.includes('iris') && 
-            !lowerCaseRenderer.includes('uhd')
-          ) {
-            this.deviceCapabilities.gpuTier = 'low';
-            this.deviceCapabilities.memoryLimited = true;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to detect WebGL capabilities:', e);
-    }
-    
-    // More detailed mobile device classification
-    if (this.deviceCapabilities.isMobile) {
-      // Get more specific mobile info
-      const ua = navigator.userAgent.toLowerCase();
-      
-      // Check for high-end indicators
-      if (
-        ua.includes('iphone 13') || ua.includes('iphone 14') || ua.includes('iphone 15') ||
-        ua.includes('ipad pro') || ua.includes('sm-s') || ua.includes('sm-n') ||
-        ua.includes('pixel 6') || ua.includes('pixel 7') || ua.includes('pixel 8')
-      ) {
-        this.deviceCapabilities.gpuTier = 'high';
-      }
-      // Check for low-end indicators
-      else if (
-        ua.includes('sm-j') || ua.includes('sm-a') || ua.includes('redmi') || 
-        ua.includes('mediatek') || ua.includes('wiko') || ua.includes('nokia')
-      ) {
-        this.deviceCapabilities.gpuTier = 'low';
-        this.deviceCapabilities.memoryLimited = true;
-      }
-      // Mid-level is the default for unrecognized devices
-      else {
-        this.deviceCapabilities.gpuTier = 'medium';
-      }
-      
-      // Limit texture size on mobile (prevents memory issues)
-      this.deviceCapabilities.maxTextureSize = 
-        this.deviceCapabilities.gpuTier === 'high' ? 4096 :
-        this.deviceCapabilities.gpuTier === 'medium' ? 2048 : 1024;
-      
-      console.log(`Mobile device GPU classification: ${this.deviceCapabilities.gpuTier}, ` +
-                  `maxTextureSize: ${this.deviceCapabilities.maxTextureSize}`);
-    } else {
-      // Desktop detection
-      this.deviceCapabilities.gpuTier = 'high';
-      // Check for WebGL capabilities
-      try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        if (gl) {
-          // Check max texture size
-          this.deviceCapabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-          // Check if float textures are supported
-          const ext = gl.getExtension('OES_texture_float');
-          this.deviceCapabilities.supportsFloatTextures = !!ext;
-        }
-      } catch (e) {
-        console.warn('Failed to detect WebGL capabilities:', e);
-      }
-    }
-    
-    return this.deviceCapabilities.isMobile;
-  }
+  // No longer needed - using DeviceCapabilities.js instead
 
   async initialize() {
     // Initialize all core systems

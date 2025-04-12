@@ -2,6 +2,8 @@
  * Game settings manager
  * Handles quality settings, performance optimizations, and user preferences
  */
+import { deviceCapabilities } from "../utils/DeviceCapabilities";
+
 export class Settings {
   constructor() {
     this.quality = {
@@ -17,30 +19,20 @@ export class Settings {
       lowFPSThreshold: 20 // FPS threshold for quality reduction
     };
     
-    // Detect if running on mobile device
-    this.isMobile = this._detectMobile();
+    // Use centralized device capabilities
+    this.isMobile = deviceCapabilities.isMobile;
     
     // Apply initial settings based on platform
     this._applyInitialSettings();
   }
   
   /**
-   * Simple mobile detection based on user agent and screen size
-   * @returns {boolean} True if device is likely a mobile device
+   * Mobile detection now handled by DeviceCapabilities
+   * This is kept as a stub for backward compatibility
+   * @returns {boolean} True if device is a mobile device
    */
   _detectMobile() {
-    // Check user agent for common mobile keywords
-    const userAgent = navigator.userAgent.toLowerCase();
-    if (/(android|iphone|ipad|ipod|blackberry|windows phone)/g.test(userAgent)) {
-      return true;
-    }
-    
-    // Check screen size (devices under 768px width are likely mobile)
-    if (window.innerWidth < 768) {
-      return true;
-    }
-    
-    return false;
+    return deviceCapabilities.isMobile;
   }
   
   /**

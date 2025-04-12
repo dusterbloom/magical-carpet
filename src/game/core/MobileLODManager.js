@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { deviceCapabilities } from "./utils/DeviceCapabilities";
 
 /**
  * MobileLODManager
@@ -10,7 +11,7 @@ import * as THREE from "three";
 export class MobileLODManager {
   constructor(engine) {
     this.engine = engine;
-    this.isMobile = engine.settings && engine.settings.isMobile;
+    this.isMobile = deviceCapabilities.isMobile;
     
     // Base LOD distances that will be scaled based on device performance
     this.baseLODDistances = {
@@ -202,57 +203,28 @@ export class MobileLODManager {
   }
   
   /**
-   * Detect device capabilities beyond just mobile/desktop
+   * Initialize device capabilities using the centralized detection
    */
   detectDeviceCapabilities() {
     // Only run detailed detection on mobile
     if (!this.isMobile) return;
     
-    console.log("⚠️ Mobile device detection is inherently limited and may not perfectly reflect device capabilities.");
-    console.log("Dynamic adjustments will refine settings based on actual performance during gameplay.");
+    console.log("Using centralized device capabilities data");
     
-    // Get device pixel ratio as a rough estimate of device capability
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
-    console.log(`Device pixel ratio: ${pixelRatio.toFixed(2)} (higher generally indicates better display)`);
+    // Get device info from centralized detection
+    const gpuTier = deviceCapabilities.gpuTier;
+    const memoryLimited = deviceCapabilities.memoryLimited;
+    const pixelRatio = deviceCapabilities.pixelRatio;
     
-    // Check available memory if possible
-    let memoryScore = 1;
-    if (navigator.deviceMemory) {
-      // deviceMemory is in GB, ranges from 0.25 to 8
-      memoryScore = Math.min(Math.max(navigator.deviceMemory / 4, 0.5), 1.5);
-      console.log(`Device memory: ${navigator.deviceMemory}GB (score: ${memoryScore.toFixed(2)})`);
-    } else {
-      console.log("Device memory information not available");
+    // Adjust distance scaling based on detected capabilities
+    if (gpuTier === 'high') {
+      this.distanceScalingFactor = Math.min(0.8, this.distanceScalingFactor * 1.2);
+    } else if (gpuTier === 'low') {
+      this.distanceScalingFactor = Math.max(0.3, this.distanceScalingFactor * 0.8);
     }
     
-    // Check for specific mobile GPU hints in the user agent
-    const ua = navigator.userAgent.toLowerCase();
-    let gpuScore = 1;
-    let deviceCategory = "unknown";
-    
-    // Detect high-end mobile GPUs (very rough heuristics)
-    if (ua.includes('apple')) {
-      // Recent iOS devices tend to have good GPUs
-      gpuScore = 1.3;
-      deviceCategory = "iOS";
-    } else if (ua.includes('sm-g') || ua.includes('pixel') || ua.includes('snapdragon')) {
-      // Higher-end Android devices
-      gpuScore = 1.2;
-      deviceCategory = "high-end Android";
-    } else if (ua.includes('android')) {
-      deviceCategory = "standard Android";
-    }
-    
-    console.log(`Device category: ${deviceCategory} (GPU score: ${gpuScore.toFixed(2)})`);
-    
-    // Combine factors into a capability score
-    // This is a very rough estimate - ideally we'd use proper benchmarking
-    const capabilityScore = (pixelRatio / 2) * memoryScore * gpuScore;
-    
-    // Adjust distance scaling based on capability score
-    this.distanceScalingFactor = Math.min(Math.max(capabilityScore * 0.6, 0.3), 1.0);
-    
-    console.log(`Mobile device capability score: ${capabilityScore.toFixed(2)}, scaling factor: ${this.distanceScalingFactor.toFixed(2)}`);
+    console.log(`Using device capabilities: GPU Tier: ${gpuTier}, Memory Limited: ${memoryLimited}`);
+    console.log(`Adjusted distance scaling factor: ${this.distanceScalingFactor.toFixed(2)}`);
   }
   
 
