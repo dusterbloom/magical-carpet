@@ -340,7 +340,7 @@ export class MobileLODManager {
    * @param {number} [baseCullDistance=6000] - Base distance for culling
    * @returns {boolean} True if the object should be culled
    */
-  shouldCull(position, cameraPosition, baseCullDistance = 12000) {
+  shouldCull(position, cameraPosition, baseCullDistance = 22000) {
     const distance = position.distanceTo(cameraPosition);
     
     // Special handling for water
