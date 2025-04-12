@@ -218,4 +218,54 @@ export class SunSystem {
       }
     }
   }
+
+  // Add these methods to SunSystem class
+getSunDirection() {
+  return this.sunDirection.clone().normalize();
+}
+
+getSunWorldPosition() {
+  return this.sun.position.clone();
+}
+
+getSunColor() {
+  return this.sunMaterial.color.clone();
+}
+
+getSunIntensity() {
+  return this.sunLight.intensity;
+}
+
+// Add this initialization method
+initSun() {
+  // Remove any existing sun initialization from other systems
+  this.sun = new THREE.DirectionalLight(0xffffff, 1);
+  this.sun.position.set(100, 100, 100);
+  this.sun.castShadow = true;
+  this.scene.add(this.sun);
+  
+  // Add sun to physics world if needed
+  this.physics.addBody(this.sun, { isStatic: true });
+  
+  // Initialize uniform update callback
+  this.engine.onBeforeRender(() => {
+    this.updateSunPosition();
+    this.updateShaders();
+  });
+}
+
+// Update all dependent shaders when sun changes
+updateShaders() {
+  const systems = [
+    this.engine.systems.water,
+    this.engine.systems.sky,
+    this.engine.systems.terrain
+  ];
+  
+  systems.forEach(sys => {
+    if (sys?.material?.uniforms?.sunDirection) {
+      sys.material.uniforms.sunDirection.value.copy(this.getSunDirection());
+    }
+  });
+}
 }

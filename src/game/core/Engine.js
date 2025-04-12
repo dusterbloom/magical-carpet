@@ -64,7 +64,7 @@ export class Engine {
       alpha: false, // Optimize for opaque background
       premultipliedAlpha: true,
       preserveDrawingBuffer: false, // Performance optimization
-      logarithmicDepthBuffer: false // Enable only if z-fighting occurs
+      logarithmicDepthBuffer: true // Enable only if z-fighting occurs
     });
 
     this.frameScheduled = false;

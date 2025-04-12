@@ -3,6 +3,7 @@ import { PlayerPhysics } from './player/PlayerPhysics';
 import { PlayerSpells } from './player/PlayerSpells';
 import { PlayerInput } from './player/PlayerInput';
 import { PlayerModels } from './player/PlayerModels';
+import { Howl } from 'howler'; // Add this at the top if using Howler.js
 
 export class PlayerSystem {
   constructor(engine) {
@@ -346,6 +347,8 @@ export class PlayerSystem {
     // Send player updates to network
     this.sendPlayerUpdate();
   }
+
+  
   
   checkManaCollection() {
     if (!this.localPlayer) return;
@@ -353,6 +356,13 @@ export class PlayerSystem {
     // Collection radius
     const radius = 5;
     
+
+    // Load the mana collection sound
+    const manaSound = new Howl({
+      src: ['assets/audio/collect.mp3'], // Path to your mana collection sound file
+      volume: 0.5, // Adjust volume as needed
+    });
+
     // Check for mana node collection
     const collectedNodes = this.engine.systems.world.checkManaCollection(
       this.localPlayer.position,
@@ -371,6 +381,10 @@ export class PlayerSystem {
       
       // Create collection effect
       this.models.createManaCollectionEffect(node.position);
+      
+      // Play mana collection sound
+      manaSound.play();
+
     });
   }
 }
