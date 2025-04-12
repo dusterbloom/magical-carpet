@@ -304,6 +304,7 @@ export class UISystem {
   createTimeControls() {
     // Create toggle button for time controls
     const toggleButton = document.createElement('div');
+    toggleButton.id = 'time-controls-toggle-button';
     toggleButton.style.position = 'absolute';
     toggleButton.style.top = '70px';
     toggleButton.style.right = '20px';

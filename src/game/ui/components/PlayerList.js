@@ -34,7 +34,7 @@ export class PlayerList {
     
     // Create toggle button
     const toggleButton = document.createElement('div');
-    toggleButton.id = 'player-list-toggle';
+    toggleButton.id = 'player-list-toggle-button';
     toggleButton.style.position = 'absolute';
     toggleButton.style.top = '70px'; // Position below time button
     toggleButton.style.right = '80px'; // Position to the right of time button
