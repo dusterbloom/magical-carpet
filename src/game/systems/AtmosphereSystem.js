@@ -27,7 +27,7 @@ export class AtmosphereSystem {
     this.elapsed = 0;
 
     // Day/night cycle
-    this.dayDuration = 10; // 10 minutes per day cycle
+    this.dayDuration = 86400 / 60; // 10 minutes per day cycle
 
     // DEBUGGING: Force to night time
     // Keep this forced value for testing night sky stars
@@ -36,7 +36,7 @@ export class AtmosphereSystem {
     const currentSeconds =
       now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
-    this.timeOfDay = currentSeconds / secondsInDay; // sync to user time
+    // this.timeOfDay = currentSeconds / secondsInDay; // sync to user time
     this.timeOfDay = 40000 / 86400; // afternoon
     console.log("Synced Time of Day:", this.timeOfDay);
 

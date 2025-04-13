@@ -38,10 +38,10 @@ export class AtmosphereSystem {
     // this.timeOfDay = currentSeconds / secondsInDay; // 0.0-1.0 representing full day
     
     // Optional override for testing specific times
-    // this.timeOfDay = 0.5; // Noon
+    this.timeOfDay = 0.5; // Noon
     // this.timeOfDay = 0.0; // Midnight
     // this.timeOfDay = 0.25; // Sunrise
-    this.timeOfDay = 0.65;  // Sunset
+    // this.timeOfDay = 0.65;  // Sunset
     
     console.log("Synced Time of Day:", this.timeOfDay);
     
