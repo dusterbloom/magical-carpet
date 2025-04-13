@@ -244,7 +244,17 @@ export class Engine {
       // Start any required gameplay systems here
       if (this.systems.player) {
         console.log("Starting player systems");
-        this.systems.player.enable();
+        if (typeof this.systems.player.enable === 'function') {
+          this.systems.player.enable();
+        } else {
+          console.warn("Player system does not have an enable() method");
+          // Show mobile controls if needed
+          if (this.input.isTouchDevice && this.systems.player.input && 
+              typeof this.systems.player.input.showMobileControls === 'function') {
+            console.log("Showing mobile controls directly");
+            this.systems.player.input.showMobileControls();
+          }
+        }
       }
       
       if (this.systems.network) {

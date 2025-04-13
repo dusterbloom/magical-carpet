@@ -65,6 +65,19 @@ export class PlayerSystem {
     console.log("Player system initialized");
   }
   
+  /**
+   * Enable the player system (called when the game starts)
+   */
+  enable() {
+    // Show mobile controls if on mobile device
+    if (this.engine.input.isTouchDevice) {
+      console.log('Showing mobile controls');
+      this.input.showMobileControls();
+    }
+    
+    console.log('Player system enabled');
+  }
+  
   createLocalPlayer(id) {
     // Get a carpet model with the player ID for consistent color
     const carpetModel = this.models.createCarpetModel(id);
