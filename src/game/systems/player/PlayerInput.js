@@ -744,6 +744,8 @@ setupJoystickEvents(input, joystickElement) {
     calibrateButton.style.display = 'none'; // Initially hidden
     document.body.appendChild(calibrateButton);
     this.mobileControlElements.push(calibrateButton);
+    // Add reference to allow hiding specifically
+    this.calibrateButton = calibrateButton;
 
     // Handle calibration button click
     calibrateButton.addEventListener('touchstart', (e) => {
@@ -817,6 +819,11 @@ setupJoystickEvents(input, joystickElement) {
     // Always show touch controls first
     this.setupTouchControls();
     
+    // Hide the calibration button by default on mobile
+    if (this.calibrateButton) {
+      this.calibrateButton.style.display = 'none';
+    }
+    
     // Optionally offer motion controls
     const motionButton = document.createElement('button');
     motionButton.innerHTML = '📱 Enable Motion Controls';
@@ -825,6 +832,11 @@ setupJoystickEvents(input, joystickElement) {
       if (enabled) {
         // Motion controls working, can hide some touch UI
         this.minimizeTouchControls();
+        
+        // Show calibration button only when motion controls are active
+        if (this.calibrateButton) {
+          this.calibrateButton.style.display = 'flex';
+        }
       } else {
         // Motion failed, keep using touch controls
         alert('Motion controls not available. Using touch controls.');
@@ -977,26 +989,36 @@ setupJoystickEvents(input, joystickElement) {
     let joystickTouchId = null;
   
     const handleTouchStart = (e) => {
-      e.preventDefault();
-      if (joystickTouchId !== null) return;
-  
-      const touch = e.touches[0];
-      const rect = this.joystick.container.rect;
+      // Only prevent default for the joystick control, not all touches
+      // This allows other touch events (like boost button) to work simultaneously
       
-      if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
-          touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
-        joystickTouchId = touch.identifier;
-        this.joystick.active = true;
-        updateJoystickPosition(touch);
+      if (joystickTouchId !== null) return;
+      
+      // Find a touch that's within the joystick container
+      for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        const rect = this.joystick.container.rect;
+        
+        if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+            touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+          // Prevent default only for this specific touch
+          e.preventDefault();
+          joystickTouchId = touch.identifier;
+          this.joystick.active = true;
+          updateJoystickPosition(touch);
+          break;
+        }
       }
     };
   
     const handleTouchMove = (e) => {
-      e.preventDefault();
+      // Don't prevent default for all touches, only handle our joystick
       if (!this.joystick.active) return;
   
       for (let i = 0; i < e.touches.length; i++) {
         if (e.touches[i].identifier === joystickTouchId) {
+          // Only prevent default for the joystick touch
+          e.preventDefault();
           updateJoystickPosition(e.touches[i]);
           break;
         }
@@ -1004,9 +1026,11 @@ setupJoystickEvents(input, joystickElement) {
     };
   
     const handleTouchEnd = (e) => {
-      e.preventDefault();
+      // Don't prevent default for all touches
       for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === joystickTouchId) {
+          // Only prevent default for the joystick touch
+          e.preventDefault();
           resetJoystick();
           break;
         }
@@ -1046,9 +1070,13 @@ setupJoystickEvents(input, joystickElement) {
   
     // Add touch event listeners
     const container = joystickElement.parentElement;
-    container.addEventListener('touchstart', handleTouchStart, { passive: false });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd, { passive: false });
-    container.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    document.body.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.body.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.body.addEventListener('touchend', handleTouchEnd, { passive: false });
+    document.body.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    
+    // These event listeners are attached to document.body instead of just the joystick container
+    // to ensure we can track touches even if they move outside the joystick area
+    // This helps with simultaneous input handling
   }
 }

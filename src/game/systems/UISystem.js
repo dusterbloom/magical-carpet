@@ -302,6 +302,15 @@ export class UISystem {
    * Create time control UI elements
    */
   createTimeControls() {
+    // Only create time controls for desktop (non-touch devices)
+    const isMobile = this.engine.input.isTouchDevice;
+    
+    if (isMobile) {
+      // Skip creating time controls for mobile
+      console.log('Time controls disabled on mobile devices');
+      return;
+    }
+    
     // Create toggle button for time controls
     const toggleButton = document.createElement('div');
     toggleButton.id = 'time-controls-toggle-button';
@@ -681,8 +690,8 @@ export class UISystem {
    * Show game UI elements when entering PLAYING state
    */
   showGameUI() {
-    // Show time controls
-    if (this.elements.timeToggleButton) {
+    // Show time controls only on desktop
+    if (!this.engine.input.isTouchDevice && this.elements.timeToggleButton) {
       this.elements.timeToggleButton.style.display = 'flex';
     }
     
@@ -712,7 +721,7 @@ export class UISystem {
    * Show time controls after game starts (kept for backwards compatibility)
    */
   showTimeControls() {
-    if (this.elements.timeToggleButton) {
+    if (!this.engine.input.isTouchDevice && this.elements.timeToggleButton) {
       this.elements.timeToggleButton.style.display = 'flex';
     }
   }
