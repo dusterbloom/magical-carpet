@@ -21,7 +21,7 @@ export class AtmosphereSystem {
     // Time tracking
     this.elapsed = 0;
     this.dayDuration = 1440;   // 1440 minutes = 24 hours = 86400 seconds
-    this.timeScale = 1.0;    // Default to 360x real time (4 minutes = 1 day)
+    this.timeScale = 0.00277777;    // Match real time exactly (1 day in real life = 1 day in game)
     
     // Calendar tracking
     this.currentDay = 0;
