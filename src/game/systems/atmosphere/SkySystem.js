@@ -26,44 +26,16 @@ export class SkySystem {
   async initialize() {
     console.log("Initializing SkySystem...");
 
-
-
-    // <<< START MODIFICATION >>>
-    if (deviceCapabilities.gpuTier === 'low' || deviceCapabilities.isMobile) { // Target low-end OR all mobile for safety
-      console.log("Using Fallback Sky for low-end/mobile device.");
+    // Use device capabilities to determine skybox approach
+    if (deviceCapabilities.gpuTier === 'low' || deviceCapabilities.isMobile) {
+      console.log("Using Fallback Sky for low-end/mobile device");
       this.isFallbackSky = true;
       this.createFallbackSky();
     } else {
-      console.log("Using standard THREE.Sky.");
+      console.log("Using standard THREE.Sky");
       this.isFallbackSky = false;
       this.createStandardSky();
     }
-    // <<< END MODIFICATION >>>
-
-
-    // Create Three.js Sky with responsive scaling
-    this.sky = new Sky();
-    const screenRatio = window.innerWidth / window.innerHeight;
-    const baseScale = 30000;
-    this.sky.scale.setScalar(baseScale * (screenRatio < 1 ? 1.5 : 1));
-
-    // Adjust sky mesh geometry for better mobile rendering
-    const skyMesh = this.sky.geometry;
-    skyMesh.parameters.widthSegments = Math.max(32, Math.floor(32 * screenRatio));
-    skyMesh.parameters.heightSegments = Math.max(32, Math.floor(32 * screenRatio));
-
-    this.scene.add(this.sky);
-
-    // Enhanced sky parameters for mobile
-    const uniforms = this.sky.material.uniforms;
-    uniforms['turbidity'].value = 10;
-    uniforms['rayleigh'].value = 2;
-    uniforms['mieCoefficient'].value = 0.005;
-    uniforms['mieDirectionalG'].value = 0.8;
-
-    // Fix seam issue by adjusting material settings
-    this.sky.material.side = THREE.BackSide;
-    this.sky.material.depthWrite = false;
 
     // Store original background color
     this.originalBackgroundColor = new THREE.Color(0x88ccff);
@@ -81,9 +53,20 @@ export class SkySystem {
   // Direct sun creation method removed - now using SunSystem
 
   createStandardSky() {
-    // Existing code to create THREE.Sky
+    // Create Three.js Sky
     this.sky = new Sky();
-    this.sky.scale.setScalar(30000); // Keep large scale for standard sky
+    
+    // Scale the sky appropriately relative to camera far plane
+    const farPlane = this.engine.camera.far;
+    const skyboxScale = farPlane * 0.8; // Keep skybox within far plane
+    this.sky.scale.setScalar(skyboxScale);
+    
+    // Adjust sky mesh geometry based on screen ratio for better rendering
+    const screenRatio = window.innerWidth / window.innerHeight;
+    const skyMesh = this.sky.geometry;
+    skyMesh.parameters.widthSegments = Math.max(32, Math.floor(32 * screenRatio));
+    skyMesh.parameters.heightSegments = Math.max(32, Math.floor(32 * screenRatio));
+    
     this.scene.add(this.sky);
 
     const uniforms = this.sky.material.uniforms;
@@ -91,17 +74,30 @@ export class SkySystem {
     uniforms['rayleigh'].value = 1;
     uniforms['mieCoefficient'].value = 0.025;
     uniforms['mieDirectionalG'].value = 0.999;
+    
+    // Fix seam issue by adjusting material settings
+    this.sky.material.side = THREE.BackSide;
+    this.sky.material.depthWrite = false;
   }
 
   createFallbackSky() {
-    // Create a large sphere geometry to act as the skybox
-    const geometry = new THREE.SphereGeometry(15000, 32, 16); // Large radius
+    // Calculate appropriate size based on camera far plane
+    const farPlane = this.engine.camera.far;
+    const skyboxRadius = farPlane * 0.8; // Keep within far plane
+    
+    // Create a sphere geometry to act as the skybox
+    // Use more segments for better quality on mobile (prevent visible seams)
+    const segmentsWidth = deviceCapabilities.gpuTier === 'low' ? 24 : 32;
+    const segmentsHeight = deviceCapabilities.gpuTier === 'low' ? 12 : 16;
+    const geometry = new THREE.SphereGeometry(skyboxRadius, segmentsWidth, segmentsHeight);
+    
     // Basic material, color will be updated dynamically
     this.fallbackSkyMaterial = new THREE.MeshBasicMaterial({
       color: 0x88ccff, // Start with a default blue
       side: THREE.BackSide, // Render inside of the sphere
       fog: false // Fallback sky shouldn't be affected by fog
     });
+    
     this.sky = new THREE.Mesh(geometry, this.fallbackSkyMaterial);
     this.sky.renderOrder = -1; // Render very first
     this.scene.add(this.sky);
@@ -109,11 +105,30 @@ export class SkySystem {
 
   update(delta) {
     // Update sky colors based on time of day
-    this.updateSkyColors(); // This method now needs to handle both sky types
+    this.updateSkyColors(); // This method handles both sky types
 
-    // Make sure sky follows camera (applies to both standard and fallback)
+    // Make sure sky precisely follows camera to avoid black areas
+    // This is crucial for mobile where the skybox might be closer to the far plane
     if (this.sky && this.engine.camera) {
       this.sky.position.copy(this.engine.camera.position);
+      
+      // For mobile devices, we make an extra check to ensure the sky stays visible
+      if (deviceCapabilities.isMobile && this.engine.systems.player && this.engine.systems.player.localPlayer) {
+        // On mobile, also update rotation if needed to match camera's forward direction
+        // This helps prevent black spots when turning quickly
+        const camera = this.engine.camera;
+        const lookDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        
+        // Only apply subtle rotation corrections to avoid jarring changes
+        if (this.sky.userData.lastLookDir) {
+          const angle = this.sky.userData.lastLookDir.angleTo(lookDir);
+          if (angle > 0.2) { // Only update when significant rotation occurs
+            this.sky.userData.lastLookDir = lookDir.clone();
+          }
+        } else {
+          this.sky.userData.lastLookDir = lookDir.clone();
+        }
+      }
     }
   }
 
