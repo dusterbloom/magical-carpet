@@ -109,7 +109,7 @@ export class PlayerList {
     }
     
     this.container.style.display = 'block';
-    this.visible = true;
+    this.visible = false;
   }
   
   /**
