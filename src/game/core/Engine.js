@@ -240,6 +240,17 @@ export class Engine {
     this.introScreen.onPlay(() => {
       console.log("Game started from intro screen");
       this.gameStarted = true;
+      
+      // Start any required gameplay systems here
+      if (this.systems.player) {
+        console.log("Starting player systems");
+        this.systems.player.enable();
+      }
+      
+      if (this.systems.network) {
+        console.log("Starting network systems");
+        this.systems.network.connect();
+      }
     });
     
     // Show intro screen and transition to INTRO state
@@ -258,6 +269,16 @@ export class Engine {
         return results;
       };
     }
+
+    // Add listener to canvas for pointer lock request
+    this.canvas.addEventListener('click', () => {
+      // Only request lock if the game is playing and lock isn't already active
+      if (useGameState.getState().currentState === GameStates.PLAYING && !this.input.pointerLocked) {
+          console.log("Requesting pointer lock via canvas click...");
+          this.input.requestPointerLock();
+      }
+    });
+
 
     console.log("Engine initialized successfully");
     console.log('Device Info:', {

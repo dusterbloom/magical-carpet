@@ -104,24 +104,31 @@ export class IntroScreen {
     
     const self = this;
     function handlePlayButtonPress(event) {
-      // Prevent default to avoid double events
       event.preventDefault();
-      console.log('Start Journey clicked');
-      self.hide();
       
-      // Delay showing controls until the exit animation completes
-      setTimeout(() => {
-        // Change game state to PLAYING
-        useGameState.getState().setGameState(GameStates.PLAYING);
-        
-        // Call the play callback to start the game
-        if (self.onPlayCallback) {
-          console.log('Calling play callback');
-          self.onPlayCallback();
-        } else {
-          console.warn('No play callback set for IntroScreen');
-        }
-      }, 500); // Match the 500ms transition from hide()
+      // Remove all event listeners to prevent any further clicks
+      playButton.removeEventListener('click', handlePlayButtonPress);
+      playButton.removeEventListener('touchend', handlePlayButtonPress);
+      
+      console.log('Start Journey clicked');
+      
+      // Immediately hide screen and proceed
+      self.container.style.display = 'none';
+      self.visible = false;
+      
+      // Force game state change
+      useGameState.getState().setGameState(GameStates.PLAYING);
+      
+      // Call callback synchronously
+      if (self.onPlayCallback) {
+        console.log('Starting game immediately');
+        self.onPlayCallback();
+      }
+      
+      // Request pointer lock in the same user gesture
+      if (document.body.requestPointerLock) {
+        document.body.requestPointerLock();
+      }
     }
     
     // Create server status indicator with green text for readability

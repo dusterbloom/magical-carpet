@@ -43,19 +43,6 @@ export class InputManager {
   }
 
   initialize() {
-
-
-    // Only set up pointer lock on non-touch devices or when specifically requested
-    if (!this.isTouchDevice) {
-      // document.addEventListener('click', this.requestPointerLock.bind(this));
-      document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this));
-      document.addEventListener('pointerlockerror', this.onPointerLockError.bind(this));
-    }
-
-    // Start the sensor fusion update loop
-    this.updateInterval = setInterval(() => {
-      this.updateFusedOrientation();
-    }, 16); // ~60fps update
     // Keyboard events
     window.addEventListener('keydown', this.onKeyDown.bind(this));
     window.addEventListener('keyup', this.onKeyUp.bind(this));
@@ -65,10 +52,29 @@ export class InputManager {
     window.addEventListener('mouseup', this.onMouseUp.bind(this));
     window.addEventListener('mousemove', this.onMouseMove.bind(this));
 
-    // Pointer lock for camera control
-    document.addEventListener('click', this.requestPointerLock.bind(this));
-    document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this));
-    document.addEventListener('pointerlockerror', this.onPointerLockError.bind(this));
+    // Pointer lock events only on desktop
+    if (!this.isTouchDevice) {
+      // Click handler for pointer lock
+      document.addEventListener('click', (event) => {
+        // Don't request pointer lock from button clicks or UI elements
+        if (event.target.tagName === 'BUTTON' || 
+            event.target.closest('#intro-screen') ||
+            event.target.closest('#ui-container')) {
+          return;
+        }
+        
+        this.requestPointerLock();
+      });
+      
+      // Pointer lock state change events
+      document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this));
+      document.addEventListener('pointerlockerror', this.onPointerLockError.bind(this));
+    }
+
+    // Start the sensor fusion update loop
+    this.updateInterval = setInterval(() => {
+      this.updateFusedOrientation();
+    }, 16); // ~60fps update
 
     // Touch events for mobile
     if (this.isTouchDevice) {
@@ -309,7 +315,7 @@ export class InputManager {
     return Object.keys(this.touches).length;
   }
 
-  requestPointerLock() {
+  requestPointerLock(force = false) {
     // Don't request pointer lock on touch devices
     if (this.isTouchDevice) return;
 
@@ -317,8 +323,8 @@ export class InputManager {
     if (this.pointerLocked || this.pointerLockRequested) return;
 
     try {
-      // Only request pointer lock if we're in a user gesture
       if (document.body.requestPointerLock) {
+        console.log('Requesting pointer lock for gameplay');
         this.pointerLockRequested = true;
         document.body.requestPointerLock();
       }

@@ -1,0 +1,144 @@
+ [vite] connecting...
+ [vite] connected.
+ Device Capabilities Detection Results:
+ - Platform: Desktop
+ - GPU Tier: high
+DeviceCapabilities.js:170 - Memory Limited: false
+DeviceCapabilities.js:171 - Max Texture Size: 16384
+DeviceCapabilities.js:172 - Float Textures: Supported
+DeviceCapabilities.js:173 - Depth Textures: Supported
+DeviceCapabilities.js:176 - GPU Info: Google Inc. (NVIDIA) ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 (0x00002204) Direct3D11 vs_5_0 ps_5_0, D3D11)
+DeviceCapabilities.js:179 Additional Information:
+DeviceCapabilities.js:180 - Device Pixel Ratio: 1
+DeviceCapabilities.js:181 - Memory: 8GB
+DeviceCapabilities.js:182 - Cores: 20
+chunk-UZOV2HZI.js?v=c72e86c4:1010 THREE.Texture: Property .encoding has been replaced by .colorSpace.
+warnOnce @ chunk-UZOV2HZI.js?v=c72e86c4:1010
+three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:200 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:258:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:212:15)
+    at chunk-UZOV2HZI.js?v=c72e86c4:25067:39
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:200
+AssetManager.js:36 Asset not found: /assets/models/carpet.glb - using fallback
+(anonymous) @ AssetManager.js:36
+three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:200 RangeError: Invalid typed array length: 4
+    at new Uint8Array (<anonymous>)
+    at GLTFLoader.parse (three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:258:40)
+    at Object.onLoad (three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:212:15)
+    at chunk-UZOV2HZI.js?v=c72e86c4:25067:39
+_onError @ three_examples_jsm_loaders_GLTFLoader__js.js?v=c72e86c4:200
+AssetManager.js:36 Asset not found: /assets/models/mana.glb - using fallback
+(anonymous) @ AssetManager.js:36
+chunk-UZOV2HZI.js?v=c72e86c4:26935 EncodingError: Unable to decode audio data
+handleError @ chunk-UZOV2HZI.js?v=c72e86c4:26935
+AssetManager.js:36 Asset not found: /assets/audio/background.mp3 - using fallback
+(anonymous) @ AssetManager.js:36
+AssetManager.js:36 Asset not found: /assets/textures/carpet.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+AssetManager.js:36 Asset not found: /assets/textures/terrain.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+AssetManager.js:36 Asset not found: /assets/textures/sky.jpg - using fallback
+(anonymous) @ AssetManager.js:36
+AtmosphereSystem.js:46 Synced Time of Day: 0.65
+NetworkManager.js:54 Connecting to server URL: http://localhost:4000
+NetworkManager.js:79 Network manager initialized
+Engine.js:219 System initialized: network
+MobileLODManager.js:117 Initializing MobileLODManager...
+MobileLODManager.js:131 MobileLODManager initialized
+Engine.js:219 System initialized: mobileLOD
+WorldSystem.js:151 Initializing WorldSystem...
+WorldSystem.js:497 Creating initial terrain...
+WorldSystem.js:169 WorldSystem initialized
+Engine.js:219 System initialized: world
+WaterSystem.js:36 Initializing WaterSystem...
+WaterSystem.js:42 Setting water level to -55.00 based on terrain
+WaterSystem.js:52 WaterSystem initializing for Desktop platform
+WaterSystem.js:348 Desktop Water: Quality='high', Reflections=true, TexSize=1024, Distortion=0.8
+chunk-UZOV2HZI.js?v=c72e86c4:26935 EncodingError: Unable to decode audio data
+handleError @ chunk-UZOV2HZI.js?v=c72e86c4:26935
+AssetManager.js:36 Asset not found: /assets/audio/spell.mp3 - using fallback
+(anonymous) @ AssetManager.js:36
+WaterSystem.js:83 WaterSystem initialized
+Engine.js:219 System initialized: water
+VegetationSystem.js:88 Initializing VegetationSystem...
+VegetationSystem.js:99 Using mobile-optimized LOD distances: {"high":150,"medium":400,"low":900}
+VegetationSystem.js:108 VegetationSystem initialized
+Engine.js:219 System initialized: vegetation
+PlayerModels.js:46 Created 6 carpet models
+PlayerSpells.js:22 Spell system initialized
+PlayerSystem.js:65 Player system initialized
+Engine.js:219 System initialized: player
+AtmosphereSystem.js:60 Initializing AtmosphereSystem...
+SkySystem.js:27 Initializing SkySystem...
+SkySystem.js:37 Using standard THREE.Sky.
+SkySystem.js:77 SkySystem initialization complete
+SunSystem.js:38 SunSystem initialized
+AtmosphereSystem.js:78 AtmosphereSystem initialized
+Engine.js:219 System initialized: atmosphere
+UISystem.js:213 Minimap functionality moved to MinimapSystem
+UISystem.js:24 UI system initialized
+Engine.js:219 System initialized: ui
+CarpetTrailSystem.js:88 Initializing CarpetTrailSystem
+Engine.js:219 System initialized: carpetTrail
+LandmarkSystem.js:76 Initializing LandmarkSystem...
+LandmarkSystem.js:80 LandmarkSystem initialized
+Engine.js:219 System initialized: landmarks
+MinimapSystem.js:40 Initializing MinimapSystem...
+MinimapSystem.js:53 MinimapSystem initialized
+Engine.js:219 System initialized: minimap
+gameState.js:44 Game State changing from LOADING to: INTRO
+Engine.js:281 Engine initialized successfully
+Engine.js:282 Device Info: Object
+main.js:21 Vibe Carpet initialized successfully!
+main.js:22 Use window.getPerformanceReport() to view performance metrics
+Engine.js:597 Visibility changed: hidden
+Engine.js:597 Visibility changed: visible
+IntroScreen.js:112 Start Journey clicked
+gameState.js:44 Game State changing from INTRO to: PLAYING
+IntroScreen.js:134 Calling play callback
+Engine.js:241 Game started from intro screen
+Engine.js:247 Uncaught TypeError: Cannot read properties of undefined (reading 'pointerLocked')
+    at Engine.js:247:32
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+IntroScreen.js:112 Start Journey clicked
+IntroScreen.js:120 Game already in PLAYING state, ignoring button click
+Engine.js:597 Visibility changed: hidden
+Engine.js:597 Visibility changed: visible
+Engine.js:597 Visibility changed: hidden
+Engine.js:597 Visibility changed: visible
+Engine.js:597 Visibility changed: hidden
+Engine.js:597 Visibility changed: visible

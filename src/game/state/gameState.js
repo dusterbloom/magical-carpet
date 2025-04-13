@@ -62,6 +62,20 @@ const gameState = createStore((set, get) => ({
     if (get().currentState === GameStates.PAUSED) {
       get().setGameState(GameStates.PLAYING);
     }
+  },
+  
+  // Force a game state change regardless of allowed transitions
+  // Only use this for critical situations or recovery from errors
+  forceGameState: (newState, metadata = {}) => {
+    const currentState = get().currentState;
+    console.log(`Forcing game state from ${currentState} to: ${newState}`);
+    set({ 
+      currentState: newState, 
+      previousState: currentState,
+      stateEnteredAt: Date.now(),
+      stateMetadata: {...metadata, forced: true}
+    });
+    return true;
   }
 }));
 
