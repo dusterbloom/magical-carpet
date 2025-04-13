@@ -11,31 +11,31 @@ export class LandmarkSystem {
     this.landmarkTypes = [
       {
         name: "ancient_ruins",
-        minHeight: 10,
-        maxHeight: 60,
-        minDistance: 1000,    // Minimum distance between same type
-        maxSlope: 0.2,        // Must be on relatively flat ground
-        frequency: 0.00001,   // Rarity factor
+        minHeight: 5,          // Lowered min height
+        maxHeight: 100,        // Increased max height
+        minDistance: 800,      // Reduced minimum distance
+        maxSlope: 0.3,         // Increased allowed slope
+        frequency: 0.0002,     // 20x higher frequency
         size: { min: 20, max: 40 },
         requiresWater: false
       },
       {
         name: "magical_circle",
-        minHeight: 5,
-        maxHeight: 80,
-        minDistance: 800,
-        maxSlope: 0.3,
-        frequency: 0.00002,
+        minHeight: 0,          // Lowered min height
+        maxHeight: 120,        // Increased max height
+        minDistance: 600,      // Reduced minimum distance
+        maxSlope: 0.4,         // Increased allowed slope
+        frequency: 0.0004,     // 20x higher frequency
         size: { min: 10, max: 25 },
         requiresWater: false
       },
       {
         name: "crystal_formation",
-        minHeight: 40,
-        maxHeight: 120,
-        minDistance: 1200,
-        maxSlope: 0.6,        // Can be on steeper terrain
-        frequency: 0.000015,
+        minHeight: 20,          // Lowered min height
+        maxHeight: 150,         // Increased max height
+        minDistance: 900,       // Reduced minimum distance
+        maxSlope: 0.8,          // Increased allowed slope
+        frequency: 0.0003,      // 20x higher frequency
         size: { min: 15, max: 35 },
         requiresWater: false
       }
@@ -91,12 +91,14 @@ export class LandmarkSystem {
     // Check terrain height constraints
     const height = this.worldSystem.getTerrainHeight(x, z);
     if (height < landmarkType.minHeight || height > landmarkType.maxHeight) {
+      // console.log(`[LandmarkSystem] Height check failed: ${height} not in range ${landmarkType.minHeight}-${landmarkType.maxHeight}`);
       return false;
     }
     
     // Check slope constraints
     const slope = this.worldSystem.calculateSlope(x, z);
     if (slope > landmarkType.maxSlope) {
+      // console.log(`[LandmarkSystem] Slope check failed: ${slope} > ${landmarkType.maxSlope}`);
       return false;
     }
     
@@ -509,20 +511,27 @@ export class LandmarkSystem {
   checkForLandmarkLocations() {
     try {
       const player = this.engine.systems.player?.localPlayer;
-      if (!player) return;
+      if (!player) {
+        // console.log("[LandmarkSystem] No player found");
+        return;
+      }
       
       // Check if player position is valid
       if (!player.position || isNaN(player.position.x) || isNaN(player.position.z)) {
+        // console.log("[LandmarkSystem] Invalid player position");
         return; // Skip this update if player position is invalid
       }
       
       // Check if worldSystem is ready
       if (!this.worldSystem || !this.worldSystem.chunkSize || !this.worldSystem.viewDistance) {
+        console.log("[LandmarkSystem] WorldSystem not ready");
         return; // Skip if worldSystem is not properly initialized
       }
       
-      // Only check occasionally
-      if (Math.random() > 0.01) return; // 1% chance per call
+      // Check more frequently for landmarks
+      if (Math.random() > 0.05) return; // 5% chance per call (increased from 1%)
+      
+      // console.log(`[LandmarkSystem] Checking for landmark locations. Player at: ${player.position.x.toFixed(2)}, ${player.position.z.toFixed(2)}. Current landmarks: ${this.landmarks.size}`)
       
       // Get player chunk
       const playerChunkX = Math.floor(player.position.x / this.worldSystem.chunkSize);
@@ -551,8 +560,8 @@ export class LandmarkSystem {
           continue; // Skip this attempt if coordinates are invalid
         }
         
-        // Use global frequency check
-        if (Math.random() > 0.2) continue; // Only consider 20% of attempts
+        // Use global frequency check - increased chance
+        if (Math.random() > 0.4) continue; // Consider 40% of attempts (increased from 20%)
         
         // Try each landmark type
         for (const landmarkType of this.landmarkTypes) {
@@ -561,8 +570,13 @@ export class LandmarkSystem {
           
           // Check if location is suitable
           if (this.isPositionSuitableForLandmark(worldX, worldZ, landmarkType)) {
-            // console.log(`Creating ${landmarkType.name} landmark at ${worldX}, ${worldZ}`);
-            this.createLandmark(worldX, worldZ, landmarkType);
+            console.log(`[LandmarkSystem] Creating ${landmarkType.name} landmark at ${worldX.toFixed(2)}, ${worldZ.toFixed(2)}`);
+            const landmark = this.createLandmark(worldX, worldZ, landmarkType);
+            if (landmark) {
+              // console.log(`[LandmarkSystem] Successfully created landmark, total count: ${this.landmarks.size}`);
+            } else {
+              // console.log(`[LandmarkSystem] Failed to create landmark`);
+            }
             return; // Only create one landmark at a time
           }
         }
