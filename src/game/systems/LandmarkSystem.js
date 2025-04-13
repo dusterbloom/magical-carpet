@@ -570,7 +570,7 @@ export class LandmarkSystem {
           
           // Check if location is suitable
           if (this.isPositionSuitableForLandmark(worldX, worldZ, landmarkType)) {
-            console.log(`[LandmarkSystem] Creating ${landmarkType.name} landmark at ${worldX.toFixed(2)}, ${worldZ.toFixed(2)}`);
+            // console.log(`[LandmarkSystem] Creating ${landmarkType.name} landmark at ${worldX.toFixed(2)}, ${worldZ.toFixed(2)}`);
             const landmark = this.createLandmark(worldX, worldZ, landmarkType);
             if (landmark) {
               // console.log(`[LandmarkSystem] Successfully created landmark, total count: ${this.landmarks.size}`);
