@@ -268,17 +268,9 @@ export class PlayerSystem {
     }
   }
   
+  // Infinite World: Boundary check removed to allow unlimited travel
   checkWorldBoundaries() {
-    if (!this.localPlayer || this.isTransitioning) return;
-    
-    const worldSize = this.engine.systems.world.worldSize;
-    const halfSize = worldSize / 2 - 50; // Buffer from edge
-    const { x, z } = this.localPlayer.position;
-    
-    // Check if player is beyond boundaries
-    if (Math.abs(x) > halfSize || Math.abs(z) > halfSize) {
-      this.startWorldTransition();
-    }
+    // No-op: Infinite world, no boundaries enforced
   }
   
   startWorldTransition() {
