@@ -34,12 +34,21 @@ export class WaterSystem {
 
   async initialize() {
     console.log("Initializing WaterSystem...");
+    
+    // Debug info about world's state
     if (this.engine.systems.world) {
-      // Position with a larger offset from terrain minHeight to avoid z-fighting
+      console.log("World System Details:");
+      console.log(`- minHeight: ${this.engine.systems.world.minHeight}`);
+      console.log(`- maxHeight: ${this.engine.systems.world.maxHeight}`);
+      console.log(`- Ocean biome threshold: ${this.engine.systems.world.biomes.ocean.threshold}`);
+      
+      // Calculate water level with diagnostic info
       const baseLevel = this.engine.systems.world.minHeight || 0;
-      // Ensure water isn't absurdly deep if minHeight is very low
-      this.waterLevel = Math.max(baseLevel - 5, -55); // Increased offset from 2 to 5
-      console.log(`Setting water level to ${this.waterLevel.toFixed(2)} based on terrain`);
+      this.waterLevel = Math.max(baseLevel + 10, -40); // Position water ABOVE minimum height
+      console.log(`Setting water level to ${this.waterLevel.toFixed(2)} (baseLevel=${baseLevel})`);
+    } else {
+      this.waterLevel = 0;
+      console.warn("World system not available, defaulting water level to 0");
     }
 
     // Detailed platform detection for better debugging
@@ -65,19 +74,29 @@ export class WaterSystem {
       this._waterQuality = 'high';
     }
 
+    // Set global THREE.js color management to ensure proper color interpretation
+    THREE.ColorManagement.enabled = true;
+    
     await this.createWater(); // Use await if texture loading needs it
 
-    // Apply specific platform optimizations after water creation
-    if (isAndroid && !this.reflectionsEnabled) {
-      // Ensure Android-specific reflection disabling is active from the start
-      if (this.water && this.water.onBeforeRender) {
-        // Store original for later restoration
-        this._savedAndroidBeforeRender = this.water.onBeforeRender;
-
-        // Replace with no-op
-        this.water.onBeforeRender = () => {};
-        console.log("Android: Applied reflection optimizations at initialization");
-      }
+    // Add debug visualization to show where water level is
+    if (isAndroid) {
+      console.log("Adding water level debug markers");
+      
+      // Add a bright marker at water level
+      const markerGeometry = new THREE.SphereGeometry(10, 8, 8);
+      const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.set(0, this.waterLevel, 0);
+      this.scene.add(marker);
+      
+      // Log camera position
+      setInterval(() => {
+        if (this.engine.camera) {
+          const pos = this.engine.camera.position;
+          console.log(`Camera at [${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}, ${pos.z.toFixed(0)}], Water at Y=${this.waterLevel}`);
+        }
+      }, 5000);
     }
 
     console.log("WaterSystem initialized");
@@ -237,67 +256,39 @@ export class WaterSystem {
    * @private
    */
   async createAndroidSimplifiedWater() {
-    // Create much simpler water with flat shading and no reflections
-    const waterGeometry = new THREE.PlaneGeometry(10000, 10000, 16, 16); // Changed from 4, 4 to 16, 16
-
-    // Load texture for simple water
-    const waterTexture = await new Promise((resolve) => {
-      new TextureLoader().load('textures/2waternormals.jpg', texture => {
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(16, 16); // Large repeat for simpler pattern
-        resolve(texture);
-      }, undefined, err => {
-        console.error("Failed to load water texture", err);
-        // Create fallback texture
-        const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#0077bb';
-        ctx.fillRect(0, 0, 128, 128);
-        // Add simple wave pattern
-        ctx.strokeStyle = '#0099cc';
-        for (let i = 0; i < 8; i++) {
-          ctx.beginPath();
-          ctx.moveTo(0, i * 16);
-          for (let x = 0; x < 128; x++) {
-            ctx.lineTo(x, i * 16 + Math.sin(x * 0.1) * 5);
-          }
-          ctx.stroke();
-        }
-        resolve(new THREE.CanvasTexture(canvas));
-      });
+    // FINAL SOLUTION: Use blue water at proper height with no diagnostic objects
+    const waterGeometry = new THREE.PlaneGeometry(20000, 20000);
+    
+    // Create a bright blue material that shows up well on mobile
+    const waterMaterial = new THREE.MeshBasicMaterial({
+      color: 0x0066ff, // Bright blue that rendered well in testing
+      side: THREE.DoubleSide,
+      transparent: false,
+      depthTest: true
     });
-
-    // Use simple PhongMaterial instead of complex Water shader
-    const waterMaterial = new THREE.MeshPhongMaterial({
-      color: 0x0088cc, // Brighter blue for better visibility
-      specular: 0x111111,
-      shininess: 50,
-      transparent: true,
-      opacity: 0.85,
-      flatShading: false,
-      map: waterTexture
-    });
-
-    // Store animation data
-    this._waterOffset = { x: 0, y: 0 };
-
-    // Create basic mesh
+    
+    // Create the water mesh
     this.water = new THREE.Mesh(waterGeometry, waterMaterial);
     this.water.rotation.x = -Math.PI / 2;
-    // --- POSITION FIX ---
-    // Position at world origin, Y at calculated water level
-    this.water.position.set(0, this.waterLevel - 1.0, 0); // Changed from -0.2 to -1.0
-    // --- END POSITION FIX ---
-    this.water.renderOrder = 10; // Ensure water renders after terrain
-
+    
+    // Position based on test results - this height is visible but doesn't overwhelm the scene
+    this.water.position.set(0, this.waterLevel, 0);
+    
+    // Ensure it renders at the right depth 
+    this.water.renderOrder = 0;
+    
+    // Add to scene
+    this.scene.add(this.water);
+    
+    console.log(`Final water solution applied at y=${this.waterLevel}`);
+    
     // No reflections for Android simplified water
     this.reflectionsEnabled = false;
     this._waterQuality = 'low';
-
-    // Add to scene
-    this.scene.add(this.water);
+    
+    // No diagnostic planes in final solution
+    this.waterHigh = null;
+    this.waterLow = null;
   }
 
   /**
@@ -318,6 +309,7 @@ export class WaterSystem {
     if (this.engine.settings && this.engine.settings.isMobile) {
         // Use the mobile-specific bright color
         waterColorHex = 0x00ccff; // Consistent bright blue for mobile visibility
+        console.log('Mobile water color: 0x00ccff'); // Log the color for debugging
 
         switch (this._waterQuality) {
             case 'low': // Corresponds to reflectionsEnabled = false
@@ -472,34 +464,33 @@ export class WaterSystem {
     
     const isAndroid = this.isAndroid || /android/i.test(navigator.userAgent);
     
-    // Handle platform-specific water updates
+    // Platform-specific water updates
     if (isAndroid && this.engine.settings && this.engine.settings.isMobile) {
-      this.updateAndroidSimplifiedWater(deltaTime);
+      // For Android, simple updates to keep water blue and properly positioned
+      if (this.engine.camera) {
+        // Keep water following the camera horizontally
+        const cameraPos = this.engine.camera.position;
+        this.water.position.x = cameraPos.x;
+        this.water.position.z = cameraPos.z;
+        
+        // Keep Y position at water level - this is crucial for proper rendering
+        this.water.position.y = this.waterLevel;
+        
+        // Ensure water stays blue every frame
+        if (this.water.material && this.water.material.color) {
+          this.water.material.color.setHex(0x0066ff);
+        }
+      }
     } else {
+      // Normal update for other platforms
       this.updateStandardWater(deltaTime);
-    }
-
-    // Update water position to align with terrain grid
-    const worldSystem = this.engine.systems.world;
-    if (worldSystem && worldSystem.cacheResolution) {
-      // Get the camera position for centering the water plane
-      const cameraX = this.engine.camera.position.x;
-      const cameraZ = this.engine.camera.position.z;
       
-      // Calculate grid-aligned position
-      const gridX = Math.round(cameraX / worldSystem.cacheResolution) * worldSystem.cacheResolution;
-      const gridZ = Math.round(cameraZ / worldSystem.cacheResolution) * worldSystem.cacheResolution;
-      
-      // Apply exact quantized position
-      this.water.position.x = gridX;
-      this.water.position.z = gridZ;
-      
-      // Calculate deterministic micro-noise to match terrain
-      const deterministicNoise = Math.sin(gridX * 0.1) * Math.cos(gridZ * 0.1) * 0.01;
-      
-      // Adjust Y position based on platform
-      const platformOffset = isAndroid ? 0.2 : 0.05;
-      this.water.position.y = this.waterLevel + deterministicNoise - platformOffset;
+      // Update water position to center on camera
+      if (this.engine.camera) {
+        const cameraPos = this.engine.camera.position;
+        this.water.position.x = cameraPos.x;
+        this.water.position.z = cameraPos.z;
+      }
     }
   }
 
@@ -508,22 +499,20 @@ export class WaterSystem {
    * @private
    */
   updateAndroidSimplifiedWater(deltaTime) {
-    // Simple texture-based animation for Android water
-    if (this.water && this.water.material && this.water.material.map) {
-      // Slow continuous movement for water texture
-      const texture = this.water.material.map;
-      const speed = 0.03; // Reduced animation speed for better performance
-
-      // Initialize offset if needed
-      this._waterOffset = this._waterOffset || { x: 0, y: 0 };
-
-      // Increment offset for animation
-      this._waterOffset.y += deltaTime * speed * 0.5;
-      this._waterOffset.x += deltaTime * speed * 0.2;
-
-      // Apply texture offset for simple water animation
-      texture.offset.set(this._waterOffset.x % 1, this._waterOffset.y % 1);
-      this.water.material.needsUpdate = true;
+    // ABSOLUTE MINIMAL UPDATE: Just enforce color and position
+    if (!this.water) return;
+    
+    try {
+      // Force pure blue every frame
+      if (this.water.material && this.water.material.color) {
+        // Set direct RGB values
+        this.water.material.color.set(new THREE.Color(0, 0, 1));
+      }
+      
+      // Keep water at consistent depth
+      this.water.position.y = this.waterLevel - 5;
+    } catch (e) {
+      console.error("Error in Android water update:", e);
     }
   }
 
@@ -534,24 +523,58 @@ export class WaterSystem {
   updateStandardWater(deltaTime) {
     // --- Animation Speed ---
     let animationSpeed = 0.8;
-    if (this.engine.settings && this.engine.settings.isMobile) {
-        animationSpeed = this._waterQuality === 'low' ? 0.3 :
-                          this._waterQuality === 'medium' ? 0.5 : 0.8;
-    }
-
-    // Only update time uniform if it exists
-    if (this.water.material && this.water.material.uniforms && this.water.material.uniforms['time']) {
-      this.water.material.uniforms['time'].value += deltaTime * animationSpeed;
-    }
-
-    // --- Sun Direction ---
-    if (this.engine.systems.atmosphere?.sunSystem &&
-        this.water.material &&
-        this.water.material.uniforms &&
-        this.water.material.uniforms['sunDirection']) {
-      const sunPosition = this.engine.systems.atmosphere.sunSystem.getSunPosition();
-      const sunDirection = sunPosition.clone().normalize();
-      this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
+    
+    try {
+      // Apply mobile-specific optimizations
+      if (this.engine.settings && this.engine.settings.isMobile) {
+          // Adjust animation speed based on quality level
+          animationSpeed = this._waterQuality === 'low' ? 0.3 :
+                           this._waterQuality === 'medium' ? 0.5 : 0.8;
+                          
+          // CRITICAL: Ensure consistent water color on mobile in every frame
+          // This is essential to prevent the brown water issue
+          if (this.water.material && this.water.material.uniforms) {
+            // Force water color in multiple uniforms to ensure it takes effect
+            if (this.water.material.uniforms['waterColor']) {
+              this.water.material.uniforms['waterColor'].value = new THREE.Color(0x0099ff);
+            }
+            
+            // Also update baseColor if it exists (some shader variants use this)
+            if (this.water.material.uniforms['baseColor']) {
+              this.water.material.uniforms['baseColor'].value = new THREE.Color(0x0099ff);
+            }
+            
+            // Reduce distortion on mobile for better stability
+            if (this.water.material.uniforms['distortionScale']) {
+              const distortion = this._waterQuality === 'low' ? 0.1 :
+                                this._waterQuality === 'medium' ? 0.3 : 0.5;
+              this.water.material.uniforms['distortionScale'].value = distortion;
+            }
+          }
+      }
+  
+      // Only update time uniform if it exists (with safety checks)
+      if (this.water.material && 
+          this.water.material.uniforms && 
+          this.water.material.uniforms['time']) {
+        
+        // Cap deltaTime to prevent large jumps
+        const cappedDelta = Math.min(deltaTime, 0.1);
+        this.water.material.uniforms['time'].value += cappedDelta * animationSpeed;
+      }
+      
+      // --- Sun Direction ---
+      if (this.engine.systems.atmosphere && this.engine.systems.atmosphere.sunSystem &&
+          this.water.material &&
+          this.water.material.uniforms &&
+          this.water.material.uniforms['sunDirection']) {
+        const sunPosition = this.engine.systems.atmosphere.sunSystem.getSunPosition();
+        const sunDirection = sunPosition.clone().normalize();
+        this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
+      }
+    } catch (err) {
+      // Graceful error handling to prevent crashes
+      console.error("Error in updateStandardWater:", err);
     }
   }
 
@@ -591,6 +614,27 @@ export class WaterSystem {
 
     // Clean up reflection resources first
     this.cleanupReflectionResources();
+
+    // Clean up test interval if it exists
+    if (this._testInterval) {
+      clearInterval(this._testInterval);
+      this._testInterval = null;
+    }
+
+    // Clean up diagnostic planes
+    if (this.waterHigh) {
+      this.scene.remove(this.waterHigh);
+      if (this.waterHigh.geometry) this.waterHigh.geometry.dispose();
+      if (this.waterHigh.material) this.waterHigh.material.dispose();
+      this.waterHigh = null;
+    }
+    
+    if (this.waterLow) {
+      this.scene.remove(this.waterLow);
+      if (this.waterLow.geometry) this.waterLow.geometry.dispose();
+      if (this.waterLow.material) this.waterLow.material.dispose();
+      this.waterLow = null;
+    }
 
     if (this.water) {
       // IMPORTANT: Restore original onBeforeRender if we wrapped it
