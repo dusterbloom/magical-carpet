@@ -8,15 +8,29 @@ export class AtmosphereSystem {
     this.scene = engine.scene;
     this.worldSystem = engine.systems.world;
 
+    // LOG: AtmosphereSystem constructed
+    console.info("[CloudDebug] AtmosphereSystem constructor called");
+
     // Initialize components
     this.starSystem = null; // Will be initialized in initialize()
     this.sky = null; // ThreeJS Sky object
 
-    // Clouds
+    // === Enhanced Cloud Swarm Parameters ===
     this.clouds = [];
-    this.cloudCount = 100;
-    this.cloudSpread = 2000; // How far clouds spread from player
-    this.cloudHeight = 200; // Height of cloud layer
+    this.cloudCount = 200; // Increased for denser sky
+    this.cloudSpread = 4000; // Increased spread for infinite world
+    this.cloudHeight = 600; // Height of cloud layer (center)
+    this.cloudMinHeight = 400; // Min height for clouds
+    this.cloudMaxHeight = 800; // Max height for clouds
+    this.cloudMinScale = 800; // Min cloud size
+    this.cloudMaxScale = 1400; // Max cloud size
+    this.cloudMinSpeed = 2; // Min horizontal speed
+    this.cloudMaxSpeed = 10; // Max horizontal speed
+    this.cloudMinRotation = -0.05; // Min rotation speed (radians/sec)
+    this.cloudMaxRotation = 0.05; // Max rotation speed (radians/sec)
+    this.cloudMinVerticalFactor = 1; // Min vertical bobbing
+    this.cloudMaxVerticalFactor = 7; // Max vertical bobbing
+    // === End Enhanced Cloud Swarm Parameters ===
 
     // Birds
     this.birds = [];
@@ -46,6 +60,8 @@ export class AtmosphereSystem {
 
   async initialize() {
     console.log("Initializing AtmosphereSystem...");
+    // LOG: AtmosphereSystem initialize called
+    console.info("[CloudDebug] AtmosphereSystem initialize called");
 
     // Create sunlight
     this.createSunLight();
@@ -226,6 +242,8 @@ createVolumetricClouds() {
     };
     
     this.scene.add(cloud);
+    // LOG: Cloud added to scene
+    console.info(`[CloudDebug] Cloud ${i} added at (${cloud.position.x.toFixed(1)}, ${cloud.position.y.toFixed(1)}, ${cloud.position.z.toFixed(1)})`);
     this.clouds.push(cloud);
   }
   console.log(`Created ${cloudCount} clouds`);
@@ -237,6 +255,7 @@ createVolumetricClouds() {
     if (!player) return;
 
     const time = this.elapsed;
+    const spread = this.cloudSpread;
 
     // Update each cloud
     this.clouds.forEach((cloud, index) => {
@@ -249,39 +268,33 @@ createVolumetricClouds() {
         cloud.material.uniforms.uTime.value = time + cloud.userData.timeOffset;
       }
 
-      // Update cloud rotation
-      if (
-        cloud.material &&
-        cloud.material.uniforms &&
-        cloud.material.uniforms.rotation
-      ) {
-        cloud.material.uniforms.rotation.value +=
-          cloud.userData.rotationSpeed * delta;
-      }
+      // Enhanced: Update cloud rotation (z-axis for sprite)
+      cloud.rotation.z += cloud.userData.rotationSpeed * delta;
 
-      // Update cloud position
+      // Enhanced: Update cloud position
       cloud.position.x += cloud.userData.horizontalSpeed * delta;
       cloud.position.z += cloud.userData.horizontalSpeed * 0.5 * delta;
 
-      // Add slight vertical bobbing
+      // Enhanced: Add vertical bobbing
       cloud.position.y +=
         Math.sin(time * 0.001 + cloud.userData.timeOffset) *
         cloud.userData.verticalFactor *
         delta;
 
-      // Check if cloud is too far from player
+      // Enhanced: Infinite wrapping using spread parameter
       const distX = cloud.position.x - player.position.x;
       const distZ = cloud.position.z - player.position.z;
       const distSq = distX * distX + distZ * distZ;
 
-      // If cloud is too far, move it to the other side of the play area
-      if (distSq > 9000000) {
-        // 3000^2
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 2000 + Math.random() * 500;
-
+      // If cloud is too far, move it to the opposite side of the play area
+      if (distSq > spread * spread) {
+        const angle = Math.atan2(distZ, distX) + Math.PI;
+        const radius = spread * (0.5 + Math.random() * 0.5);
         cloud.position.x = player.position.x + radius * Math.cos(angle);
         cloud.position.z = player.position.z + radius * Math.sin(angle);
+        // Optionally randomize height and timeOffset for more variety
+        cloud.position.y = this.cloudMinHeight + Math.random() * (this.cloudMaxHeight - this.cloudMinHeight);
+        cloud.userData.timeOffset = Math.random() * 1000;
       }
     });
   }

@@ -410,7 +410,7 @@ export class WaterSystem {
         const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
         reflectionCamera.layers.set(0); // Base layer
         reflectionCamera.layers.enable(1); // Regular scene objects
-        reflectionCamera.layers.enable(2); // Clouds
+        // reflectionCamera.layers.enable(2); // Clouds (disabled for clean water reflection)
         reflectionCamera.layers.enable(10); // Sun layer (initially enabled)
         this._reflectionCameraInitialized = true;
         console.log("Reflection camera initialized with layers.");
@@ -436,7 +436,7 @@ export class WaterSystem {
              // Ensure other layers remain enabled
              reflectionCamera.layers.enable(0);
              reflectionCamera.layers.enable(1);
-             reflectionCamera.layers.enable(2);
+             // reflectionCamera.layers.enable(2); // Clouds (disabled for clean water reflection)
          }
 
         // Call the original onBeforeRender using the water object as context

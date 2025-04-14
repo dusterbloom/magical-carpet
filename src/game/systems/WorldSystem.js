@@ -1814,7 +1814,7 @@ updateLandmarks(delta, elapsed) {
               this.scene.add(mesh);
               this.currentChunks.set(key, mesh);
               // LOG: InfiniteWorldDebug - Chunk created
-              console.info(`[InfiniteWorldDebug] Created chunk at (${chunkX}, ${chunkZ}) [key=${key}]`);
+              // console.info(`[InfiniteWorldDebug] Created chunk at (${chunkX}, ${chunkZ}) [key=${key}]`);
             } catch (error) {
               console.error(`Error creating terrain chunk at ${startX},${startZ}:`, error);
             }
@@ -1829,7 +1829,7 @@ updateLandmarks(delta, elapsed) {
         this.scene.remove(mesh);
         mesh.geometry.dispose();
         // LOG: InfiniteWorldDebug - Chunk removed
-        console.info(`[InfiniteWorldDebug] Removed chunk at [key=${key}]`);
+        // console.info(`[InfiniteWorldDebug] Removed chunk at [key=${key}]`);
         this.currentChunks.delete(key);
       }
     }

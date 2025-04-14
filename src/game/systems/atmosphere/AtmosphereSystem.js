@@ -72,10 +72,12 @@ export class AtmosphereSystem {
       this.sunSystem.initialize(),
       this.moonSystem.initialize(),
       this.starSystem.initialize(),
-      // this.cloudSystem.initialize()
+      this.cloudSystem.initialize()
     ]);
     
     console.log("AtmosphereSystem initialized");
+    // LOG: CloudSystem initialized
+    console.info("[CloudDebug] CloudSystem initialized");
   }
   
   /**
