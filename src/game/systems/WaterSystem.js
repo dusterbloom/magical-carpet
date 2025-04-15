@@ -252,43 +252,32 @@ export class WaterSystem {
 
   /**
    * Create simplified water for Android devices
-   * This avoids all the complex reflection/refraction issues on Android WebGL
+   * Avoids complex reflection/refraction issues on Android WebGL
    * @private
    */
   async createAndroidSimplifiedWater() {
-    // FINAL SOLUTION: Use blue water at proper height with no diagnostic objects
-    const waterGeometry = new THREE.PlaneGeometry(20000, 20000);
-    
-    // Create a bright blue material that shows up well on mobile
-    const waterMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0066ff, // Bright blue that rendered well in testing
+    // Use a large, bright blue plane for water
+    const geometry = new THREE.PlaneGeometry(20000, 20000);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x0066ff, // Bright blue for visibility
       side: THREE.DoubleSide,
-      transparent: false,
-      depthTest: true
+      depthTest: true,
+      transparent: false
     });
-    
-    // Create the water mesh
-    this.water = new THREE.Mesh(waterGeometry, waterMaterial);
+
+    this.water = new THREE.Mesh(geometry, material);
     this.water.rotation.x = -Math.PI / 2;
-    
-    // Position based on test results - this height is visible but doesn't overwhelm the scene
     this.water.position.set(0, this.waterLevel, 0);
-    
-    // Ensure it renders at the right depth 
     this.water.renderOrder = 0;
-    
-    // Add to scene
     this.scene.add(this.water);
-    
-    console.log(`Final water solution applied at y=${this.waterLevel}`);
-    
-    // No reflections for Android simplified water
+
+    // Set state flags
     this.reflectionsEnabled = false;
     this._waterQuality = 'low';
-    
-    // No diagnostic planes in final solution
     this.waterHigh = null;
     this.waterLow = null;
+
+    console.log(`Android simplified water created at y=${this.waterLevel}`);
   }
 
   /**
