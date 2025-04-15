@@ -17,9 +17,9 @@ export class CloudSystem {
     this.clouds = [];
     
     // Configuration
-    this.cloudCount = 100;
+    this.cloudCount = 50;
     this.cloudSpread = 2000; // How far clouds spread from player
-    this.cloudHeight = 400; // Base height of cloud layer
+    this.cloudHeight = 800; // Base height of cloud layer
   }
   
   /**

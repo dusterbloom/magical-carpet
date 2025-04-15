@@ -34,14 +34,14 @@ export class WaterSystem {
 
   async initialize() {
     console.log("Initializing WaterSystem...");
-    
+
     // Debug info about world's state
     if (this.engine.systems.world) {
       console.log("World System Details:");
       console.log(`- minHeight: ${this.engine.systems.world.minHeight}`);
       console.log(`- maxHeight: ${this.engine.systems.world.maxHeight}`);
       console.log(`- Ocean biome threshold: ${this.engine.systems.world.biomes.ocean.threshold}`);
-      
+
       // Calculate water level with diagnostic info
       const baseLevel = this.engine.systems.world.minHeight || 0;
       this.waterLevel = Math.max(baseLevel + 10, -40); // Position water ABOVE minimum height
@@ -76,20 +76,20 @@ export class WaterSystem {
 
     // Set global THREE.js color management to ensure proper color interpretation
     THREE.ColorManagement.enabled = true;
-    
+
     await this.createWater(); // Use await if texture loading needs it
 
     // Add debug visualization to show where water level is
     if (isAndroid) {
       console.log("Adding water level debug markers");
-      
+
       // Add a bright marker at water level
       const markerGeometry = new THREE.SphereGeometry(10, 8, 8);
       const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
       const marker = new THREE.Mesh(markerGeometry, markerMaterial);
       marker.position.set(0, this.waterLevel, 0);
       this.scene.add(marker);
-      
+
       // Log camera position
       setInterval(() => {
         if (this.engine.camera) {
@@ -256,13 +256,30 @@ export class WaterSystem {
    * @private
    */
   async createAndroidSimplifiedWater() {
+
+    const textureLoader = new THREE.TextureLoader();
+    const waterNormals = textureLoader.load('textures/2waternormals.jpg'); // Make sure this texture tiles!
+    waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+
     // Use a large, bright blue plane for water
     const geometry = new THREE.PlaneGeometry(20000, 20000);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x0066ff, // Bright blue for visibility
-      side: THREE.DoubleSide,
+    // const material = new THREE.MeshBasicMaterial({
+    //   color: 0x0066ff, // Bright blue for visibility
+    //   side: THREE.DoubleSide,
+    //   depthTest: true,
+    //   transparent: false
+    // });
+    const material = new THREE.MeshStandardMaterial({
+      // Use MeshPhongMaterial if you prefer its specular model
+      color: 0x006e63, // Adjust base water color
+      metalness: 0.4, // Controls reflectivity (adjust for look)
+      roughness: 0.2, // Controls sharpness of reflections (adjust for look)
+      normalMap: waterNormals,
+      normalScale: new THREE.Vector2(0.3, 0.3), // Adjust strength of bumps
+      transparent: false,
       depthTest: true,
-      transparent: false
+      opacity: 0.9, // Adjust transparency
+      side: THREE.DoubleSide // If needed
     });
 
     this.water = new THREE.Mesh(geometry, material);
@@ -296,37 +313,37 @@ export class WaterSystem {
 
     // Adjust quality based on internal state (_waterQuality)
     if (this.engine.settings && this.engine.settings.isMobile) {
-        // Use the mobile-specific bright color
-        waterColorHex = 0x00ccff; // Consistent bright blue for mobile visibility
-        console.log('Mobile water color: 0x00ccff'); // Log the color for debugging
+      // Use the mobile-specific bright color
+      waterColorHex = 0x00ccff; // Consistent bright blue for mobile visibility
+      console.log('Mobile water color: 0x00ccff'); // Log the color for debugging
 
-        switch (this._waterQuality) {
-            case 'low': // Corresponds to reflectionsEnabled = false
-                textureSize = 128;
-                distortionScale = 0.0; // No distortion without reflections
-                alpha = 0.85;
-                break;
-            case 'medium':
-                textureSize = 256;
-                distortionScale = 0.2;
-                alpha = 0.9;
-                break;
-            case 'high':
-            default:
-                textureSize = 512;
-                distortionScale = 0.4; // Keep distortion moderate even on high mobile
-                alpha = 0.95;
-                break;
-        }
-        console.log(`Mobile Water: Quality='${this._waterQuality}', Reflections=${this.reflectionsEnabled}, TexSize=${textureSize}, Distortion=${distortionScale}`);
+      switch (this._waterQuality) {
+        case 'low': // Corresponds to reflectionsEnabled = false
+          textureSize = 128;
+          distortionScale = 0.0; // No distortion without reflections
+          alpha = 0.85;
+          break;
+        case 'medium':
+          textureSize = 256;
+          distortionScale = 0.2;
+          alpha = 0.9;
+          break;
+        case 'high':
+        default:
+          textureSize = 512;
+          distortionScale = 0.4; // Keep distortion moderate even on high mobile
+          alpha = 0.95;
+          break;
+      }
+      console.log(`Mobile Water: Quality='${this._waterQuality}', Reflections=${this.reflectionsEnabled}, TexSize=${textureSize}, Distortion=${distortionScale}`);
     } else {
-        // Desktop quality settings (can still have high/medium/low if implemented)
-        // For now, assume high for desktop
-        textureSize = 1024; // Decent quality for desktop
-        distortionScale = 0.8;
-        alpha = 0.95;
-        waterColorHex = 0x001e0f; // Standard desktop color
-        console.log(`Desktop Water: Quality='high', Reflections=${this.reflectionsEnabled}, TexSize=${textureSize}, Distortion=${distortionScale}`);
+      // Desktop quality settings (can still have high/medium/low if implemented)
+      // For now, assume high for desktop
+      textureSize = 1024; // Decent quality for desktop
+      distortionScale = 0.8;
+      alpha = 0.95;
+      waterColorHex = 0x001e0f; // Standard desktop color
+      console.log(`Desktop Water: Quality='high', Reflections=${this.reflectionsEnabled}, TexSize=${textureSize}, Distortion=${distortionScale}`);
     }
 
     // --- Create Water Geometry and Object ---
@@ -334,25 +351,25 @@ export class WaterSystem {
 
     // Load normals texture asynchronously
     const waterNormals = await new Promise((resolve, reject) => {
-        new TextureLoader().load('textures/2waternormals.jpg',
-            (texture) => {
-                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-                texture.repeat.set(32, 32);
-                resolve(texture);
-            },
-            undefined, // onProgress
-            (error) => {
-                 console.error("Failed to load water normals texture", error);
-                 // Create a fallback normal map (flat blue)
-                 const fallbackCanvas = document.createElement('canvas');
-                 fallbackCanvas.width = 1;
-                 fallbackCanvas.height = 1;
-                 const ctx = fallbackCanvas.getContext('2d');
-                 ctx.fillStyle = 'rgb(128, 128, 255)'; // Neutral normal color
-                 ctx.fillRect(0, 0, 1, 1);
-                 resolve(new THREE.CanvasTexture(fallbackCanvas));
-            }
-        );
+      new TextureLoader().load('textures/2waternormals.jpg',
+        (texture) => {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+          texture.repeat.set(32, 32);
+          resolve(texture);
+        },
+        undefined, // onProgress
+        (error) => {
+          console.error("Failed to load water normals texture", error);
+          // Create a fallback normal map (flat blue)
+          const fallbackCanvas = document.createElement('canvas');
+          fallbackCanvas.width = 1;
+          fallbackCanvas.height = 1;
+          const ctx = fallbackCanvas.getContext('2d');
+          ctx.fillStyle = 'rgb(128, 128, 255)'; // Neutral normal color
+          ctx.fillRect(0, 0, 1, 1);
+          resolve(new THREE.CanvasTexture(fallbackCanvas));
+        }
+      );
     });
 
 
@@ -378,10 +395,10 @@ export class WaterSystem {
 
     // --- Wrap onBeforeRender ---
     if (this.water.onBeforeRender) {
-        this._originalOnBeforeRender = this.water.onBeforeRender; // Store original
+      this._originalOnBeforeRender = this.water.onBeforeRender; // Store original
     } else {
-         // Should not happen with THREE.Water, but good practice
-         this._originalOnBeforeRender = () => {};
+      // Should not happen with THREE.Water, but good practice
+      this._originalOnBeforeRender = () => { };
     }
 
     // Assign the wrapper function
@@ -399,26 +416,26 @@ export class WaterSystem {
 
       // Conditionally execute the original reflection rendering
       if (this.reflectionsEnabled && this._originalOnBeforeRender) {
-         // Check if sun should be visible in reflections
-         const sunSystem = this.engine.systems.atmosphere?.sunSystem;
-         if (sunSystem && this._reflectionCameraInitialized) {
-             const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
-             const sunPos = sunSystem.getSunPosition();
-             // Use a higher threshold to account for mountains/horizon variations
-             const safeThreshold = sunSystem.HORIZON_LEVEL + 100;
-             const isSunHighEnough = sunPos.y > safeThreshold;
+        // Check if sun should be visible in reflections
+        const sunSystem = this.engine.systems.atmosphere?.sunSystem;
+        if (sunSystem && this._reflectionCameraInitialized) {
+          const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
+          const sunPos = sunSystem.getSunPosition();
+          // Use a higher threshold to account for mountains/horizon variations
+          const safeThreshold = sunSystem.HORIZON_LEVEL + 100;
+          const isSunHighEnough = sunPos.y > safeThreshold;
 
-             // Enable/disable sun layer (10) for reflection camera
-             if (isSunHighEnough) {
-                 reflectionCamera.layers.enable(10);
-             } else {
-                 reflectionCamera.layers.disable(10);
-             }
-             // Ensure other layers remain enabled
-             reflectionCamera.layers.enable(0);
-             reflectionCamera.layers.enable(1);
-             // reflectionCamera.layers.enable(2); // Clouds (disabled for clean water reflection)
-         }
+          // Enable/disable sun layer (10) for reflection camera
+          if (isSunHighEnough) {
+            reflectionCamera.layers.enable(10);
+          } else {
+            reflectionCamera.layers.disable(10);
+          }
+          // Ensure other layers remain enabled
+          reflectionCamera.layers.enable(0);
+          reflectionCamera.layers.enable(1);
+          // reflectionCamera.layers.enable(2); // Clouds (disabled for clean water reflection)
+        }
 
         // Call the original onBeforeRender using the water object as context
         this._originalOnBeforeRender.call(this.water, renderer, scene, camera);
@@ -433,11 +450,11 @@ export class WaterSystem {
         // For THREE.Water, simply skipping onBeforeRender might be enough
         // as it won't update the render target.
 
-         // If reflections are off, ensure sun layer is disabled for reflection camera
-         if (this._reflectionCameraInitialized) {
-              const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
-              reflectionCamera.layers.disable(10);
-         }
+        // If reflections are off, ensure sun layer is disabled for reflection camera
+        if (this._reflectionCameraInitialized) {
+          const reflectionCamera = this.water.material.uniforms.reflectionCamera.value;
+          reflectionCamera.layers.disable(10);
+        }
       }
     };
 
@@ -450,9 +467,9 @@ export class WaterSystem {
 
   update(deltaTime) {
     if (!this.water) return; // Safety check
-    
+
     const isAndroid = this.isAndroid || /android/i.test(navigator.userAgent);
-    
+
     // Platform-specific water updates
     if (isAndroid && this.engine.settings && this.engine.settings.isMobile) {
       // For Android, simple updates to keep water blue and properly positioned
@@ -461,10 +478,10 @@ export class WaterSystem {
         const cameraPos = this.engine.camera.position;
         this.water.position.x = cameraPos.x;
         this.water.position.z = cameraPos.z;
-        
+
         // Keep Y position at water level - this is crucial for proper rendering
         this.water.position.y = this.waterLevel;
-        
+
         // Ensure water stays blue every frame
         if (this.water.material && this.water.material.color) {
           this.water.material.color.setHex(0x0066ff);
@@ -473,7 +490,7 @@ export class WaterSystem {
     } else {
       // Normal update for other platforms
       this.updateStandardWater(deltaTime);
-      
+
       // Update water position to center on camera
       if (this.engine.camera) {
         const cameraPos = this.engine.camera.position;
@@ -490,14 +507,14 @@ export class WaterSystem {
   updateAndroidSimplifiedWater(deltaTime) {
     // ABSOLUTE MINIMAL UPDATE: Just enforce color and position
     if (!this.water) return;
-    
+
     try {
       // Force pure blue every frame
       if (this.water.material && this.water.material.color) {
         // Set direct RGB values
         this.water.material.color.set(new THREE.Color(0, 0, 1));
       }
-      
+
       // Keep water at consistent depth
       this.water.position.y = this.waterLevel - 5;
     } catch (e) {
@@ -512,51 +529,51 @@ export class WaterSystem {
   updateStandardWater(deltaTime) {
     // --- Animation Speed ---
     let animationSpeed = 0.8;
-    
+
     try {
       // Apply mobile-specific optimizations
       if (this.engine.settings && this.engine.settings.isMobile) {
-          // Adjust animation speed based on quality level
-          animationSpeed = this._waterQuality === 'low' ? 0.3 :
-                           this._waterQuality === 'medium' ? 0.5 : 0.8;
-                          
-          // CRITICAL: Ensure consistent water color on mobile in every frame
-          // This is essential to prevent the brown water issue
-          if (this.water.material && this.water.material.uniforms) {
-            // Force water color in multiple uniforms to ensure it takes effect
-            if (this.water.material.uniforms['waterColor']) {
-              this.water.material.uniforms['waterColor'].value = new THREE.Color(0x0099ff);
-            }
-            
-            // Also update baseColor if it exists (some shader variants use this)
-            if (this.water.material.uniforms['baseColor']) {
-              this.water.material.uniforms['baseColor'].value = new THREE.Color(0x0099ff);
-            }
-            
-            // Reduce distortion on mobile for better stability
-            if (this.water.material.uniforms['distortionScale']) {
-              const distortion = this._waterQuality === 'low' ? 0.1 :
-                                this._waterQuality === 'medium' ? 0.3 : 0.5;
-              this.water.material.uniforms['distortionScale'].value = distortion;
-            }
+        // Adjust animation speed based on quality level
+        animationSpeed = this._waterQuality === 'low' ? 0.3 :
+          this._waterQuality === 'medium' ? 0.5 : 0.8;
+
+        // CRITICAL: Ensure consistent water color on mobile in every frame
+        // This is essential to prevent the brown water issue
+        if (this.water.material && this.water.material.uniforms) {
+          // Force water color in multiple uniforms to ensure it takes effect
+          if (this.water.material.uniforms['waterColor']) {
+            this.water.material.uniforms['waterColor'].value = new THREE.Color(0x0099ff);
           }
+
+          // Also update baseColor if it exists (some shader variants use this)
+          if (this.water.material.uniforms['baseColor']) {
+            this.water.material.uniforms['baseColor'].value = new THREE.Color(0x0099ff);
+          }
+
+          // Reduce distortion on mobile for better stability
+          if (this.water.material.uniforms['distortionScale']) {
+            const distortion = this._waterQuality === 'low' ? 0.1 :
+              this._waterQuality === 'medium' ? 0.3 : 0.5;
+            this.water.material.uniforms['distortionScale'].value = distortion;
+          }
+        }
       }
-  
+
       // Only update time uniform if it exists (with safety checks)
-      if (this.water.material && 
-          this.water.material.uniforms && 
-          this.water.material.uniforms['time']) {
-        
+      if (this.water.material &&
+        this.water.material.uniforms &&
+        this.water.material.uniforms['time']) {
+
         // Cap deltaTime to prevent large jumps
         const cappedDelta = Math.min(deltaTime, 0.1);
         this.water.material.uniforms['time'].value += cappedDelta * animationSpeed;
       }
-      
+
       // --- Sun Direction ---
       if (this.engine.systems.atmosphere && this.engine.systems.atmosphere.sunSystem &&
-          this.water.material &&
-          this.water.material.uniforms &&
-          this.water.material.uniforms['sunDirection']) {
+        this.water.material &&
+        this.water.material.uniforms &&
+        this.water.material.uniforms['sunDirection']) {
         const sunPosition = this.engine.systems.atmosphere.sunSystem.getSunPosition();
         const sunDirection = sunPosition.clone().normalize();
         this.water.material.uniforms['sunDirection'].value.copy(sunDirection);
@@ -617,7 +634,7 @@ export class WaterSystem {
       if (this.waterHigh.material) this.waterHigh.material.dispose();
       this.waterHigh = null;
     }
-    
+
     if (this.waterLow) {
       this.scene.remove(this.waterLow);
       if (this.waterLow.geometry) this.waterLow.geometry.dispose();
@@ -643,11 +660,11 @@ export class WaterSystem {
       // Safely dispose geometry and material
       if (this.water.geometry) this.water.geometry.dispose();
       if (this.water.material) {
-           // Dispose water normals texture if it exists
-           if (this.water.material.uniforms?.waterNormals?.value) { // Added optional chaining
-             this.water.material.uniforms.waterNormals.value.dispose();
-           }
-           this.water.material.dispose();
+        // Dispose water normals texture if it exists
+        if (this.water.material.uniforms?.waterNormals?.value) { // Added optional chaining
+          this.water.material.uniforms.waterNormals.value.dispose();
+        }
+        this.water.material.dispose();
       }
       this.water = null;
       console.log("WaterSystem disposed.");
