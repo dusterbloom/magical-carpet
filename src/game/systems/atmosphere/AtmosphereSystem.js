@@ -64,7 +64,7 @@ export class AtmosphereSystem {
     this.sunSystem = new SunSystem(this);
     this.moonSystem = new MoonSystem(this);
     this.starSystem = new StarSystem(this);
-    this.cloudSystem = new CloudSystem(this);
+    // this.cloudSystem = new CloudSystem(this);
     
     // Initialize subsystems
     await Promise.all([
@@ -72,7 +72,7 @@ export class AtmosphereSystem {
       this.sunSystem.initialize(),
       this.moonSystem.initialize(),
       this.starSystem.initialize(),
-      this.cloudSystem.initialize()
+      // this.cloudSystem.initialize()
     ]);
     
     console.log("AtmosphereSystem initialized");
@@ -149,7 +149,7 @@ export class AtmosphereSystem {
     this.skySystem.update(delta);  // Sky system now relies on sun system
     this.moonSystem.update(delta);
     this.starSystem.update(delta);
-    this.cloudSystem.update(delta);
+    // this.cloudSystem.update(delta);
   }
   
   /**

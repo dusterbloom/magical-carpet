@@ -46,8 +46,8 @@ export class CloudSystem {
           const material = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            opacity: 0.7,
-            color: 0xffffff
+            // opacity: 0.5,
+            blending: THREE.AdditiveBlending, // or THREE.CustomBlending
           });
           resolve(material);
         },
@@ -73,8 +73,8 @@ export class CloudSystem {
           const material = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            opacity: 0.7,
-            color: 0xffffff
+            // opacity: 0.5,
+            blending: THREE.AdditiveBlending, // or THREE.CustomBlending
           });
           
           resolve(material);
