@@ -550,9 +550,9 @@ export class WorldSystem {
     for (let i = 0; i < nodeCount; i++) {
       const angle = Math.random() * Math.PI * 2; const distance = Math.random() * spawnRadius;
       const x = player.position.x + Math.cos(angle) * distance; const z = player.position.z + Math.sin(angle) * distance;
-      const terrainHeight = this.getTerrainHeight(x, z); const y = terrainHeight + 10;
-      const nodeMesh = new THREE.Mesh(new THREE.SphereGeometry(2, 12, 12), new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.7, transparent: true, opacity: 0.8 }));
-      const glowMesh = new THREE.Mesh(new THREE.SphereGeometry(3, 12, 12), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3, side: THREE.BackSide }));
+      const terrainHeight = this.getTerrainHeight(x, z); const y = terrainHeight + 30; // Further increased height for better accessibility
+      const nodeMesh = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.7, transparent: true, opacity: 0.8 })); // Increased size
+      const glowMesh = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3, side: THREE.BackSide })); // Increased size
       nodeMesh.add(glowMesh);
       nodeMesh.position.set(x, y, z);
       nodeMesh.userData = { type: 'mana', value: 10 + Math.floor(Math.random() * 20), collected: false };
