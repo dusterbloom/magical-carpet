@@ -227,6 +227,14 @@ export class PlayerSystem {
     
     // Position camera relative to player with smoothing
     const targetCameraPos = this.localPlayer.position.clone().add(rotatedOffset);
+
+    // Clamp camera Y to always be above terrain
+    const terrainY = this.engine.systems.world.getTerrainHeight(targetCameraPos.x, targetCameraPos.z);
+    const cameraMinOffset = 2; // Minimum height above terrain
+    if (targetCameraPos.y < terrainY + cameraMinOffset) {
+        targetCameraPos.y = terrainY + cameraMinOffset;
+    }
+
     this.engine.camera.position.lerp(targetCameraPos, 0.1); // Smooth camera movement
     
     // Look at point ahead of player

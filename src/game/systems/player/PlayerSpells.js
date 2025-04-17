@@ -287,6 +287,7 @@ export class PlayerSpells {
         spell.position.x,
         spell.position.z
       );
+      console.log("Checking terrain collision at:", spell.position, "Terrain Y:", terrainY);
       
       if (spell.position.y < terrainY || spell.userData.life <= 0) {
         // Remove spell
@@ -304,20 +305,21 @@ export class PlayerSpells {
       this.playerSystem.players.forEach(player => {
         if (player.id !== spell.userData.owner) {
           const distance = player.position.distanceTo(spell.position);
+          console.log("Checking player collision. Distance:", distance);
           if (distance < 3) { // Hit radius
             // Apply damage
             player.health -= spell.userData.damage;
             player.health = Math.max(0, player.health);
-            
+
             // Update UI if this is local player
             if (player.isLocal && this.engine.systems.ui) {
               this.engine.systems.ui.updateHealthDisplay(player.health, player.maxHealth);
             }
-            
+
             // Remove spell
             this.scene.remove(spell);
             this.activeSpells.splice(i, 1);
-            
+
             // Create impact effect
             this.createImpactEffect(spell.position.clone(), spell.material.color);
           }

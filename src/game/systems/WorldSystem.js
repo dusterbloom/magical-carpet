@@ -148,7 +148,10 @@ export class WorldSystem {
   }
 
   async initialize() {
-    console.log("Initializing WorldSystem...");
+      console.log("Initializing WorldSystem...");
+  
+      // Log camera position
+      console.log("Initial Camera Position:", this.engine.camera.position);
 
     // --- REMOVED Atmosphere elements ---
     await this.createMaterials(); // Only terrain materials now

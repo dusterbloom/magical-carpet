@@ -16,7 +16,7 @@ export class LandmarkSystem {
         minDistance: 800,      // Reduced minimum distance
         maxSlope: 0.3,         // Increased allowed slope
         frequency: 0.0002,     // 20x higher frequency
-        size: { min: 20, max: 40 },
+        size: { min: 200, max: 400 },
         requiresWater: false
       },
       {
